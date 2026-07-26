@@ -190,8 +190,9 @@ claims the chat turn, so failed/retried calls cannot duplicate compaction.
 - `/health` is a liveness signal; `/ready` verifies required dependencies.
 - The worker must use durable job semantics before jobs become business
   critical.
-- Compose is the developer reference environment. Per-worktree isolation is a
-  target; fixed container names and ports are tracked debt.
+- Compose is the developer reference environment. Each worktree derives a
+  stable `COMPOSE_PROJECT_NAME` and host-port block; Compose project names
+  isolate its containers, network, and named volumes.
 
 ## Verification architecture
 

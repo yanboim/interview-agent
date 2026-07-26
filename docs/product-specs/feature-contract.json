@@ -323,6 +323,57 @@
         "tests/test_architecture.py",
         "tests/test_data_migration.py"
       ]
+    },
+    {
+      "id": "worktree-stack-isolation",
+      "category": "operations",
+      "description": "Each worktree derives an independent Compose project, resource namespace, host-port block, and Playwright port.",
+      "status": "passing",
+      "steps": [
+        "Generate a stable safe suffix from the resolved worktree path.",
+        "Namespace Compose containers, networks, and volumes by project.",
+        "Parameterize every published host port.",
+        "Verify two worktree paths produce distinct runnable configurations."
+      ],
+      "verification": [
+        "tests/test_worktree_env.py",
+        "tests/test_harness_contract.py"
+      ]
+    },
+    {
+      "id": "reproducible-build-inputs",
+      "category": "operations",
+      "description": "Production Python dependencies and container images are immutable, reviewable, and mechanically checked for drift.",
+      "status": "passing",
+      "steps": [
+        "Resolve direct Python requirements into an exact hash-verified lock.",
+        "Install the lock without dependency re-resolution in CI and images.",
+        "Pin every external image by version and manifest digest.",
+        "Reject lock drift and mutable image references in Harness checks."
+      ],
+      "verification": [
+        "tests/test_reproducibility.py",
+        "tests/test_harness_contract.py",
+        ".github/workflows/ci.yml"
+      ]
+    },
+    {
+      "id": "frontend-toolchain-audit",
+      "category": "security",
+      "description": "The upgraded frontend build toolchain is lockfile-enforced and has no moderate-or-higher npm audit findings.",
+      "status": "passing",
+      "steps": [
+        "Resolve and lock the reviewed Vite, plugin-vue, vue-tsc, and Vitest majors.",
+        "Reject toolchain lockfile regressions with an offline check.",
+        "Audit production and developer dependencies at moderate severity.",
+        "Pass type, unit, production build, bundle, and browser gates."
+      ],
+      "verification": [
+        "frontend/scripts/check-toolchain.mjs",
+        "frontend/package-lock.json",
+        ".github/workflows/ci.yml",
+        "frontend/e2e/product.spec.ts"
+      ]
     }
   ]
 }

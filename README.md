@@ -27,13 +27,13 @@ Client -> FastAPI auth/RBAC -> Interview Agent -> Qdrant knowledge tool
 
 ## 快速开始
 
-要求 Python 3.11+、Docker，以及可用的智谱 API Key。对话模型使用
+要求 Python 3.12、Docker，以及可用的智谱 API Key。对话模型使用
 GLM-5.2，向量模型使用智谱 Embedding-2，不需要 OpenAI Key。
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install --require-hashes -r requirements.txt
 cp .env.example .env
 # 编辑 .env，填写 ZHIPU_API_KEY
 docker compose up -d
@@ -148,9 +148,25 @@ alembic upgrade head
 完整启动 FastAPI 与 Qdrant：
 
 ```bash
-docker compose up -d --build
+make worktree-env
+make stack-config
+make stack-up
 python -m scripts.ingest
 ```
+
+`.env.worktree` 根据当前 worktree 的绝对路径生成，不包含密钥且不会提交。它为
+Compose project、容器/网络/命名卷前缀、所有宿主端口和 Playwright 分配稳定的
+隔离值，因此两个 worktree 可以同时运行。容器内仍使用 `postgres:5432`、
+`redis:6379` 和 `qdrant:6333` 等固定服务地址。查看实际端口：
+
+```bash
+python -m scripts.worktree_env --root . --print
+```
+
+停止当前 worktree 的栈使用 `make stack-down`；该命令保留命名卷。只有在明确
+确认当前项目数据不再需要时，才额外使用 Compose 的 `--volumes` 删除数据。
+传统的 `docker compose up` 仍使用 8000、5432、6379 等默认端口，适合只运行
+一个 worktree 的场景。
 
 Compose 生产配置同时启动 PostgreSQL，并在 FastAPI 启动前执行
 `alembic upgrade head`。本地开发仍可保留 SQLite。将现有 SQLite 历史迁移到
@@ -218,6 +234,19 @@ Plan Key 与智谱标准 API Key 可能不通用，因此建议通过
 
 智谱官方将 Coding Plan 限定为受支持的 Coding Agent，自建网站、机器人和 SaaS
 应使用标准 API。上线或公开提供本服务前，请使用标准端点并确认对应计费规则。
+
+Python 依赖的人工评审入口是 `requirements.in`，生产与 CI 只安装
+`requirements.txt` 中的精确版本和制品哈希。更新依赖时使用固定 Python 3.12
+镜像重新解析并运行门禁：
+
+```bash
+make lock-python
+make harness-check
+```
+
+评审时同时检查直接依赖变化、传递版本/哈希变化和安全审计结果。Dockerfile 与
+Compose 外部镜像使用“版本标签 + Linux/amd64 manifest digest”；升级镜像时应
+从官方注册表核对新摘要，并与版本变更放在同一次评审中。
 
 `RETRIEVAL_CANDIDATE_K` 控制混合检索候选数，
 `RETRIEVAL_FINAL_K` 控制最终返回分块数。会话、消息、模拟面试和账号已持久化；

@@ -1,14 +1,14 @@
 # ---------- 阶段 1:前端构建 ----------
-FROM node:20.19-slim AS frontend-build
+FROM node:20.19-slim@sha256:2b082e775b783759418ee22c67644b5fe4a1660138f99b27c0f44b3c5818ed70 AS frontend-build
 
 WORKDIR /frontend
-COPY frontend/package.json frontend/package-lock.json* ./
+COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
 # ---------- 阶段 2:Python 运行时 ----------
-FROM python:3.12-slim
+FROM python:3.12-slim@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -20,8 +20,7 @@ RUN addgroup --system interview \
     && adduser --system --ingroup interview interview
 
 COPY requirements.txt .
-RUN pip install --upgrade pip \
-    && pip install -r requirements.txt
+RUN pip install --require-hashes -r requirements.txt
 
 COPY app app
 COPY scripts scripts

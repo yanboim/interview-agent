@@ -10,12 +10,13 @@ gate required by its scope.
 | One backend area | `pytest -q tests/<relevant_file>.py` | Focused Python behavior |
 | Architecture or documentation | `make harness-static` | Dependency rules, feature contract, required docs, internal links |
 | Backend repository | `make backend-check` | Compilation and backend suite |
-| Frontend repository | `make frontend-check` | Type-check, unit tests, production build, bundle budget |
+| Frontend repository | `make frontend-check` | Toolchain baseline, type-check, unit tests, production build, bundle budget |
 | Browser acceptance | `make e2e` | Playwright product flows |
 | Repository-wide change | `make harness-check` | All checks above |
 
-The CI workflow also performs dependency audits, builds the container image,
-and scans it for high and critical vulnerabilities.
+The CI workflow also audits production and developer npm dependencies at
+moderate severity, performs the Python dependency audit, builds the container
+image, and scans it for high and critical vulnerabilities.
 
 ## External and cost-bearing checks
 
