@@ -91,6 +91,62 @@ def test_admin_can_trigger_knowledge_import(monkeypatch):
     }
 
 
+def test_admin_can_inspect_and_rollback_knowledge_versions(monkeypatch):
+    request = SimpleNamespace(
+        state=SimpleNamespace(
+            current_user=AuthenticatedUser(
+                user_id="admin-1",
+                username="admin",
+                role="admin",
+            )
+        )
+    )
+
+    async def run_inline(function, *args):
+        return function(*args)
+
+    monkeypatch.setattr(main_module.asyncio, "to_thread", run_inline)
+    monkeypatch.setattr(
+        main_module,
+        "knowledge_status",
+        lambda: {
+            "alias": "interview_knowledge_current",
+            "current_version": "interview_knowledge__v_new",
+            "versions": [
+                "interview_knowledge__v_new",
+                "interview_knowledge__v_old",
+            ],
+        },
+    )
+    monkeypatch.setattr(
+        main_module,
+        "rollback_knowledge",
+        lambda collection_name: {
+            "status": "rolled_back",
+            "previous_version": "interview_knowledge__v_new",
+            "current_version": collection_name,
+        },
+    )
+
+    status = asyncio.run(main_module.admin_knowledge_status(request))
+    rollback = asyncio.run(
+        main_module.admin_knowledge_rollback(
+            main_module.KnowledgeRollbackRequest(
+                collection_name="interview_knowledge__v_old"
+            ),
+            request,
+        )
+    )
+
+    assert status["current_version"] == "interview_knowledge__v_new"
+    assert rollback == {
+        "operator": "admin",
+        "status": "rolled_back",
+        "previous_version": "interview_knowledge__v_new",
+        "current_version": "interview_knowledge__v_old",
+    }
+
+
 def test_user_and_admin_login_surfaces_are_separated(monkeypatch):
     async def run_inline(function, *args):
         return function(*args)

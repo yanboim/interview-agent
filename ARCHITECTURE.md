@@ -55,7 +55,17 @@ Own HTTP validation, authentication dependencies, status codes, and response
 serialization. They do not own interview transitions, prompt construction, SQL
 queries, or retry policy.
 
-Current location: mostly `app/main.py`.
+Current location:
+
+```text
+app/api/runtime.py
+app/api/schemas.py
+app/api/security.py
+app/api/routers/
+```
+
+`app/main.py` is the composition root: it constructs dependencies, installs
+middleware and static routes, and registers domain routers.
 
 ### Application services
 
@@ -63,7 +73,7 @@ Coordinate a use case and its transaction/concurrency boundary, such as
 submitting an interview answer or generating a chat turn. They depend on
 repository and model interfaces rather than global clients.
 
-Target modules:
+Current and target modules:
 
 ```text
 app/application/chat_service.py
@@ -71,8 +81,8 @@ app/application/interview_service.py
 app/application/knowledge_service.py
 ```
 
-These modules do not yet exist. New complex behavior should move toward this
-boundary rather than enlarge `app/main.py`.
+New complex behavior should continue moving toward this boundary rather than
+placing orchestration in API routers or `app/main.py`.
 
 ### Domain policy
 
@@ -106,6 +116,17 @@ A single business transition should commit atomically. Retriable commands need
 an idempotency key or an optimistic concurrency condition. Python process locks
 are not a correctness mechanism in a multi-instance deployment.
 
+Persistence uses synchronous SQLAlchemy Core. API adapters dispatch blocking
+use cases through the shared `SyncExecutor`; they do not call
+`asyncio.to_thread` individually. A `ConversationStore` mutation is a
+transaction script and owns one `engine.begin()` boundary, while reads own one
+`engine.connect()` boundary. External model and network calls never run inside
+those database transactions.
+
+Business concurrency is enforced by conditional updates, unique constraints,
+foreign keys, idempotency keys, and owner tokens. The Store's only local lock
+guards optional schema initialization and is not part of business correctness.
+
 ### Chat and interview turns
 
 Each logical turn should have a durable identity and explicit lifecycle. The
@@ -116,9 +137,16 @@ pending -> generating -> completed
                     `-> failed or cancelled
 ```
 
-Concurrent submissions for the same pending turn must not cause duplicate
-model charges or duplicate successor turns. This remains tracked debt until the
-current storage schema implements it.
+Initial interview-answer and chat submission implement this lifecycle using
+durable turn IDs, client idempotency keys, database conditional claims,
+claim-owner tokens, and stored response replay.
+
+Chat additionally serializes generation per session and materializes its user
+and assistant history messages together only after completion. Provider failure
+or stream cancellation releases the session and preserves the failed/cancelled
+turn for retry. A process crash while `generating` still requires explicit
+operator recovery; automatic lease takeover is prohibited until model-call
+fencing can prevent a slow prior owner from resuming.
 
 ### Knowledge publication
 
@@ -142,6 +170,17 @@ Provider calls require bounded timeout/retry behavior, metrics, safe error
 mapping, and token/cost accounting. Prompts and structured-output schemas are
 versioned behavior. Product code must not rely on unvalidated free-form JSON
 when a structured-output facility is available.
+
+`app/model_gateway.py` is the sole external chat/embedding construction point.
+It applies timeout, retry, concurrency, input/output budget, safe-error,
+latency/error metric, and token-accounting policy. Agent graphs and application
+services own prompts and orchestration, not provider transport behavior.
+
+Chat model input is a bounded derived view; `messages` remains the immutable
+history source of truth. `app/chat_context.py` plans a provider-independent
+window containing a durable summary, recent completed messages, and the current
+request. The conversation summary marker advances in the same transaction that
+claims the chat turn, so failed/retried calls cannot duplicate compaction.
 
 ## Deployment and lifecycle
 
@@ -168,12 +207,7 @@ when a structured-output facility is available.
 
 The following are documented legacy constraints, not preferred patterns:
 
-- `app/main.py` hosts most routes and application orchestration.
-- Sync SQLAlchemy calls are dispatched manually from async routes.
 - Several service/client instances are module-level globals.
-- Knowledge ingestion currently replaces the serving Qdrant collection
-  in-place.
-- Chat and interview commands lack complete idempotency/concurrency state.
 
 Exceptions must be reduced or held steady. New code should not create additional
 instances of these patterns without an accepted design record.

@@ -91,12 +91,16 @@ export async function answerInterview(
   userId: string,
   interviewId: string,
   answer: string,
+  idempotencyKey: string,
 ): Promise<AnswerResult> {
   const response = await apiFetch(
     `/api/interviews/${encodeURIComponent(interviewId)}/answer`,
     {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": idempotencyKey,
+      },
       body: JSON.stringify({ user_id: userId, answer }),
     },
   );

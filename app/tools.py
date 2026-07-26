@@ -15,7 +15,11 @@ from app.config import get_settings
 from app.learning import build_learning_candidates
 from app.lexical_reranker import lexical_rerank_documents
 from app.llm_reranker import llm_rerank_documents
-from app.rag import get_dense_vector_store, get_vector_store
+from app.rag import (
+    get_dense_vector_store,
+    get_serving_knowledge_target,
+    get_vector_store,
+)
 from app.reranker import rerank_documents
 from app.operations import RedisRuntime, request_metrics
 from app.storage import ConversationStore
@@ -69,7 +73,11 @@ def _run_audited(tool_name: str, input_summary: str, callback) -> str:
                 logger.warning("Tool audit write failed.", exc_info=True)
 
 
-def _search_interview_knowledge(query: str) -> str:
+def _search_interview_knowledge(
+    query: str,
+    *,
+    collection_name: str | None = None,
+) -> str:
     query = query.strip()
     if not query:
         return "查询内容不能为空。"
@@ -81,7 +89,9 @@ def _search_interview_knowledge(query: str) -> str:
             settings = get_settings()
             with request_metrics.dependency("embedding_qdrant"):
                 dense_results = (
-                    get_dense_vector_store().similarity_search_with_score(
+                    get_dense_vector_store(
+                        collection_name
+                    ).similarity_search_with_score(
                         query=query,
                         k=1,
                     )
@@ -94,7 +104,7 @@ def _search_interview_knowledge(query: str) -> str:
 
             with request_metrics.dependency("embedding_qdrant"):
                 scored_documents = (
-                    get_vector_store().similarity_search_with_score(
+                    get_vector_store(collection_name).similarity_search_with_score(
                         query=query,
                         k=settings.retrieval_candidate_k,
                         score_threshold=(
@@ -199,8 +209,13 @@ def search_interview_knowledge(query: str) -> str:
     """查询私人面试知识库，返回带来源和检索分数的相关资料。"""
     settings = get_settings()
     runtime = _get_redis_runtime()
+    try:
+        _, knowledge_version = get_serving_knowledge_target()
+    except Exception:
+        logger.warning("Knowledge version resolution failed.", exc_info=True)
+        knowledge_version = settings.qdrant_collection
     cache_key = (
-        "interview-agent:rag:"
+        f"interview-agent:rag:{knowledge_version}:"
         + hashlib.sha256(query.strip().encode("utf-8")).hexdigest()
     )
 
@@ -211,7 +226,10 @@ def search_interview_knowledge(query: str) -> str:
             cached = None
         if cached:
             return cached
-        result = _search_interview_knowledge(query)
+        result = _search_interview_knowledge(
+            query,
+            collection_name=knowledge_version,
+        )
         try:
             runtime.set(
                 cache_key,

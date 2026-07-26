@@ -4,9 +4,8 @@ from functools import lru_cache
 
 from langchain_core.documents import Document
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
-
 from app.config import get_settings
+from app.model_gateway import PolicyChatOpenAI, create_chat_model
 
 
 RetrievedDocument = tuple[Document, float]
@@ -15,16 +14,15 @@ _JSON_ARRAY = re.compile(r"\[[\s\d,]*\]")
 
 
 @lru_cache
-def get_llm_reranker() -> ChatOpenAI:
+def get_llm_reranker() -> PolicyChatOpenAI:
     settings = get_settings()
     if not settings.zhipu_api_key:
         raise RuntimeError("未配置 ZHIPU_API_KEY，无法使用 GLM 重排。")
-    return ChatOpenAI(
-        model=settings.zhipu_model,
-        api_key=settings.zhipu_api_key,
-        base_url=settings.zhipu_api_base,
+    return create_chat_model(
+        "llm_reranker",
         temperature=0,
         max_tokens=300,
+        settings=settings,
     )
 
 

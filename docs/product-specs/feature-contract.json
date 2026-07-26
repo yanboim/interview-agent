@@ -181,27 +181,148 @@
       "id": "atomic-knowledge-publication",
       "category": "reliability",
       "description": "A knowledge update becomes visible only after the replacement collection passes validation and can be rolled back.",
-      "status": "planned",
+      "status": "passing",
       "steps": [
         "Build a new versioned collection without changing the serving alias.",
         "Run structural and retrieval regression gates.",
         "Atomically switch the alias and retain the previous version.",
         "Verify a failed build leaves the serving collection unchanged."
       ],
-      "gap": "docs/tech-debt-tracker.md#td-001"
+      "verification": [
+        "tests/test_knowledge_publication.py",
+        "tests/test_rag.py",
+        "tests/test_operations.py",
+        "tests/test_authorization.py"
+      ]
     },
     {
       "id": "idempotent-interview-answer",
       "category": "reliability",
       "description": "Retrying or concurrently submitting the same interview answer charges and advances the turn at most once.",
-      "status": "planned",
+      "status": "passing",
       "steps": [
         "Submit the same idempotency key concurrently.",
         "Claim the pending turn with a conditional state transition.",
         "Verify exactly one score and one successor turn are persisted.",
         "Return the original result to safe retries."
       ],
-      "gap": "docs/tech-debt-tracker.md#td-002"
+      "verification": [
+        "tests/test_interview_idempotency.py",
+        "tests/test_migrations.py",
+        "tests/test_main.py",
+        "frontend/src/api/interviews.test.ts"
+      ]
+    },
+    {
+      "id": "durable-chat-turn-lifecycle",
+      "category": "reliability",
+      "description": "Chat generation has a durable lifecycle, deterministic session ordering, safe replay, and explicit failure or disconnect recovery.",
+      "status": "passing",
+      "steps": [
+        "Claim one active turn for a session before invoking the model.",
+        "Persist completed user and assistant messages in one transaction.",
+        "Replay a completed idempotency key without another model call.",
+        "Verify provider failure and stream cancellation release the session for retry."
+      ],
+      "verification": [
+        "tests/test_chat_lifecycle.py",
+        "tests/test_migrations.py",
+        "tests/test_data_migration.py",
+        "tests/test_main.py",
+        "frontend/src/api/chat.test.ts"
+      ]
+    },
+    {
+      "id": "modular-api-composition",
+      "category": "architecture",
+      "description": "The FastAPI composition root wires middleware and domain routers while DTOs and route behavior live in explicit API modules.",
+      "status": "passing",
+      "steps": [
+        "Construct application dependencies once in the composition root.",
+        "Register domain APIRouters that do not import app.main.",
+        "Verify existing public paths remain in OpenAPI.",
+        "Enforce composition-root size and route ownership mechanically."
+      ],
+      "verification": [
+        "tests/test_architecture.py",
+        "tests/test_main.py",
+        "tests/test_authorization.py",
+        "tests/test_admin_backend.py",
+        "tests/test_chat_lifecycle.py"
+      ]
+    },
+    {
+      "id": "persistence-execution-boundary",
+      "category": "architecture",
+      "description": "Synchronous SQLAlchemy transaction scripts execute through one async boundary and rely on database concurrency controls rather than process locks.",
+      "status": "passing",
+      "steps": [
+        "Dispatch blocking application and persistence calls through one executor.",
+        "Keep each Store mutation inside one explicit engine transaction.",
+        "Keep external model calls outside database transactions.",
+        "Verify concurrent chat and interview claims without a Store business lock."
+      ],
+      "verification": [
+        "tests/test_architecture.py",
+        "tests/test_execution.py",
+        "tests/test_chat_lifecycle.py",
+        "tests/test_interview_idempotency.py"
+      ]
+    },
+    {
+      "id": "durable-background-jobs",
+      "category": "reliability",
+      "description": "Redis jobs use atomic idempotent enqueue, owner-fenced leases, acknowledgement, retry scheduling, crash recovery, and dead lettering.",
+      "status": "passing",
+      "steps": [
+        "Enqueue a knowledge import with an Idempotency-Key.",
+        "Claim it with an owner token and renewable lease.",
+        "Acknowledge success or schedule an exponential retry.",
+        "Recover an expired claim and dead-letter exhausted attempts."
+      ],
+      "verification": [
+        "tests/test_operations.py",
+        "tests/test_worker.py",
+        "tests/test_redis_jobs_integration.py"
+      ]
+    },
+    {
+      "id": "model-policy-gateway",
+      "category": "reliability",
+      "description": "All external chat and embedding model calls use one timeout, retry, concurrency, budget, metric, token, and safe-error policy.",
+      "status": "passing",
+      "steps": [
+        "Construct every external model through the gateway.",
+        "Reject inputs and outputs beyond configured budgets.",
+        "Bound sync and async provider concurrency.",
+        "Record latency, errors, and provider token usage."
+      ],
+      "verification": [
+        "tests/test_model_gateway.py",
+        "tests/test_architecture.py",
+        "tests/test_interview_engine.py",
+        "tests/test_llm_reranker.py",
+        "tests/test_rag.py"
+      ]
+    },
+    {
+      "id": "token-budgeted-chat-context",
+      "category": "reliability",
+      "description": "Chat model input retains bounded recent history plus an incrementally persisted summary of older completed messages.",
+      "status": "passing",
+      "steps": [
+        "Reject a current request that cannot fit before claiming a turn.",
+        "Keep the newest completed messages within the configured token budget.",
+        "Persist a bounded summary and the greatest covered message ID.",
+        "Reuse the durable summary without duplicating messages on retry."
+      ],
+      "verification": [
+        "tests/test_chat_context.py",
+        "tests/test_chat_lifecycle.py",
+        "tests/test_migrations.py",
+        "tests/test_architecture.py",
+        "tests/test_data_migration.py"
+      ]
     }
   ]
 }

@@ -7,6 +7,16 @@
 会按问题判断是否检索私人知识库，并将账号、用户会话、模拟面试和能力评分
 持久化到 SQLite 或 PostgreSQL。
 
+## 文档导航
+
+- [项目文档总览](docs/README.md)：按开发、测试、运维和安全任务查找文档
+- [架构边界](ARCHITECTURE.md)：运行拓扑、依赖方向和正确性约束
+- [开发指南](docs/development.md)：本地环境、变更流程和数据库迁移
+- [测试指南](docs/testing.md)：验证层级、外部依赖和验收证据
+- [可靠性与运行手册](docs/reliability/README.md)：健康检查、故障响应、备份与回滚
+- [安全模型](docs/security/README.md)：信任边界、身份、密钥和外部数据流
+- [文档维护规范](docs/documentation-guide.md)：文档职责、生命周期和评审清单
+
 ## 架构
 
 ```text
@@ -38,15 +48,27 @@ uvicorn app.main:app --reload --port 8000
 curl -X POST http://localhost:8000/api/chat \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer <access-token>' \
+  -H 'Idempotency-Key: 550e8400-e29b-41d4-a716-446655440001' \
   -d '{"user_id":"<登录返回的 user_id>","session_id":"demo-1","message":"请解释 RAG 的完整流程"}'
 ```
 
 启用认证后，先在网页注册或调用 `POST /api/auth/register`；服务端会校验
 `user_id` 必须与访问令牌中的身份一致。继续使用相同的
 `user_id + session_id` 即可追问。前端默认使用
-`POST /api/chat/stream` 获取 NDJSON 增量输出。`GET /health` 是存活探针，
-`GET /ready` 会检查 SQLite 和 Qdrant，`GET /metrics` 输出 Prometheus
-文本指标。
+`POST /api/chat/stream` 获取 NDJSON 增量输出。`GET /health` 是存活探针；
+`GET /ready` 会检查当前配置的数据库、Qdrant，以及启用时的 Redis；
+`GET /metrics` 输出 Prometheus 文本指标。
+
+`POST /api/chat` 和 `POST /api/chat/stream` 都要求携带
+`Idempotency-Key`。浏览器会为一次发送生成请求键，并在失败或停止生成后的
+同内容重试中复用。服务端先持久化聊天回合状态并原子占用会话，再调用模型；
+同一会话不能并发生成。只有成功完成时，用户消息和助手消息才会在一个事务中
+写入历史，因此模型失败或客户端断连不会留下孤立用户消息。已完成的同键重试
+直接重放持久化答案。
+
+生成中的重复请求返回 `409` 和 `Retry-After`。流式连接被取消时，服务端将
+已生成片段记录到 `chat_turns` 的 `cancelled` 状态用于诊断，但不会把片段加入
+正式消息历史；使用相同键和内容重试会重新从头生成。
 
 产品区使用可恢复的深链路由：`/today`、`/chat/{session_id}`、
 `/interviews/{interview_id}`、`/profile` 与 `/learning`。首次登录会引导设置
@@ -59,6 +81,23 @@ curl -X POST http://localhost:8000/api/chat \
 网页侧边栏可以直接进入模拟面试。后端会逐题生成问题，并从技术准确性、原理
 深度、表达结构和工程实践四个维度评分。面试报告汇总平均分、主要薄弱点和针对
 最低维度的学习计划，所有结果均写入当前配置的 SQLite 或 PostgreSQL。
+
+首次提交某题答案时必须携带 8–128 字符的 `Idempotency-Key`。浏览器会为当前
+答案生成请求键，并在请求失败后的重试中复用；服务端在任何评分模型调用之前
+通过数据库条件更新领取待答回合。并发提交只允许一个请求进入评分，成功后的
+同键重试直接返回已持久化结果，不会重复创建答案记录或下一题：
+
+```bash
+curl -X POST \
+  'http://localhost:8000/api/interviews/<interview_id>/answer' \
+  -H 'Authorization: Bearer <access-token>' \
+  -H 'Content-Type: application/json' \
+  -H 'Idempotency-Key: 550e8400-e29b-41d4-a716-446655440000' \
+  -d '{"user_id":"<user_id>","answer":"我的回答"}'
+```
+
+同一请求键不能配合不同答案使用。评分仍在进行时返回 `409` 和
+`Retry-After`；调用方应稍后使用完全相同的键和答案重试。
 
 “能力画像”会进一步聚合当前账号的全部已评分面试，展示综合分、四维能力、
 场次趋势、主题对比、薄弱点频次、最近训练和高频问题。可以通过页面筛选主题，
@@ -146,12 +185,21 @@ python -m scripts.create_admin \
 无法登录后台，管理员凭据也无法进入用户工作区；`/api/admin/*` 接口仍会在
 服务端强制校验 `admin` 角色。
 管理员可以通过 `GET /api/admin/system-summary` 查看运行数据，通过
-`POST /api/admin/knowledge/import` 触发知识库重建。导入会替换现有 Qdrant
-collection，应仅在确认知识文件完整后执行。
+`POST /api/admin/knowledge/import` 触发知识库重建。导入会创建独立的版本
+collection，校验通过后才将稳定别名原子切换到新版本；当前版本在切换前持续
+服务，旧版本保留用于回滚。
 
 ## 导入知识库
 
-将 UTF-8 或 GB18030 编码的 `.md`、`.txt` 文件放入 `knowledge/`，然后运行 `python -m scripts.ingest`。导入程序会重新创建配置的 collection；请勿在含有需保留数据的 collection 上直接运行。
+将 UTF-8 或 GB18030 编码的 `.md`、`.txt` 文件放入 `knowledge/`，然后运行
+`python -m scripts.ingest`。导入程序会创建
+`QDRANT_COLLECTION__v_<时间>_<任务>` 物理版本，完成结构校验和已配置的检索
+回归门禁后，一次性切换 `QDRANT_COLLECTION_ALIAS`。失败的候选版本会被清理，
+不会删除或替换正在服务的版本。
+
+首次升级时若稳定别名尚不存在，读取会继续使用原
+`QDRANT_COLLECTION`，首次成功发布后再切换到别名。生产环境应配置 Redis，
+以便多个 API/Worker 实例通过带 TTL 的分布式锁串行发布。
 
 Embedding 使用智谱标准 API 的 `embedding-2` 模型（固定 1024 维）。Coding
 Plan Key 与智谱标准 API Key 可能不通用，因此建议通过
@@ -173,7 +221,9 @@ Plan Key 与智谱标准 API Key 可能不通用，因此建议通过
 
 `RETRIEVAL_CANDIDATE_K` 控制混合检索候选数，
 `RETRIEVAL_FINAL_K` 控制最终返回分块数。会话、消息、模拟面试和账号已持久化；
-Agent 单次执行状态仍由 LangGraph 在请求期间维护。生产部署应启用
+聊天请求由 `CHAT_CONTEXT_TOKEN_BUDGET` 限制模型上下文，超出窗口的较早消息会
+压缩到持久化摘要中，`CHAT_SUMMARY_TOKEN_BUDGET` 控制摘要上限；原始消息不会
+被删除。Agent 单次执行状态仍由 LangGraph 在请求期间维护。生产部署应启用
 `AUTH_REQUIRED=true`、PostgreSQL、Redis，并把 Qdrant 和监控端口限制在内部
 网络。
 
@@ -201,7 +251,24 @@ Grafana 初始账号默认是 `admin / change-me-now`，正式环境必须通过
 
 ```text
 POST /api/admin/jobs/knowledge-import
+Idempotency-Key: <stable-command-id>
 ```
+
+查看当前物理版本和可回滚版本：
+
+```text
+GET /api/admin/knowledge/status
+```
+
+将别名原子切换回一个仍存在的受管理版本：
+
+```text
+POST /api/admin/knowledge/rollback
+{"collection_name":"interview_knowledge__v_<版本>"}
+```
+
+回滚不删除离开的版本。历史版本保留策略尚未自动化，运维侧应监控 Qdrant
+容量，在制定并验证保留策略前不要手工删除当前别名指向的 collection。
 
 服务支持从文件读取密钥，例如 `ZHIPU_API_KEY_FILE`、
 `ZHIPU_EMBEDDING_API_KEY_FILE`、`WEB_SEARCH_API_KEY_FILE` 和
@@ -383,6 +450,8 @@ GET   /api/admin/knowledge/files
 PUT   /api/admin/knowledge/files
 DELETE /api/admin/knowledge/files/{filename}
 POST  /api/admin/jobs/knowledge-import
+GET   /api/admin/knowledge/status
+POST  /api/admin/knowledge/rollback
 GET   /api/admin/jobs/{job_id}
 GET   /api/admin/tool-audits
 ```

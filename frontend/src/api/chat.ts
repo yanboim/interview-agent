@@ -7,13 +7,21 @@ export function parseStreamLine(line: string): StreamEvent | null {
 }
 
 export async function streamChat(
-  body: { userId: string; sessionId: string; message: string },
+  body: {
+    userId: string;
+    sessionId: string;
+    message: string;
+    idempotencyKey: string;
+  },
   onEvent: (event: StreamEvent) => void,
   signal?: AbortSignal,
 ): Promise<string> {
   const response = await apiFetch("/api/chat/stream", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "Idempotency-Key": body.idempotencyKey,
+    },
     body: JSON.stringify({
       user_id: body.userId,
       session_id: body.sessionId,

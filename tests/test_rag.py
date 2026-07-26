@@ -6,11 +6,11 @@ from app.rag import get_dense_vector_store, get_embeddings, get_vector_store
 from app.tools import search_interview_knowledge
 
 
-@patch("app.rag.OpenAIEmbeddings")
+@patch("app.rag.create_embeddings")
 @patch("app.rag.get_settings")
 def test_zhipu_embedding_configuration(
     settings: MagicMock,
-    openai_embeddings: MagicMock,
+    create_embeddings: MagicMock,
 ) -> None:
     settings.return_value.zhipu_embedding_api_key = "embedding-key"
     settings.return_value.zhipu_api_key = "chat-key"
@@ -22,29 +22,29 @@ def test_zhipu_embedding_configuration(
 
     embeddings = get_embeddings()
 
-    assert embeddings is openai_embeddings.return_value
-    openai_embeddings.assert_called_once_with(
-        model="embedding-2",
-        api_key="embedding-key",
-        base_url="https://open.bigmodel.cn/api/paas/v4",
-        check_embedding_ctx_length=False,
-        chunk_size=8,
-    )
+    assert embeddings is create_embeddings.return_value
+    create_embeddings.assert_called_once_with(settings=settings.return_value)
     get_embeddings.cache_clear()
 
 
 @patch("langchain_qdrant.QdrantVectorStore.from_existing_collection")
 @patch("app.rag.get_sparse_embeddings")
 @patch("app.rag.get_embeddings")
+@patch("app.rag.get_serving_knowledge_target")
 @patch("app.rag.get_settings")
 def test_vector_store_uses_current_embedding_parameter(
     settings: MagicMock,
+    serving_target: MagicMock,
     embeddings: MagicMock,
     sparse_embeddings: MagicMock,
     from_existing_collection: MagicMock,
 ) -> None:
     settings.return_value.qdrant_collection = "interview_knowledge"
     settings.return_value.qdrant_url = "http://localhost:6333"
+    serving_target.return_value = (
+        "interview_knowledge_current",
+        "interview_knowledge__v_20260726",
+    )
     get_vector_store.cache_clear()
 
     vector_store = get_vector_store()
@@ -54,7 +54,7 @@ def test_vector_store_uses_current_embedding_parameter(
         embedding=embeddings.return_value,
         sparse_embedding=sparse_embeddings.return_value,
         retrieval_mode=RetrievalMode.HYBRID,
-        collection_name="interview_knowledge",
+        collection_name="interview_knowledge_current",
         url="http://localhost:6333",
     )
     get_vector_store.cache_clear()
@@ -156,3 +156,35 @@ def test_retrieval_uses_lightweight_reranker(
 
     lexical_rerank.assert_called_once()
     assert "轻量重排分数：0.8000" in result
+
+
+@patch("app.tools._search_interview_knowledge")
+@patch("app.tools._get_redis_runtime")
+@patch("app.tools.get_serving_knowledge_target")
+@patch("app.tools.get_settings")
+def test_rag_cache_is_isolated_by_physical_knowledge_version(
+    settings: MagicMock,
+    serving_target: MagicMock,
+    redis_runtime: MagicMock,
+    search: MagicMock,
+) -> None:
+    settings.return_value.redis_cache_ttl_seconds = 300
+    settings.return_value.qdrant_collection = "interview_knowledge"
+    serving_target.side_effect = [
+        ("interview_knowledge_current", "interview_knowledge__v_old"),
+        ("interview_knowledge_current", "interview_knowledge__v_new"),
+    ]
+    redis_runtime.return_value.get.return_value = None
+    search.return_value = "result"
+
+    search_interview_knowledge.invoke({"query": "RAG"})
+    search_interview_knowledge.invoke({"query": "RAG"})
+
+    cache_keys = [
+        call.args[0] for call in redis_runtime.return_value.get.call_args_list
+    ]
+    assert cache_keys[0] != cache_keys[1]
+    assert "interview_knowledge__v_old" in cache_keys[0]
+    assert "interview_knowledge__v_new" in cache_keys[1]
+    assert search.call_args_list[0].kwargs["collection_name"].endswith("__v_old")
+    assert search.call_args_list[1].kwargs["collection_name"].endswith("__v_new")

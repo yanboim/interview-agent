@@ -1,7 +1,11 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from app.operations import (
     FixedWindowRateLimiter,
+    JobClaim,
+    JobIdempotencyConflict,
     RedisRuntime,
     RequestMetrics,
     SharedRateLimiter,
@@ -71,14 +75,83 @@ def test_shared_rate_limiter_uses_redis_when_available():
 def test_redis_runtime_enqueues_serialized_job():
     runtime = RedisRuntime("", "jobs")
     runtime.client = MagicMock()
+    runtime.client.eval.return_value = "job-1"
 
-    job_id = runtime.enqueue("knowledge_import", {"actor": "admin"})
+    job_id = runtime.enqueue(
+        "knowledge_import",
+        {"actor": "admin"},
+        idempotency_key="import-command-1",
+    )
 
-    assert job_id
-    pipeline = runtime.client.pipeline.return_value
-    pipeline.hset.assert_called_once()
-    pipeline.rpush.assert_called_once()
-    pipeline.execute.assert_called_once()
+    assert job_id == "job-1"
+    script_args = runtime.client.eval.call_args.args
+    assert "job_enqueue_v1" in script_args[0]
+    assert "import-command-1" in script_args
+
+
+def test_redis_runtime_rejects_idempotency_key_payload_mismatch():
+    runtime = RedisRuntime("", "jobs")
+    runtime.client = MagicMock()
+    runtime.client.eval.return_value = "!conflict"
+
+    with pytest.raises(JobIdempotencyConflict):
+        runtime.enqueue(
+            "knowledge_import",
+            {"actor": "another-admin"},
+            idempotency_key="import-command-1",
+        )
+
+
+def test_redis_runtime_claim_recovers_crashed_and_due_jobs_first():
+    runtime = RedisRuntime("", "jobs")
+    runtime.client = MagicMock()
+    runtime.client.eval.side_effect = [1, 1, ["job-1", "2"]]
+    runtime.client.hgetall.return_value = {
+        "type": "knowledge_import",
+        "payload": '{"actor": "admin"}',
+        "max_attempts": "3",
+    }
+
+    claim = runtime.claim_job(lease_seconds=60)
+
+    assert claim is not None
+    assert claim.job_id == "job-1"
+    assert claim.attempt == 2
+    assert claim.payload == {"actor": "admin"}
+    scripts = [call.args[0] for call in runtime.client.eval.call_args_list]
+    assert "job_recover_v1" in scripts[0]
+    assert "job_promote_v1" in scripts[1]
+    assert "job_claim_v1" in scripts[2]
+
+
+def test_job_ack_failure_and_heartbeat_are_owner_fenced():
+    runtime = RedisRuntime("", "jobs")
+    runtime.client = MagicMock()
+    runtime.client.eval.side_effect = [1, "retry_scheduled", 1]
+    claim = JobClaim(
+        job_id="job-1",
+        job_type="knowledge_import",
+        payload={},
+        claim_token="owner-1",
+        attempt=1,
+        max_attempts=3,
+    )
+
+    assert runtime.acknowledge_job(claim, result={"chunks": 10})
+    assert (
+        runtime.fail_job(
+            claim,
+            error="temporary",
+            retry_delay_seconds=30,
+        )
+        == "retry_scheduled"
+    )
+    assert runtime.heartbeat_job(claim, lease_seconds=60)
+
+    scripts = [call.args[0] for call in runtime.client.eval.call_args_list]
+    assert "job_ack_v1" in scripts[0]
+    assert "job_fail_v1" in scripts[1]
+    assert "job_heartbeat_v1" in scripts[2]
 
 
 def test_redis_runtime_reads_and_updates_job_status():
@@ -94,3 +167,22 @@ def test_redis_runtime_reads_and_updates_job_status():
 
     runtime.client.hset.assert_called_once()
     assert result == {"job_id": "job-1", "status": "completed"}
+
+
+def test_redis_runtime_lock_is_token_owned():
+    runtime = RedisRuntime("", "jobs")
+    runtime.client = MagicMock()
+    runtime.client.set.return_value = True
+    runtime.client.eval.return_value = 1
+
+    assert runtime.acquire_lock("publish", "owner-1", 60)
+    assert runtime.release_lock("publish", "owner-1")
+
+    runtime.client.set.assert_called_once_with(
+        "publish",
+        "owner-1",
+        nx=True,
+        ex=60,
+    )
+    runtime.client.eval.assert_called_once()
+    assert runtime.client.eval.call_args.args[-2:] == ("publish", "owner-1")

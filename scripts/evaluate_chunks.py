@@ -25,8 +25,9 @@ def evaluate(
     rerank: bool,
     lexical_rerank: bool,
     llm_rerank: bool,
+    collection_name: str | None = None,
 ) -> dict[str, Any]:
-    store = get_vector_store()
+    store = get_vector_store(collection_name)
     details: list[dict[str, Any]] = []
     hits = 0
     top1_hits = 0

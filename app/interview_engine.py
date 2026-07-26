@@ -4,9 +4,8 @@ from functools import lru_cache
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
-
 from app.config import get_settings
+from app.model_gateway import PolicyChatOpenAI, create_chat_model
 
 
 _JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
@@ -26,16 +25,15 @@ STUDY_ACTIONS = {
 
 
 @lru_cache
-def get_interview_model() -> ChatOpenAI:
+def get_interview_model() -> PolicyChatOpenAI:
     settings = get_settings()
     if not settings.zhipu_api_key:
         raise RuntimeError("未配置 ZHIPU_API_KEY，无法进行模拟面试。")
-    return ChatOpenAI(
-        model=settings.zhipu_model,
-        api_key=settings.zhipu_api_key,
-        base_url=settings.zhipu_api_base,
+    return create_chat_model(
+        "interview_engine",
         temperature=0.3,
         max_tokens=1200,
+        settings=settings,
     )
 
 

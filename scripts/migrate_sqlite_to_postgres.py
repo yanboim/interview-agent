@@ -4,6 +4,7 @@ from pathlib import Path
 from sqlalchemy import create_engine, func, insert, select
 
 from app.database import (
+    chat_turns,
     conversations,
     interview_turns,
     interviews,
@@ -17,6 +18,7 @@ TABLES = (
     conversations,
     interviews,
     messages,
+    chat_turns,
     interview_turns,
     learning_tasks,
 )

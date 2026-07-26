@@ -62,6 +62,15 @@ conversations = Table(
     Column("title", String(200), nullable=False, server_default="新会话"),
     Column("mode", String(30), nullable=False, server_default="chat"),
     Column("archived_at", String(40)),
+    Column(
+        "next_chat_turn_index",
+        Integer,
+        nullable=False,
+        server_default="1",
+    ),
+    Column("active_chat_turn_id", String(128)),
+    Column("chat_summary", Text, nullable=False, server_default=""),
+    Column("chat_summary_through_message_id", Integer),
     Column("created_at", String(40), nullable=False),
     Column("updated_at", String(40), nullable=False),
 )
@@ -126,6 +135,52 @@ user_profiles = Table(
     Column("updated_at", String(40), nullable=False),
 )
 
+chat_turns = Table(
+    "chat_turns",
+    metadata,
+    Column("turn_id", String(128), primary_key=True),
+    Column("user_id", String(128), nullable=False),
+    Column("session_id", String(128), nullable=False),
+    Column("turn_index", Integer, nullable=False),
+    Column("idempotency_key", String(128), nullable=False),
+    Column("request_digest", String(64), nullable=False),
+    Column("request_content", Text, nullable=False),
+    Column("status", String(20), nullable=False, server_default="pending"),
+    Column("claim_token", String(128)),
+    Column("assistant_content", Text),
+    Column("metadata_json", Text),
+    Column("error", Text),
+    Column("created_at", String(40), nullable=False),
+    Column("updated_at", String(40), nullable=False),
+    CheckConstraint(
+        "status IN ('pending', 'generating', 'completed', 'failed', 'cancelled')",
+        name="ck_chat_turn_status",
+    ),
+    UniqueConstraint(
+        "user_id",
+        "session_id",
+        "turn_index",
+        name="uq_chat_turn_index",
+    ),
+    UniqueConstraint(
+        "user_id",
+        "session_id",
+        "idempotency_key",
+        name="uq_chat_turn_idempotency",
+    ),
+    ForeignKeyConstraint(
+        ["user_id", "session_id"],
+        ["conversations.user_id", "conversations.session_id"],
+        ondelete="CASCADE",
+    ),
+)
+Index(
+    "idx_chat_turns_session_status",
+    chat_turns.c.user_id,
+    chat_turns.c.session_id,
+    chat_turns.c.status,
+)
+
 interview_turns = Table(
     "interview_turns",
     metadata,
@@ -141,13 +196,35 @@ interview_turns = Table(
     Column("strengths_json", Text),
     Column("weaknesses_json", Text),
     Column("reference_answer", Text),
+    Column(
+        "submission_status",
+        String(20),
+        nullable=False,
+        server_default="pending",
+    ),
+    Column("idempotency_key", String(128)),
+    Column("answer_digest", String(64)),
+    Column("claim_token", String(128)),
+    Column("result_json", Text),
+    Column("submission_error", Text),
+    Column("processing_started_at", String(40)),
     Column("created_at", String(40), nullable=False),
     Column("updated_at", String(40), nullable=False),
+    CheckConstraint(
+        "submission_status IN ('pending', 'generating', 'completed', 'failed')",
+        name="ck_interview_turn_submission_status",
+    ),
     UniqueConstraint(
         "user_id",
         "interview_id",
         "turn_index",
         name="uq_interview_turn",
+    ),
+    UniqueConstraint(
+        "user_id",
+        "interview_id",
+        "idempotency_key",
+        name="uq_interview_turn_idempotency",
     ),
     ForeignKeyConstraint(
         ["user_id", "interview_id"],
