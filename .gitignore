@@ -1,0 +1,14 @@
+.env
+.data/
+data/
+backups/
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+qdrant_data/
+frontend/node_modules/
+frontend/dist/
+frontend/coverage/
+frontend/test-results/
+frontend/*.tsbuildinfo

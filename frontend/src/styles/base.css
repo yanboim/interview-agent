@@ -1,0 +1,135 @@
+/* ============================================================
+   设计 token —— 浅色(主应用默认)
+   阶段 0 基于旧 styles.css 风格,阶段 1 已应用最小字体 12px。
+   字号一律不低于 --fs-min(12px),符合可读性下限。
+   ============================================================ */
+:root,
+:root[data-theme="light"] {
+  --ink: #13242b;
+  --muted: #586a6e;
+  --paper: #f4f1e9;
+  --panel: #fbfaf6;
+  --line: #dbded8;
+  --teal: #096f68;
+  --teal-dark: #075e58;
+  --lime: #d8ef72;
+  --coral: #b94732;
+  --danger: #b94131;
+  --success: #2a9b69;
+  /* 侧边栏(深色)文字:提升至 WCAG AA */
+  --sidebar-text: #c4d4d4;
+  --sidebar-muted: #9ab4b4;
+  --sidebar-faint: #84a0a1;
+
+  --shadow: 0 20px 55px rgba(20, 42, 46, 0.09);
+
+  /* 字号阶梯:最小 12px */
+  --fs-min: 12px;
+  --fs-xs: 13px;
+  --fs-sm: 14px;
+  --fs-base: 16px;
+  --fs-md: 17px;
+  --fs-lg: 19px;
+  --fs-xl: 23px;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "SFMono-Regular", ui-monospace, "SF Mono", Consolas,
+    "Liberation Mono", Menlo, monospace;
+
+  /* 触控目标最小尺寸 */
+  --tap-min: 44px;
+
+  color-scheme: light;
+}
+
+/* 暗色(阶段 3 启用,此处先占位以备引用) */
+:root[data-theme="dark"] {
+  --ink: #e8efe9;
+  --muted: #9fb2af;
+  --paper: #0f1719;
+  --panel: #182124;
+  --line: #2b3739;
+  --teal: #4ec3ba;
+  --teal-dark: #6fd2ca;
+  --lime: #c6e85a;
+  --coral: #f4907a;
+  --danger: #ff8a78;
+  --success: #5fd0a0;
+  --shadow: 0 20px 55px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink);
+  background: var(--paper);
+  font-family: var(--font-sans);
+  font-size: var(--fs-base);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+textarea,
+input,
+select {
+  font: inherit;
+}
+button {
+  color: inherit;
+}
+
+a {
+  color: var(--teal-dark);
+}
+
+/* 全局键盘焦点(阶段 3 可访问性) */
+:focus-visible {
+  outline: 2px solid var(--teal);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.eyebrow {
+  margin-bottom: 12px;
+  color: var(--teal);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* 通用工具类 */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.form-error {
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation: none !important;
+    transition: none !important;
+  }
+}

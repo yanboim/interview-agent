@@ -1,0 +1,294 @@
+/* ---------- 能力画像 ---------- */
+.profile-card {
+  display: grid;
+  gap: 4px;
+}
+.profile-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+}
+.profile-heading .eyebrow {
+  display: block;
+  margin-bottom: 8px;
+}
+.profile-heading h2 {
+  margin-bottom: 0;
+}
+.profile-heading label {
+  display: grid;
+  min-width: 180px;
+  gap: 6px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+.profile-heading select {
+  padding: 9px 30px 9px 11px;
+  min-height: var(--tap-min);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  outline: none;
+  color: var(--ink);
+  background: white;
+  font-size: var(--fs-sm);
+}
+.profile-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 30px 0 10px;
+}
+.profile-summary > div {
+  min-height: 116px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: #fafbf7;
+}
+.profile-summary span,
+.profile-summary small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.profile-summary strong {
+  display: inline-block;
+  margin: 11px 4px 6px 0;
+  color: var(--teal-dark);
+  font-size: 30px;
+  letter-spacing: -0.04em;
+}
+.profile-summary .score-up {
+  color: #16825a;
+}
+.profile-summary .score-down {
+  color: #bd4b38;
+}
+.profile-section {
+  margin-top: 20px;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 15px;
+  background: #fafbf8;
+}
+.section-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 17px;
+}
+.section-heading h3 {
+  margin: 0;
+  font-size: var(--fs-md);
+}
+.section-heading span {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.dimension-profile-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 13px;
+}
+.dimension-profile {
+  min-width: 0;
+}
+.dimension-profile > div:first-child {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+}
+.dimension-profile span {
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.dimension-profile strong {
+  color: var(--ink);
+  font-size: var(--fs-lg);
+}
+.score-track {
+  /* 去填充背景轨道(技能规则):改为无底色、仅描边的细进度指示 */
+  height: 3px;
+  margin-top: 10px;
+  border-radius: 99px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.score-track i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--teal);
+}
+.trend-chart {
+  display: block;
+  width: 100%;
+  min-height: 180px;
+  overflow: visible;
+}
+.trend-chart > polyline {
+  fill: none;
+  stroke: var(--teal);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+.trend-guides line {
+  stroke: #dfe4dc;
+  stroke-dasharray: 4 5;
+  stroke-width: 1;
+}
+.trend-chart text {
+  fill: #7b8b89;
+  font-size: 9px;
+}
+.trend-markers circle {
+  fill: var(--panel);
+  stroke: var(--teal);
+  stroke-width: 3;
+}
+.trend-chart .trend-score {
+  fill: var(--teal-dark);
+  font-size: 10px;
+  font-weight: 800;
+}
+.profile-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.topic-breakdown {
+  display: grid;
+  gap: 8px;
+}
+.topic-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 12px;
+  min-height: var(--tap-min);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--ink);
+  background: white;
+  text-align: left;
+  cursor: pointer;
+  font-size: var(--fs-sm);
+}
+.topic-row:hover {
+  border-color: rgba(12, 124, 116, 0.35);
+}
+.topic-row span,
+.topic-row strong,
+.topic-row small {
+  display: block;
+}
+.topic-row small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.topic-row b {
+  color: var(--teal);
+  font-size: var(--fs-lg);
+}
+.weakness-list,
+.recent-training,
+.frequent-questions {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.weakness-list li,
+.recent-training li,
+.frequent-questions li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 11px;
+  border-radius: 9px;
+  background: white;
+  font-size: var(--fs-sm);
+}
+.weakness-list li > span:first-child {
+  display: grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  place-items: center;
+  border-radius: 7px;
+  color: #9f3f30;
+  background: #f6ded7;
+  font-size: var(--fs-xs);
+  font-weight: 800;
+}
+.weakness-list strong {
+  flex: 1;
+  font-size: var(--fs-sm);
+}
+.weakness-list b,
+.frequent-questions b {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+}
+.recent-training li > span:nth-child(2),
+.recent-training strong,
+.recent-training small {
+  display: block;
+}
+.recent-training small {
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
+.recent-score {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  border-radius: 11px;
+  color: var(--teal-dark);
+  background: #dceee8;
+  font-size: var(--fs-sm);
+  font-weight: 800;
+}
+.frequent-questions li > span {
+  line-height: 1.55;
+  font-size: var(--fs-sm);
+}
+.profile-empty {
+  padding: 28px;
+  border: 1px dashed var(--line);
+  border-radius: 12px;
+  color: var(--muted);
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+.profile-empty-large {
+  display: grid;
+  min-height: 230px;
+  place-content: center;
+  gap: 8px;
+  margin-top: 26px;
+}
+.profile-empty strong {
+  color: var(--ink);
+  font-size: var(--fs-md);
+}
+.profile-empty span {
+  font-size: var(--fs-sm);
+}
+.muted-list-item {
+  color: var(--muted);
+}
+

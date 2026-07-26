@@ -1,0 +1,626 @@
+{
+  "summary": {
+    "cases": 10,
+    "k": 10,
+    "top1_accuracy": 0.2,
+    "hit_rate@10": 1.0,
+    "mrr": 0.5242857142857142,
+    "rerank": false
+  },
+  "details": [
+    {
+      "question": "Java G1 垃圾回收器的工作原理是什么？",
+      "expected_source": "java.md",
+      "relevant_chunk_ids": [
+        "3c5d679c-823b-5f56-9792-2a04bc28b4af"
+      ],
+      "rank": 1,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "3c5d679c-823b-5f56-9792-2a04bc28b4af",
+          "source": "java.md",
+          "score": 0.6111111
+        },
+        {
+          "chunk_id": "adac1bbc-642b-5607-876d-af113c95215c",
+          "source": "go-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "66b3e572-5353-56d1-89ab-dbf8cca589ff",
+          "source": "java-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "a669be9b-1286-5c1e-a2d6-50a93230c37a",
+          "source": "java-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "64c2d198-99cb-5986-bf91-7c9b48e38c01",
+          "source": "java-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "6a2e640a-c2cb-5446-bf52-030a46c7a0bb",
+          "source": "java-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "759ded80-e7c5-5d94-acd8-e74ace93cc79",
+          "source": "java-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "18c72cd0-fcd3-5ae9-a92e-7002363b33f2",
+          "source": "java-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "a4a0b460-5444-5517-af55-0371b169ac74",
+          "source": "go-1000-interview-points.md",
+          "score": 0.16666667
+        },
+        {
+          "chunk_id": "c8ad4c28-44c8-5956-b526-b01c04f79e06",
+          "source": "java-1000-interview-points.md",
+          "score": 0.16666667
+        }
+      ]
+    },
+    {
+      "question": "volatile 为什么不能保证 i++ 的原子性？",
+      "expected_source": "java.md",
+      "relevant_chunk_ids": [
+        "3c5d679c-823b-5f56-9792-2a04bc28b4af",
+        "6525e730-e0cb-5542-a335-bd53a105d079"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "f83e318b-e6a6-5399-8d23-3d95d7cd479d",
+          "source": "java-1000-interview-points.md",
+          "score": 0.6666667
+        },
+        {
+          "chunk_id": "6525e730-e0cb-5542-a335-bd53a105d079",
+          "source": "java-1000-interview-points.md",
+          "score": 0.625
+        },
+        {
+          "chunk_id": "ef898b0d-e31e-5c34-b292-f72c27267437",
+          "source": "java-1000-interview-points.md",
+          "score": 0.53333336
+        },
+        {
+          "chunk_id": "cb3a444f-b082-55b8-9bd3-149f8d6aa1c8",
+          "source": "java-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "f62322e4-be2b-5bec-8093-1ae8ee1fbd34",
+          "source": "java-1000-interview-points.md",
+          "score": 0.45833334
+        },
+        {
+          "chunk_id": "0484c988-a51e-5cd7-aee8-76e67199775e",
+          "source": "java-1000-interview-points.md",
+          "score": 0.34285715
+        },
+        {
+          "chunk_id": "b484519b-b1a5-53e2-aeea-07ab17848f92",
+          "source": "java-1000-interview-points.md",
+          "score": 0.16666667
+        },
+        {
+          "chunk_id": "d3e817fd-8e48-5e26-9ec2-d72ef3dc4c45",
+          "source": "java-1000-interview-points.md",
+          "score": 0.14285715
+        },
+        {
+          "chunk_id": "ee8c8b20-ba8b-52a7-b3c1-1ba6fcce98e4",
+          "source": "go-1000-interview-points.md",
+          "score": 0.11111111
+        },
+        {
+          "chunk_id": "3b24f2d9-fc37-58ae-a1ef-a06dea6f27dd",
+          "source": "java-1000-interview-points.md",
+          "score": 0.11111111
+        }
+      ]
+    },
+    {
+      "question": "Go goroutine 的调度模型是什么？",
+      "expected_source": "go-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "a360bbad-b385-56d9-a827-a196d42e313e"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "a2567bfd-b797-546a-a45b-5a3b3f3afb74",
+          "source": "go-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "a360bbad-b385-56d9-a827-a196d42e313e",
+          "source": "go-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "6019d747-dfa4-5116-8ba5-557a8822b71a",
+          "source": "go-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "fcceab31-200f-516a-8d57-2813fee4fb7b",
+          "source": "go-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "e1ad0aa6-c2c0-5039-9fd9-f1dd29c97548",
+          "source": "go-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "57b57539-41bd-5989-85c2-6cc5260493bc",
+          "source": "go-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "59338188-42b0-502e-9bed-02abbb93a210",
+          "source": "go-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "a9850bc2-b882-5f22-a800-55679825ae53",
+          "source": "go-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "e7ae663e-4699-5aaa-8307-567e35038467",
+          "source": "go-1000-interview-points.md",
+          "score": 0.16666667
+        },
+        {
+          "chunk_id": "aa315ba6-0a5f-5d22-9f86-f40ba70419f8",
+          "source": "go-1000-interview-points.md",
+          "score": 0.16666667
+        }
+      ]
+    },
+    {
+      "question": "Python asyncio 事件循环如何工作？",
+      "expected_source": "python-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "3baf2d77-c87e-5e0b-b8e2-ced61cd04ae2",
+        "aa776319-2ae5-5c27-ba58-04c3acec6000"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "f7bbf51c-6d27-560e-876b-584b85a8ca24",
+          "source": "python-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "aa776319-2ae5-5c27-ba58-04c3acec6000",
+          "source": "python-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "3baf2d77-c87e-5e0b-b8e2-ced61cd04ae2",
+          "source": "python-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "052c909b-cd56-58d5-9ac9-71d0ee1e8454",
+          "source": "python-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "e7b771b6-89ce-5b8a-ae40-0898750a922d",
+          "source": "python-1000-interview-points.md",
+          "score": 0.2857143
+        },
+        {
+          "chunk_id": "b507fca0-4c99-597d-aeea-ce5d970231b9",
+          "source": "python-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "c7d52444-ec98-56fb-8f61-0eb6adaf2275",
+          "source": "python-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "9fb877b3-c39e-5e0b-a617-320714e3cde3",
+          "source": "python-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "ccd8cdbe-dd93-5edf-a49c-6af0a2e996cc",
+          "source": "python-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "9f7fd0b9-71ab-5a8e-bd3a-9e37f1f8a7e7",
+          "source": "python-1000-interview-points.md",
+          "score": 0.16666667
+        }
+      ]
+    },
+    {
+      "question": "React 项目应该如何选择状态管理方案？",
+      "expected_source": "frontend-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "5e4f196d-fe54-50f9-b6a8-f8f2c9c7e4cf"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "ec00cc61-e34a-558f-bb17-4159d73f3140",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "5e4f196d-fe54-50f9-b6a8-f8f2c9c7e4cf",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "3fd20493-6635-53cc-8a74-62f4cccc36e4",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.44444445
+        },
+        {
+          "chunk_id": "f7488a1c-f54f-5a27-97f1-c6903ba26b29",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "11686250-a7e8-5f84-9832-b1543bbc7bb2",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "4c38568c-035a-5384-940d-bf329efb563b",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "85b50213-d5b0-5ad6-b353-2968bfee7ea1",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "5e628962-ae29-526d-bab0-2a34b558fc7f",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "e572baf2-2f03-5d99-ad9d-70a69c4aa2fb",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.16666667
+        },
+        {
+          "chunk_id": "70bb2354-829e-5fe6-81a5-a031ad7bcb71",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.16666667
+        }
+      ]
+    },
+    {
+      "question": "Spring 事务在哪些情况下会失效？",
+      "expected_source": "spring-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "bbda11db-8935-533b-856c-a3876c6eb242",
+        "ea7f3620-e463-5e09-89ed-74762644a93c"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "9d13f841-aabb-596a-9363-eddf86f617b2",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "bbda11db-8935-533b-856c-a3876c6eb242",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "e29c790e-fcf0-54aa-b330-3f472289ec23",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "ea7f3620-e463-5e09-89ed-74762644a93c",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "325731f5-ecf5-5f80-9c3a-e4db919c8811",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "9fa7e47a-ce9a-55ec-91ed-2adc70b45fa6",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "c8ebd03e-763e-53ad-958c-3106ac426f78",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "de9f1c9e-ef30-5cc9-8429-66a8d16ed02b",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "cadc87fc-cec7-5861-b95f-c5bb62c9e9bf",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.16666667
+        },
+        {
+          "chunk_id": "3035cac3-00a6-5e42-bc39-f89eac31f401",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.16666667
+        }
+      ]
+    },
+    {
+      "question": "Spring Boot 自动配置的工作原理是什么？",
+      "expected_source": "spring-boot-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "604feb2b-7095-57dc-8b74-f705cf8c686e"
+      ],
+      "rank": 10,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "8bfbdb05-91b6-56aa-b409-4f93838c73d5",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 1.0
+        },
+        {
+          "chunk_id": "f5c912b1-a5df-5854-b2a0-99e63d6b502a",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "6eb4be07-d02b-5141-a785-4db1ac5c7228",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.36666667
+        },
+        {
+          "chunk_id": "66380a8f-4e1a-58a8-ab01-e2322ae901d7",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "9b85ec38-4f9d-5353-98ee-fdee5c286a8f",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "379cbf1c-551c-57fd-98f6-dca4d8f89976",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.31111112
+        },
+        {
+          "chunk_id": "d7d6b00d-3a07-568e-951d-76f055cb801f",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.2916667
+        },
+        {
+          "chunk_id": "2dc0385c-1e81-5e23-8f72-6914fa52013e",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.2857143
+        },
+        {
+          "chunk_id": "914d9d20-6866-5e23-a75a-22dbf05c1bda",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.125
+        },
+        {
+          "chunk_id": "604feb2b-7095-57dc-8b74-f705cf8c686e",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.11111111
+        }
+      ]
+    },
+    {
+      "question": "Spring Cloud 如何设计超时、重试和熔断？",
+      "expected_source": "spring-cloud.md",
+      "relevant_chunk_ids": [
+        "edc620d8-1bdc-55dd-a72a-de42c9107ec9"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "3035cac3-00a6-5e42-bc39-f89eac31f401",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "edc620d8-1bdc-55dd-a72a-de42c9107ec9",
+          "source": "spring-cloud.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "f67d7e85-2879-5a22-be33-e8fb8b73741d",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "4f664234-e493-54fb-89fc-d4aeaeb8d726",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "7d6802b7-ee6b-548d-a2b5-e35aecfd2568",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "2750e886-d938-5603-bf4a-aa2946bbc6c6",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "248e3653-1839-5d1a-8ac3-d90dfe719bc3",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "3c707054-e9fd-55f5-8616-3faa167047d9",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "c0b3d6c9-540c-5029-8243-0b1111b3f2ad",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.16666667
+        },
+        {
+          "chunk_id": "331381e0-9369-5708-8188-9b669c843005",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.16666667
+        }
+      ]
+    },
+    {
+      "question": "RAG 文档分块大小应该如何选择？",
+      "expected_source": "rag.md",
+      "relevant_chunk_ids": [
+        "97eeb187-6e89-5e1b-af45-cb7ae56c8dd9"
+      ],
+      "rank": 7,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "cc29d52b-6c37-526b-8a96-768c0c3be92a",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "3e6034a8-6144-5bf4-a93d-ae4dd25f38a5",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.5
+        },
+        {
+          "chunk_id": "93d67a53-70a7-5e4d-9c68-1fbcf180a59e",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.45833334
+        },
+        {
+          "chunk_id": "9a3da6c8-1620-559a-a150-85ceb36acf21",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.3409091
+        },
+        {
+          "chunk_id": "4f34fa95-4c9f-5388-9c5d-7606e5cd7c30",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "49f742b1-e91d-5cec-bd1c-ba622fe950dc",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.3
+        },
+        {
+          "chunk_id": "97eeb187-6e89-5e1b-af45-cb7ae56c8dd9",
+          "source": "rag.md",
+          "score": 0.25
+        },
+        {
+          "chunk_id": "4502f938-2fb1-5eff-a41e-a58e02d18a98",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.2
+        },
+        {
+          "chunk_id": "b9a095f4-6e13-5a8f-bdde-c8573edf9800",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.16666667
+        },
+        {
+          "chunk_id": "d546dcf4-c984-5aec-bee7-b65c62623385",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.16666667
+        }
+      ]
+    },
+    {
+      "question": "AI Agent 的工具调用循环是如何工作的？",
+      "expected_source": "ai-development-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "78fd75b3-85db-56f9-8000-733450fe6ce2",
+        "d31e726c-7080-51e3-b8d1-8340da2f0702"
+      ],
+      "rank": 1,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "d31e726c-7080-51e3-b8d1-8340da2f0702",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.75
+        },
+        {
+          "chunk_id": "78fd75b3-85db-56f9-8000-733450fe6ce2",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.6111111
+        },
+        {
+          "chunk_id": "9bd5c3a3-e5b2-5e1b-8f9d-9b0a8abf571c",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.45833334
+        },
+        {
+          "chunk_id": "72f79be4-bad1-5525-bae6-4fe221cab1f0",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.45
+        },
+        {
+          "chunk_id": "c20cda7c-f005-5cf6-969c-7410d8436316",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.36666667
+        },
+        {
+          "chunk_id": "72733839-dd7f-50e6-9228-5b03c0aef555",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.33333334
+        },
+        {
+          "chunk_id": "3b0ea872-5db8-53cf-8853-abcef0f6779f",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.25757575
+        },
+        {
+          "chunk_id": "930aa6c7-d153-5647-9db1-fb89d8b0ef42",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.25396827
+        },
+        {
+          "chunk_id": "a0c6e7fc-a6f6-56bc-a468-92f2377b49f6",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.24285716
+        },
+        {
+          "chunk_id": "4d2a6917-9d2a-5feb-b5b2-29e144250af5",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.19090909
+        }
+      ]
+    }
+  ]
+}

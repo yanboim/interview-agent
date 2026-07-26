@@ -1,0 +1,11 @@
+.env
+.git
+.venv
+.pytest_cache
+__pycache__
+data
+qdrant_data
+*.pyc
+# 前端:本地依赖与产物不进镜像,构建在镜像内完成
+frontend/node_modules
+frontend/dist

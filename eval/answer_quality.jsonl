@@ -1,0 +1,3 @@
+{"question":"RAG 的核心流程是什么？","citations":["rag.md"],"relevant_sources":["rag.md"],"supported_claims":[true,true,true]}
+{"question":"Spring Cloud 如何实现服务治理？","citations":["spring-cloud.md"],"relevant_sources":["spring-cloud.md"],"supported_claims":[true,true]}
+{"question":"如何评估向量检索？","citations":["rag.md","ai-development-1000-interview-points.md"],"relevant_sources":["rag.md"],"supported_claims":[true,true,false]}

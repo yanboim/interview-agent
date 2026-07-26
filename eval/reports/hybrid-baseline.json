@@ -1,0 +1,32 @@
+{
+  "name": "embedding-2-bm25-rrf-baseline",
+  "dataset": "eval/questions.jsonl",
+  "cases": 50,
+  "positive_cases": 40,
+  "negative_cases": 10,
+  "retrieval": {
+    "dense_model": "embedding-2",
+    "sparse_model": "Qdrant/bm25",
+    "fusion": "RRF",
+    "candidate_k": 20,
+    "evaluation_k": 5
+  },
+  "metrics": {
+    "hit_rate_at_5": 1.0,
+    "mrr": 0.98,
+    "dense_threshold": 0.4,
+    "false_rejection_rate": 0.0,
+    "false_acceptance_rate": 0.0,
+    "gate_accuracy": 1.0
+  },
+  "score_distribution": {
+    "lowest_positive": 0.4177,
+    "highest_negative": 0.3208,
+    "observed_margin": 0.0969
+  },
+  "notes": [
+    "The threshold is calibrated only for the current corpus and dataset.",
+    "Re-run evaluation after changing documents, chunking, embeddings, or retrieval.",
+    "Ground truth is currently source-level rather than chunk-level."
+  ]
+}

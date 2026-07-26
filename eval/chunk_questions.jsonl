@@ -1,0 +1,10 @@
+{"question":"Java G1 垃圾回收器的工作原理是什么？","relevant_chunk_ids":["3c5d679c-823b-5f56-9792-2a04bc28b4af"],"expected_source":"java.md"}
+{"question":"volatile 为什么不能保证 i++ 的原子性？","relevant_chunk_ids":["3c5d679c-823b-5f56-9792-2a04bc28b4af","6525e730-e0cb-5542-a335-bd53a105d079"],"expected_source":"java.md"}
+{"question":"Go goroutine 的调度模型是什么？","relevant_chunk_ids":["a360bbad-b385-56d9-a827-a196d42e313e"],"expected_source":"go-1000-interview-points.md"}
+{"question":"Python asyncio 事件循环如何工作？","relevant_chunk_ids":["3baf2d77-c87e-5e0b-b8e2-ced61cd04ae2","aa776319-2ae5-5c27-ba58-04c3acec6000"],"expected_source":"python-1000-interview-points.md"}
+{"question":"React 项目应该如何选择状态管理方案？","relevant_chunk_ids":["5e4f196d-fe54-50f9-b6a8-f8f2c9c7e4cf"],"expected_source":"frontend-1000-interview-points.md"}
+{"question":"Spring 事务在哪些情况下会失效？","relevant_chunk_ids":["ea7f3620-e463-5e09-89ed-74762644a93c","bbda11db-8935-533b-856c-a3876c6eb242"],"expected_source":"spring-1000-interview-points.md"}
+{"question":"Spring Boot 自动配置的工作原理是什么？","relevant_chunk_ids":["604feb2b-7095-57dc-8b74-f705cf8c686e"],"expected_source":"spring-boot-1000-interview-points.md"}
+{"question":"Spring Cloud 如何设计超时、重试和熔断？","relevant_chunk_ids":["edc620d8-1bdc-55dd-a72a-de42c9107ec9"],"expected_source":"spring-cloud.md"}
+{"question":"RAG 文档分块大小应该如何选择？","relevant_chunk_ids":["97eeb187-6e89-5e1b-af45-cb7ae56c8dd9"],"expected_source":"rag.md"}
+{"question":"AI Agent 的工具调用循环是如何工作的？","relevant_chunk_ids":["78fd75b3-85db-56f9-8000-733450fe6ce2","d31e726c-7080-51e3-b8d1-8340da2f0702"],"expected_source":"ai-development-1000-interview-points.md"}

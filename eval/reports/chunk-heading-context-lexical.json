@@ -1,0 +1,827 @@
+{
+  "summary": {
+    "cases": 10,
+    "k": 10,
+    "top1_accuracy": 0.2,
+    "hit_rate@10": 0.9,
+    "mrr": 0.525,
+    "rerank": false,
+    "lexical_rerank": true
+  },
+  "details": [
+    {
+      "question": "Java G1 垃圾回收器的工作原理是什么？",
+      "expected_source": "java.md",
+      "relevant_chunk_ids": [
+        "3c5d679c-823b-5f56-9792-2a04bc28b4af"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "a669be9b-1286-5c1e-a2d6-50a93230c37a",
+          "source": "java-1000-interview-points.md",
+          "score": 0.4075,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.3576923076923077
+        },
+        {
+          "chunk_id": "3c5d679c-823b-5f56-9792-2a04bc28b4af",
+          "source": "java.md",
+          "score": 0.39,
+          "retrieval_score": 0.6,
+          "lexical_score": 0.27692307692307694
+        },
+        {
+          "chunk_id": "a55503c6-45f3-5485-b858-878d9682a5ad",
+          "source": "java-1000-interview-points.md",
+          "score": 0.349166669,
+          "retrieval_score": 0.33333334,
+          "lexical_score": 0.3576923076923077
+        },
+        {
+          "chunk_id": "6a2e640a-c2cb-5446-bf52-030a46c7a0bb",
+          "source": "java-1000-interview-points.md",
+          "score": 0.2875,
+          "retrieval_score": 0.25,
+          "lexical_score": 0.3076923076923077
+        },
+        {
+          "chunk_id": "759ded80-e7c5-5d94-acd8-e74ace93cc79",
+          "source": "java-1000-interview-points.md",
+          "score": 0.2825000025,
+          "retrieval_score": 0.14285715,
+          "lexical_score": 0.3576923076923077
+        },
+        {
+          "chunk_id": "2d59a6b4-d79f-5f71-87e1-5e05d49d705d",
+          "source": "java-1000-interview-points.md",
+          "score": 0.27,
+          "retrieval_score": 0.2,
+          "lexical_score": 0.3076923076923077
+        },
+        {
+          "chunk_id": "adac1bbc-642b-5607-876d-af113c95215c",
+          "source": "go-1000-interview-points.md",
+          "score": 0.2408333345,
+          "retrieval_score": 0.16666667,
+          "lexical_score": 0.28076923076923077
+        },
+        {
+          "chunk_id": "8cba66d8-9756-5a2e-9bed-e1d1402377c3",
+          "source": "java-1000-interview-points.md",
+          "score": 0.2318181815,
+          "retrieval_score": 0.09090909,
+          "lexical_score": 0.3076923076923077
+        },
+        {
+          "chunk_id": "7854001a-9953-5ebd-ba16-4bc0f9eadc88",
+          "source": "go-1000-interview-points.md",
+          "score": 0.22625,
+          "retrieval_score": 0.125,
+          "lexical_score": 0.28076923076923077
+        },
+        {
+          "chunk_id": "04a1b9ac-c9b5-5565-b16f-9d135e34bf6b",
+          "source": "java-1000-interview-points.md",
+          "score": 0.21854166575,
+          "retrieval_score": 0.110119045,
+          "lexical_score": 0.27692307692307694
+        }
+      ]
+    },
+    {
+      "question": "volatile 为什么不能保证 i++ 的原子性？",
+      "expected_source": "java.md",
+      "relevant_chunk_ids": [
+        "3c5d679c-823b-5f56-9792-2a04bc28b4af",
+        "6525e730-e0cb-5542-a335-bd53a105d079"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "ef898b0d-e31e-5c34-b292-f72c27267437",
+          "source": "java-1000-interview-points.md",
+          "score": 0.382833345,
+          "retrieval_score": 0.6666667,
+          "lexical_score": 0.23
+        },
+        {
+          "chunk_id": "6525e730-e0cb-5542-a335-bd53a105d079",
+          "source": "java-1000-interview-points.md",
+          "score": 0.326,
+          "retrieval_score": 0.625,
+          "lexical_score": 0.165
+        },
+        {
+          "chunk_id": "b484519b-b1a5-53e2-aeea-07ab17848f92",
+          "source": "java-1000-interview-points.md",
+          "score": 0.314068185,
+          "retrieval_score": 0.5909091,
+          "lexical_score": 0.165
+        },
+        {
+          "chunk_id": "3c5d679c-823b-5f56-9792-2a04bc28b4af",
+          "source": "java.md",
+          "score": 0.2923888885,
+          "retrieval_score": 0.11111111,
+          "lexical_score": 0.39
+        },
+        {
+          "chunk_id": "cb3a444f-b082-55b8-9bd3-149f8d6aa1c8",
+          "source": "java-1000-interview-points.md",
+          "score": 0.253083345,
+          "retrieval_score": 0.4166667,
+          "lexical_score": 0.165
+        },
+        {
+          "chunk_id": "f62322e4-be2b-5bec-8093-1ae8ee1fbd34",
+          "source": "java-1000-interview-points.md",
+          "score": 0.2447499955,
+          "retrieval_score": 0.39285713,
+          "lexical_score": 0.165
+        },
+        {
+          "chunk_id": "f83e318b-e6a6-5399-8d23-3d95d7cd479d",
+          "source": "java-1000-interview-points.md",
+          "score": 0.2355833345,
+          "retrieval_score": 0.36666667,
+          "lexical_score": 0.165
+        },
+        {
+          "chunk_id": "0484c988-a51e-5cd7-aee8-76e67199775e",
+          "source": "java-1000-interview-points.md",
+          "score": 0.2272500025,
+          "retrieval_score": 0.34285715,
+          "lexical_score": 0.165
+        },
+        {
+          "chunk_id": "7455d770-98e1-5004-bec8-b45d9f60b961",
+          "source": "go-1000-interview-points.md",
+          "score": 0.1390681815,
+          "retrieval_score": 0.09090909,
+          "lexical_score": 0.165
+        },
+        {
+          "chunk_id": "24c7b0c0-4680-510b-9641-c2dff4aad79f",
+          "source": "java-1000-interview-points.md",
+          "score": 0.1313749995,
+          "retrieval_score": 0.13392857,
+          "lexical_score": 0.13
+        }
+      ]
+    },
+    {
+      "question": "Go goroutine 的调度模型是什么？",
+      "expected_source": "go-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "a360bbad-b385-56d9-a827-a196d42e313e"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "7632fc65-2dac-5a1e-bbd9-379ac88216cb",
+          "source": "go-1000-interview-points.md",
+          "score": 0.5528125,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.58125
+        },
+        {
+          "chunk_id": "a360bbad-b385-56d9-a827-a196d42e313e",
+          "source": "go-1000-interview-points.md",
+          "score": 0.44864584500000004,
+          "retrieval_score": 0.6666667,
+          "lexical_score": 0.33125000000000004
+        },
+        {
+          "chunk_id": "3e5c56fc-f605-5cde-809a-a70d3fc2f11b",
+          "source": "go-1000-interview-points.md",
+          "score": 0.441666669,
+          "retrieval_score": 0.33333334,
+          "lexical_score": 0.5
+        },
+        {
+          "chunk_id": "9220ed75-ca63-5491-ab63-a2640ac7039b",
+          "source": "go-1000-interview-points.md",
+          "score": 0.4278125025,
+          "retrieval_score": 0.14285715,
+          "lexical_score": 0.58125
+        },
+        {
+          "chunk_id": "5c9590ed-22e6-57f6-80b5-fa943138a081",
+          "source": "go-1000-interview-points.md",
+          "score": 0.36875,
+          "retrieval_score": 0.125,
+          "lexical_score": 0.5
+        },
+        {
+          "chunk_id": "9aec4920-b493-506d-a0c8-e71c05b9bcb6",
+          "source": "go-1000-interview-points.md",
+          "score": 0.3568181815,
+          "retrieval_score": 0.09090909,
+          "lexical_score": 0.5
+        },
+        {
+          "chunk_id": "fcceab31-200f-516a-8d57-2813fee4fb7b",
+          "source": "go-1000-interview-points.md",
+          "score": 0.35531250000000003,
+          "retrieval_score": 0.4,
+          "lexical_score": 0.33125000000000004
+        },
+        {
+          "chunk_id": "cffc0f8c-f1a1-5e8d-a034-1daefa21c93b",
+          "source": "go-1000-interview-points.md",
+          "score": 0.351923078,
+          "retrieval_score": 0.07692308,
+          "lexical_score": 0.5
+        },
+        {
+          "chunk_id": "e1ad0aa6-c2c0-5039-9fd9-f1dd29c97548",
+          "source": "go-1000-interview-points.md",
+          "score": 0.32031250000000006,
+          "retrieval_score": 0.3,
+          "lexical_score": 0.33125000000000004
+        },
+        {
+          "chunk_id": "a9850bc2-b882-5f22-a800-55679825ae53",
+          "source": "go-1000-interview-points.md",
+          "score": 0.32,
+          "retrieval_score": 0.45,
+          "lexical_score": 0.25
+        }
+      ]
+    },
+    {
+      "question": "Python asyncio 事件循环如何工作？",
+      "expected_source": "python-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "3baf2d77-c87e-5e0b-b8e2-ced61cd04ae2",
+        "aa776319-2ae5-5c27-ba58-04c3acec6000"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "ccd8cdbe-dd93-5edf-a49c-6af0a2e996cc",
+          "source": "python-1000-interview-points.md",
+          "score": 0.6126041900000001,
+          "retrieval_score": 0.8333334,
+          "lexical_score": 0.49375
+        },
+        {
+          "chunk_id": "3baf2d77-c87e-5e0b-b8e2-ced61cd04ae2",
+          "source": "python-1000-interview-points.md",
+          "score": 0.5459374955,
+          "retrieval_score": 0.64285713,
+          "lexical_score": 0.49375
+        },
+        {
+          "chunk_id": "052c909b-cd56-58d5-9ac9-71d0ee1e8454",
+          "source": "python-1000-interview-points.md",
+          "score": 0.5076041760000001,
+          "retrieval_score": 0.53333336,
+          "lexical_score": 0.49375
+        },
+        {
+          "chunk_id": "e7b771b6-89ce-5b8a-ae40-0898750a922d",
+          "source": "python-1000-interview-points.md",
+          "score": 0.49593750000000003,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.49375
+        },
+        {
+          "chunk_id": "aa776319-2ae5-5c27-ba58-04c3acec6000",
+          "source": "python-1000-interview-points.md",
+          "score": 0.44927083450000005,
+          "retrieval_score": 0.36666667,
+          "lexical_score": 0.49375
+        },
+        {
+          "chunk_id": "b507fca0-4c99-597d-aeea-ce5d970231b9",
+          "source": "python-1000-interview-points.md",
+          "score": 0.41815973000000006,
+          "retrieval_score": 0.2777778,
+          "lexical_score": 0.49375
+        },
+        {
+          "chunk_id": "c74d4d62-0a37-5750-b3e1-922cfaf13fa2",
+          "source": "python-1000-interview-points.md",
+          "score": 0.36875,
+          "retrieval_score": 0.125,
+          "lexical_score": 0.5
+        },
+        {
+          "chunk_id": "004ef05f-a14f-5ad1-9be8-be7a56d3b6b7",
+          "source": "python-1000-interview-points.md",
+          "score": 0.3638888885,
+          "retrieval_score": 0.11111111,
+          "lexical_score": 0.5
+        },
+        {
+          "chunk_id": "e665ab17-6b1c-5481-b9ea-344535b80a35",
+          "source": "python-1000-interview-points.md",
+          "score": 0.36,
+          "retrieval_score": 0.1,
+          "lexical_score": 0.5
+        },
+        {
+          "chunk_id": "6006cee5-6adf-59fb-9638-df325e539cdd",
+          "source": "python-1000-interview-points.md",
+          "score": 0.35958333100000006,
+          "retrieval_score": 0.19166666,
+          "lexical_score": 0.45
+        }
+      ]
+    },
+    {
+      "question": "React 项目应该如何选择状态管理方案？",
+      "expected_source": "frontend-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "5e4f196d-fe54-50f9-b6a8-f8f2c9c7e4cf"
+      ],
+      "rank": 1,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "5e4f196d-fe54-50f9-b6a8-f8f2c9c7e4cf",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.443125,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.4125
+        },
+        {
+          "chunk_id": "33c5b51c-a898-5463-b73f-b650d887e571",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.384791669,
+          "retrieval_score": 0.33333334,
+          "lexical_score": 0.4125
+        },
+        {
+          "chunk_id": "85b50213-d5b0-5ad6-b353-2968bfee7ea1",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.338125,
+          "retrieval_score": 0.2,
+          "lexical_score": 0.4125
+        },
+        {
+          "chunk_id": "ec00cc61-e34a-558f-bb17-4159d73f3140",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.3347916666666667,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.24583333333333335
+        },
+        {
+          "chunk_id": "70bb2354-829e-5fe6-81a5-a031ad7bcb71",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.3181250025,
+          "retrieval_score": 0.14285715,
+          "lexical_score": 0.4125
+        },
+        {
+          "chunk_id": "3fd20493-6635-53cc-8a74-62f4cccc36e4",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.3033814136666667,
+          "retrieval_score": 0.41025642,
+          "lexical_score": 0.24583333333333335
+        },
+        {
+          "chunk_id": "11686250-a7e8-5f84-9832-b1543bbc7bb2",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.2912500011666667,
+          "retrieval_score": 0.16666667,
+          "lexical_score": 0.3583333333333334
+        },
+        {
+          "chunk_id": "f7488a1c-f54f-5a27-97f1-c6903ba26b29",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.28520833333333334,
+          "retrieval_score": 0.25,
+          "lexical_score": 0.3041666666666667
+        },
+        {
+          "chunk_id": "1af0178e-b220-5e55-9acf-dca7afa6529a",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.2766666666666667,
+          "retrieval_score": 0.125,
+          "lexical_score": 0.3583333333333334
+        },
+        {
+          "chunk_id": "4c38568c-035a-5384-940d-bf329efb563b",
+          "source": "frontend-1000-interview-points.md",
+          "score": 0.2472916666666667,
+          "retrieval_score": 0.25,
+          "lexical_score": 0.24583333333333335
+        }
+      ]
+    },
+    {
+      "question": "Spring 事务在哪些情况下会失效？",
+      "expected_source": "spring-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "bbda11db-8935-533b-856c-a3876c6eb242",
+        "ea7f3620-e463-5e09-89ed-74762644a93c"
+      ],
+      "rank": 4,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "c8ebd03e-763e-53ad-958c-3106ac426f78",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.438416669,
+          "retrieval_score": 0.33333334,
+          "lexical_score": 0.495
+        },
+        {
+          "chunk_id": "325731f5-ecf5-5f80-9c3a-e4db919c8811",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.37,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.3
+        },
+        {
+          "chunk_id": "1cc1396d-e357-5d8e-8047-46665b2f3c36",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.29175,
+          "retrieval_score": 0.1,
+          "lexical_score": 0.395
+        },
+        {
+          "chunk_id": "bbda11db-8935-533b-856c-a3876c6eb242",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.2825,
+          "retrieval_score": 0.25,
+          "lexical_score": 0.3
+        },
+        {
+          "chunk_id": "ea7f3620-e463-5e09-89ed-74762644a93c",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.265,
+          "retrieval_score": 0.2,
+          "lexical_score": 0.3
+        },
+        {
+          "chunk_id": "057d30cb-347c-5b20-a858-92dcb16965e3",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.2533333345,
+          "retrieval_score": 0.16666667,
+          "lexical_score": 0.3
+        },
+        {
+          "chunk_id": "03f90a93-0ff4-5efb-9e5a-310f78e84d7e",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.2500833345,
+          "retrieval_score": 0.16666667,
+          "lexical_score": 0.295
+        },
+        {
+          "chunk_id": "cadc87fc-cec7-5861-b95f-c5bb62c9e9bf",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.2450000025,
+          "retrieval_score": 0.14285715,
+          "lexical_score": 0.3
+        },
+        {
+          "chunk_id": "dbb4620d-6ad9-542d-be26-f84c2c41424a",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.2417500025,
+          "retrieval_score": 0.14285715,
+          "lexical_score": 0.295
+        },
+        {
+          "chunk_id": "9d13f841-aabb-596a-9363-eddf86f617b2",
+          "source": "spring-1000-interview-points.md",
+          "score": 0.24,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.1
+        }
+      ]
+    },
+    {
+      "question": "Spring Boot 自动配置的工作原理是什么？",
+      "expected_source": "spring-boot-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "604feb2b-7095-57dc-8b74-f705cf8c686e"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "8bfbdb05-91b6-56aa-b409-4f93838c73d5",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.4630555516666667,
+          "retrieval_score": 0.6111111,
+          "lexical_score": 0.38333333333333336
+        },
+        {
+          "chunk_id": "604feb2b-7095-57dc-8b74-f705cf8c686e",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.39166666666666666,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.3333333333333333
+        },
+        {
+          "chunk_id": "f5c912b1-a5df-5854-b2a0-99e63d6b502a",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.3716666666666667,
+          "retrieval_score": 0.35,
+          "lexical_score": 0.38333333333333336
+        },
+        {
+          "chunk_id": "379cbf1c-551c-57fd-98f6-dca4d8f89976",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.34654605650000003,
+          "retrieval_score": 0.17763159,
+          "lexical_score": 0.43750000000000006
+        },
+        {
+          "chunk_id": "d16793c9-0217-5dec-89e6-7ee6d5a7eedc",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.3333333356666667,
+          "retrieval_score": 0.33333334,
+          "lexical_score": 0.3333333333333333
+        },
+        {
+          "chunk_id": "d7d6b00d-3a07-568e-951d-76f055cb801f",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.3325000041666667,
+          "retrieval_score": 0.23809525,
+          "lexical_score": 0.38333333333333336
+        },
+        {
+          "chunk_id": "d82bcb41-0a2f-509e-bce1-0381631d97d1",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.321875,
+          "retrieval_score": 0.2,
+          "lexical_score": 0.3875
+        },
+        {
+          "chunk_id": "6eb4be07-d02b-5141-a785-4db1ac5c7228",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.3191666666666667,
+          "retrieval_score": 0.2,
+          "lexical_score": 0.38333333333333336
+        },
+        {
+          "chunk_id": "9b85ec38-4f9d-5353-98ee-fdee5c286a8f",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.3104166666666667,
+          "retrieval_score": 0.175,
+          "lexical_score": 0.38333333333333336
+        },
+        {
+          "chunk_id": "6c81f1ce-f18e-5b50-874f-9a01b38444cf",
+          "source": "spring-boot-1000-interview-points.md",
+          "score": 0.3041666666666667,
+          "retrieval_score": 0.25,
+          "lexical_score": 0.3333333333333333
+        }
+      ]
+    },
+    {
+      "question": "Spring Cloud 如何设计超时、重试和熔断？",
+      "expected_source": "spring-cloud.md",
+      "relevant_chunk_ids": [
+        "edc620d8-1bdc-55dd-a72a-de42c9107ec9"
+      ],
+      "rank": null,
+      "hit": false,
+      "retrieved": [
+        {
+          "chunk_id": "aed2aedc-be57-5657-8d1f-92f6ba09e039",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.3895,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.33
+        },
+        {
+          "chunk_id": "248e3653-1839-5d1a-8ac3-d90dfe719bc3",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.34425000000000006,
+          "retrieval_score": 0.25,
+          "lexical_score": 0.395
+        },
+        {
+          "chunk_id": "331381e0-9369-5708-8188-9b669c843005",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.331166669,
+          "retrieval_score": 0.33333334,
+          "lexical_score": 0.33
+        },
+        {
+          "chunk_id": "eb473e64-415d-586a-90be-477d9de07576",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.3067500025,
+          "retrieval_score": 0.14285715,
+          "lexical_score": 0.395
+        },
+        {
+          "chunk_id": "3035cac3-00a6-5e42-bc39-f89eac31f401",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.305,
+          "retrieval_score": 0.5,
+          "lexical_score": 0.2
+        },
+        {
+          "chunk_id": "f67d7e85-2879-5a22-be33-e8fb8b73741d",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.288916669,
+          "retrieval_score": 0.33333334,
+          "lexical_score": 0.265
+        },
+        {
+          "chunk_id": "572a37e6-403c-5a15-9930-295cad0b2c9a",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.2728333345,
+          "retrieval_score": 0.16666667,
+          "lexical_score": 0.33
+        },
+        {
+          "chunk_id": "2750e886-d938-5603-bf4a-aa2946bbc6c6",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.25975000000000004,
+          "retrieval_score": 0.25,
+          "lexical_score": 0.265
+        },
+        {
+          "chunk_id": "3c707054-e9fd-55f5-8616-3faa167047d9",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.24225000000000002,
+          "retrieval_score": 0.2,
+          "lexical_score": 0.265
+        },
+        {
+          "chunk_id": "7d6802b7-ee6b-548d-a2b5-e35aecfd2568",
+          "source": "spring-cloud-1000-interview-points.md",
+          "score": 0.2417500025,
+          "retrieval_score": 0.14285715,
+          "lexical_score": 0.295
+        }
+      ]
+    },
+    {
+      "question": "RAG 文档分块大小应该如何选择？",
+      "expected_source": "rag.md",
+      "relevant_chunk_ids": [
+        "97eeb187-6e89-5e1b-af45-cb7ae56c8dd9"
+      ],
+      "rank": 2,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "cc29d52b-6c37-526b-8a96-768c0c3be92a",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.37579166899999994,
+          "retrieval_score": 0.39583334,
+          "lexical_score": 0.365
+        },
+        {
+          "chunk_id": "97eeb187-6e89-5e1b-af45-cb7ae56c8dd9",
+          "source": "rag.md",
+          "score": 0.351423085,
+          "retrieval_score": 0.5769231,
+          "lexical_score": 0.23
+        },
+        {
+          "chunk_id": "17ac9f7a-601b-55f8-b7f6-8914d79f9dda",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.34950000000000003,
+          "retrieval_score": 0.2,
+          "lexical_score": 0.43
+        },
+        {
+          "chunk_id": "4f34fa95-4c9f-5388-9c5d-7606e5cd7c30",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.34225,
+          "retrieval_score": 0.3,
+          "lexical_score": 0.365
+        },
+        {
+          "chunk_id": "4502f938-2fb1-5eff-a41e-a58e02d18a98",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.3378333345,
+          "retrieval_score": 0.16666667,
+          "lexical_score": 0.43
+        },
+        {
+          "chunk_id": "b9a095f4-6e13-5a8f-bdde-c8573edf9800",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.2872500025,
+          "retrieval_score": 0.14285715,
+          "lexical_score": 0.365
+        },
+        {
+          "chunk_id": "3e6034a8-6144-5bf4-a93d-ae4dd25f38a5",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.263333331,
+          "retrieval_score": 0.56666666,
+          "lexical_score": 0.1
+        },
+        {
+          "chunk_id": "9a3da6c8-1620-559a-a150-85ceb36acf21",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.22975,
+          "retrieval_score": 0.35,
+          "lexical_score": 0.165
+        },
+        {
+          "chunk_id": "93d67a53-70a7-5e4d-9c68-1fbcf180a59e",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.225416669,
+          "retrieval_score": 0.45833334,
+          "lexical_score": 0.1
+        },
+        {
+          "chunk_id": "49f742b1-e91d-5cec-bd1c-ba622fe950dc",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.20641666549999999,
+          "retrieval_score": 0.28333333,
+          "lexical_score": 0.165
+        }
+      ]
+    },
+    {
+      "question": "AI Agent 的工具调用循环是如何工作的？",
+      "expected_source": "ai-development-1000-interview-points.md",
+      "relevant_chunk_ids": [
+        "78fd75b3-85db-56f9-8000-733450fe6ce2",
+        "d31e726c-7080-51e3-b8d1-8340da2f0702"
+      ],
+      "rank": 1,
+      "hit": true,
+      "retrieved": [
+        {
+          "chunk_id": "d31e726c-7080-51e3-b8d1-8340da2f0702",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.48999999550000006,
+          "retrieval_score": 0.64285713,
+          "lexical_score": 0.40769230769230774
+        },
+        {
+          "chunk_id": "78fd75b3-85db-56f9-8000-733450fe6ce2",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.40125,
+          "retrieval_score": 0.625,
+          "lexical_score": 0.28076923076923077
+        },
+        {
+          "chunk_id": "3b0ea872-5db8-53cf-8853-abcef0f6779f",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.38431818500000003,
+          "retrieval_score": 0.3409091,
+          "lexical_score": 0.40769230769230774
+        },
+        {
+          "chunk_id": "72733839-dd7f-50e6-9228-5b03c0aef555",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.38166666900000007,
+          "retrieval_score": 0.33333334,
+          "lexical_score": 0.40769230769230774
+        },
+        {
+          "chunk_id": "c20cda7c-f005-5cf6-969c-7410d8436316",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.3738888920000001,
+          "retrieval_score": 0.31111112,
+          "lexical_score": 0.40769230769230774
+        },
+        {
+          "chunk_id": "72f79be4-bad1-5525-bae6-4fe221cab1f0",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.3587499955000001,
+          "retrieval_score": 0.26785713,
+          "lexical_score": 0.40769230769230774
+        },
+        {
+          "chunk_id": "930aa6c7-d153-5647-9db1-fb89d8b0ef42",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.35833333800000006,
+          "retrieval_score": 0.26666668,
+          "lexical_score": 0.40769230769230774
+        },
+        {
+          "chunk_id": "9bd5c3a3-e5b2-5e1b-8f9d-9b0a8abf571c",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.334166669,
+          "retrieval_score": 0.43333334,
+          "lexical_score": 0.28076923076923077
+        },
+        {
+          "chunk_id": "a0c6e7fc-a6f6-56bc-a468-92f2377b49f6",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.301818185,
+          "retrieval_score": 0.3409091,
+          "lexical_score": 0.28076923076923077
+        },
+        {
+          "chunk_id": "040fb427-6148-568e-8a83-8807c49b9bf4",
+          "source": "ai-development-1000-interview-points.md",
+          "score": 0.25888889200000004,
+          "retrieval_score": 0.31111112,
+          "lexical_score": 0.23076923076923078
+        }
+      ]
+    }
+  ]
+}

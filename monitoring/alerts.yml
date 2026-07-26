@@ -1,0 +1,21 @@
+groups:
+  - name: interview-agent
+    rules:
+      - alert: InterviewAgentDependencyErrors
+        expr: increase(interview_agent_dependency_errors_total[10m]) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Interview Agent dependency errors are increasing"
+      - alert: InterviewAgentDependencySlow
+        expr: |
+          rate(interview_agent_dependency_duration_seconds_total[5m])
+          /
+          clamp_min(rate(interview_agent_dependency_calls_total[5m]), 0.001)
+          > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Interview Agent dependency latency is above 5 seconds"

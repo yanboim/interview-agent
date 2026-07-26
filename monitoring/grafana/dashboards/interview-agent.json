@@ -1,0 +1,43 @@
+{
+  "title": "Interview Agent",
+  "uid": "interview-agent",
+  "schemaVersion": 41,
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Requests",
+      "targets": [{"expr": "interview_agent_requests_total"}],
+      "gridPos": {"x": 0, "y": 0, "w": 6, "h": 5}
+    },
+    {
+      "type": "stat",
+      "title": "Errors",
+      "targets": [{"expr": "interview_agent_errors_total"}],
+      "gridPos": {"x": 6, "y": 0, "w": 6, "h": 5}
+    },
+    {
+      "type": "timeseries",
+      "title": "Dependency duration",
+      "targets": [{"expr": "rate(interview_agent_dependency_duration_seconds_total[5m])"}],
+      "gridPos": {"x": 0, "y": 5, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Dependency errors",
+      "targets": [{"expr": "rate(interview_agent_dependency_errors_total[5m])"}],
+      "gridPos": {"x": 12, "y": 5, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Agent input tokens",
+      "targets": [{"expr": "increase(interview_agent_llm_input_tokens_total[1h])"}],
+      "gridPos": {"x": 0, "y": 13, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Agent output tokens",
+      "targets": [{"expr": "increase(interview_agent_llm_output_tokens_total[1h])"}],
+      "gridPos": {"x": 12, "y": 13, "w": 12, "h": 8}
+    }
+  ]
+}

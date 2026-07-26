@@ -1,0 +1,207 @@
+{
+  "schema_version": 1,
+  "product": "interview-agent",
+  "updated_at": "2026-07-26",
+  "status_values": [
+    "passing",
+    "planned"
+  ],
+  "features": [
+    {
+      "id": "auth-token-lifecycle",
+      "category": "security",
+      "description": "A user can register, log in, rotate a refresh token, and revoke a session without storing plaintext tokens.",
+      "status": "passing",
+      "steps": [
+        "Register a user with valid credentials.",
+        "Log in and resolve the access token.",
+        "Refresh once and verify the old refresh token is rejected.",
+        "Revoke the session and verify access is rejected."
+      ],
+      "verification": [
+        "tests/test_auth.py"
+      ]
+    },
+    {
+      "id": "tenant-data-isolation",
+      "category": "security",
+      "description": "Authenticated users cannot claim, read, mutate, or delete another user's resources.",
+      "status": "passing",
+      "steps": [
+        "Create resources for two users.",
+        "Attempt to access the first user's resource with the second identity.",
+        "Verify the request is rejected and the resource remains unchanged."
+      ],
+      "verification": [
+        "tests/test_authorization.py",
+        "tests/test_storage.py"
+      ]
+    },
+    {
+      "id": "conversation-persistence",
+      "category": "functional",
+      "description": "Conversation messages survive store recreation and remain scoped to their owner and session.",
+      "status": "passing",
+      "steps": [
+        "Append user and assistant messages to a session.",
+        "Create a new store instance against the same database.",
+        "Read the session and verify ordered messages and ownership."
+      ],
+      "verification": [
+        "tests/test_storage.py"
+      ]
+    },
+    {
+      "id": "interview-lifecycle",
+      "category": "functional",
+      "description": "An interview persists questions, answers, scores, history, archive state, and report inputs.",
+      "status": "passing",
+      "steps": [
+        "Create an interview and its first question.",
+        "Store a scored answer and successor question.",
+        "Reload, archive, restore, and delete the interview.",
+        "Verify report aggregation uses persisted scored turns."
+      ],
+      "verification": [
+        "tests/test_storage.py",
+        "tests/test_interview_engine.py"
+      ]
+    },
+    {
+      "id": "learning-review-cycle",
+      "category": "functional",
+      "description": "Weak dimensions generate owner-scoped learning tasks with deduplication and expanding review intervals.",
+      "status": "passing",
+      "steps": [
+        "Build learning candidates from scored capability data.",
+        "Create tasks twice and verify active duplicates are not created.",
+        "Review a task and verify its count and next review time advance."
+      ],
+      "verification": [
+        "tests/test_learning.py",
+        "tests/test_storage.py"
+      ]
+    },
+    {
+      "id": "rag-relevance-and-traceability",
+      "category": "ai-quality",
+      "description": "Private retrieval rejects low-relevance results and returns traceable source metadata for accepted chunks.",
+      "status": "passing",
+      "steps": [
+        "Run the dense relevance gate for a query.",
+        "Reject results below the configured threshold.",
+        "For accepted hybrid results, retain source and score metadata."
+      ],
+      "verification": [
+        "tests/test_rag.py",
+        "tests/test_ingest.py",
+        "tests/test_chunk_evaluation.py"
+      ]
+    },
+    {
+      "id": "agent-routing-contract",
+      "category": "ai-quality",
+      "description": "The supervisor exposes the specialist tools and the routing evaluation reports per-agent accuracy.",
+      "status": "passing",
+      "steps": [
+        "Build the configured supervisor.",
+        "Verify knowledge, interviewer, evaluator, and planner tools are available.",
+        "Evaluate recorded routing cases and report per-agent accuracy."
+      ],
+      "verification": [
+        "tests/test_multi_agent.py",
+        "tests/test_multi_agent_evaluation.py"
+      ]
+    },
+    {
+      "id": "admin-knowledge-files",
+      "category": "operations",
+      "description": "Only an administrator can list, save, delete, and enqueue ingestion for safe knowledge filenames.",
+      "status": "passing",
+      "steps": [
+        "Authenticate as a non-admin and verify the operation is denied.",
+        "Authenticate as an administrator and save a supported filename.",
+        "List and delete the file while rejecting unsafe paths."
+      ],
+      "verification": [
+        "tests/test_admin_backend.py",
+        "tests/test_authorization.py"
+      ]
+    },
+    {
+      "id": "responsive-accessible-shell",
+      "category": "user-experience",
+      "description": "The primary workspace has no serious accessibility violations or horizontal overflow on supported desktop and mobile viewports.",
+      "status": "passing",
+      "steps": [
+        "Build and start the production frontend shell.",
+        "Open the Today workspace on desktop and mobile Chromium.",
+        "Run accessibility and overflow assertions."
+      ],
+      "verification": [
+        "frontend/e2e/product.spec.ts",
+        "frontend/e2e/goal-dialog.spec.ts",
+        "frontend/e2e/interview-question.spec.ts"
+      ]
+    },
+    {
+      "id": "conversation-history-workspace",
+      "category": "user-experience",
+      "description": "Conversation history is managed in a searchable dedicated workspace instead of a constrained sidebar list.",
+      "status": "passing",
+      "steps": [
+        "Open the product sidebar and verify it contains a History navigation action but no embedded conversation search.",
+        "Navigate to /history.",
+        "Search, open, rename, archive, restore, and delete owner-scoped conversations."
+      ],
+      "verification": [
+        "frontend/e2e/product.spec.ts",
+        "frontend/src/components/app/HistoryPanel.vue",
+        "tests/test_storage.py"
+      ]
+    },
+    {
+      "id": "separate-product-admin-surfaces",
+      "category": "security",
+      "description": "Product and administrator accounts use separate creation paths, browser sessions, login endpoints, and user interfaces while server-side roles remain authoritative.",
+      "status": "passing",
+      "steps": [
+        "Create a product account through registration and an administrator through the operator script.",
+        "Verify each credential is rejected by the other login surface.",
+        "Verify the product shell exposes neither backend navigation nor service API-key settings.",
+        "Verify admin endpoints continue to require the administrator role."
+      ],
+      "verification": [
+        "tests/test_auth.py",
+        "tests/test_authorization.py",
+        "frontend/e2e/product.spec.ts"
+      ]
+    },
+    {
+      "id": "atomic-knowledge-publication",
+      "category": "reliability",
+      "description": "A knowledge update becomes visible only after the replacement collection passes validation and can be rolled back.",
+      "status": "planned",
+      "steps": [
+        "Build a new versioned collection without changing the serving alias.",
+        "Run structural and retrieval regression gates.",
+        "Atomically switch the alias and retain the previous version.",
+        "Verify a failed build leaves the serving collection unchanged."
+      ],
+      "gap": "docs/tech-debt-tracker.md#td-001"
+    },
+    {
+      "id": "idempotent-interview-answer",
+      "category": "reliability",
+      "description": "Retrying or concurrently submitting the same interview answer charges and advances the turn at most once.",
+      "status": "planned",
+      "steps": [
+        "Submit the same idempotency key concurrently.",
+        "Claim the pending turn with a conditional state transition.",
+        "Verify exactly one score and one successor turn are persisted.",
+        "Return the original result to safe retries."
+      ],
+      "gap": "docs/tech-debt-tracker.md#td-002"
+    }
+  ]
+}
