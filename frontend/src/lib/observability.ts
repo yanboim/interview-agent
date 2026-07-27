@@ -2,12 +2,23 @@ import { trackEvent } from "@/api/analytics";
 
 let started = false;
 
-export function startClientObservability(getUserId: () => string) {
+export function startClientObservability(
+  getUserId: () => string,
+  shouldTrack: () => boolean = () => true,
+) {
   if (started) return;
   started = true;
 
+  const emit = (
+    eventName: string,
+    properties: Record<string, unknown>,
+  ) => {
+    if (!shouldTrack()) return;
+    trackEvent(getUserId(), eventName, properties);
+  };
+
   window.addEventListener("error", (event) => {
-    trackEvent(getUserId(), "client.error", {
+    emit("client.error", {
       message: event.message,
       source: event.filename,
       line: event.lineno,
@@ -15,7 +26,7 @@ export function startClientObservability(getUserId: () => string) {
     });
   });
   window.addEventListener("unhandledrejection", (event) => {
-    trackEvent(getUserId(), "client.unhandled_rejection", {
+    emit("client.unhandled_rejection", {
       reason: event.reason instanceof Error ? event.reason.message : String(event.reason),
     });
   });
@@ -28,7 +39,7 @@ export function startClientObservability(getUserId: () => string) {
           "navigation",
         )[0] as PerformanceNavigationTiming | undefined;
         if (!navigation) return;
-        trackEvent(getUserId(), "client.web_vital", {
+        emit("client.web_vital", {
           metric: "page_load",
           value: Math.round(navigation.loadEventEnd - navigation.startTime),
           route: location.pathname,
@@ -44,7 +55,7 @@ export function startClientObservability(getUserId: () => string) {
         const entries = list.getEntries();
         const entry = entries[entries.length - 1];
         if (!entry) return;
-        trackEvent(getUserId(), "client.web_vital", {
+        emit("client.web_vital", {
           metric: "lcp",
           value: Math.round(entry.startTime),
           route: location.pathname,
