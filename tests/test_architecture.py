@@ -92,6 +92,7 @@ def test_composition_root_stays_transport_only_and_bounded() -> None:
     assert '@app.put("/api/' not in source
     assert '@app.patch("/api/' not in source
     assert '@app.delete("/api/' not in source
+    assert "check_dir=False" in source
 
 
 def test_domain_api_routes_remain_registered() -> None:

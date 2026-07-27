@@ -66,7 +66,11 @@ FRONTEND_DIST = (
     _dist_candidate if (_dist_candidate / "index.html").exists() else None
 )
 STATIC_DIRECTORY = FRONTEND_DIST if FRONTEND_DIST else WEB_DIRECTORY
-app.mount("/static", StaticFiles(directory=STATIC_DIRECTORY), name="static")
+app.mount(
+    "/static",
+    StaticFiles(directory=STATIC_DIRECTORY, check_dir=False),
+    name="static",
+)
 
 configure_logging(settings.log_level, settings.json_logs)
 conversation_store = ConversationStore(
