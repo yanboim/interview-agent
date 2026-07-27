@@ -1,4 +1,5 @@
 .env
+.env.worktree
 .data/
 data/
 backups/

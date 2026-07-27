@@ -21,6 +21,7 @@ export const useInterviewsStore = defineStore("interviews", {
     starting: false,
     answering: false,
     lastAnswer: null as AnswerResult | null,
+    answerCommand: null as { answer: string; key: string } | null,
   }),
   actions: {
     async initForUser() {
@@ -34,6 +35,7 @@ export const useInterviewsStore = defineStore("interviews", {
       } else {
         this.active = null;
       }
+      this.answerCommand = null;
     },
 
     async loadHistory() {
@@ -60,6 +62,7 @@ export const useInterviewsStore = defineStore("interviews", {
           questionCount,
         });
         this.lastAnswer = null;
+        this.answerCommand = null;
         api.trackEvent(auth.userId, "interview.started", {
           interview_id: this.active.interview_id,
           topic,
@@ -76,14 +79,27 @@ export const useInterviewsStore = defineStore("interviews", {
       const auth = useAuthStore();
       this.active = await api.resumeInterview(auth.userId, interviewId);
       this.lastAnswer = null;
+      this.answerCommand = null;
     },
 
     async answer(answer: string): Promise<AnswerResult> {
       const auth = useAuthStore();
       if (!this.active) throw new Error("没有进行中的面试");
       this.answering = true;
+      if (!this.answerCommand || this.answerCommand.answer !== answer) {
+        this.answerCommand = {
+          answer,
+          key: globalThis.crypto.randomUUID(),
+        };
+      }
       try {
-        const result = await api.answerInterview(auth.userId, this.active.interview_id, answer);
+        const result = await api.answerInterview(
+          auth.userId,
+          this.active.interview_id,
+          answer,
+          this.answerCommand.key,
+        );
+        this.answerCommand = null;
         this.lastAnswer = result;
         if (result.next_question && this.active) {
           this.active.turn_index = result.turn_index + 1;

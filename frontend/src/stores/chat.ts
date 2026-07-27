@@ -37,6 +37,11 @@ export const useChatStore = defineStore("chat", {
     /** 最近一次发送完成的时间戳,用于通知外部(如侧边栏刷新会话列表)。 */
     lastSentAt: 0,
     lastErrorDetail: "",
+    chatCommand: null as {
+      sessionId: string;
+      message: string;
+      key: string;
+    } | null,
   }),
   getters: {
     hasMessages: (state) => state.messages.length > 0,
@@ -49,6 +54,7 @@ export const useChatStore = defineStore("chat", {
       this.sending = false;
       this.messages = loadCachedMessages(sessionId);
       this.lastErrorDetail = "";
+      this.chatCommand = null;
     },
 
     /** 从服务端加载某会话的完整历史(切换历史会话时调用)。 */
@@ -84,6 +90,26 @@ export const useChatStore = defineStore("chat", {
       const text = message.trim();
       if (!text || this.sending) return;
       const auth = useAuthStore();
+      const isRetry =
+        this.chatCommand?.sessionId === auth.sessionId
+        && this.chatCommand.message === text;
+      if (isRetry) {
+        const assistant = this.messages[this.messages.length - 1];
+        const user = this.messages[this.messages.length - 2];
+        if (
+          assistant?.role === "assistant"
+          && user?.role === "user"
+          && user.content === text
+        ) {
+          this.messages.splice(-2, 2);
+        }
+      } else {
+        this.chatCommand = {
+          sessionId: auth.sessionId,
+          message: text,
+          key: api.makeId("chat-turn"),
+        };
+      }
 
       this.messages.push({ role: "user", content: text });
       this.messages.push({ role: "assistant", content: "", pending: true });
@@ -113,7 +139,12 @@ export const useChatStore = defineStore("chat", {
 
       try {
         const answer = await api.streamChat(
-          { userId: auth.userId, sessionId: requestSessionId, message: text },
+          {
+            userId: auth.userId,
+            sessionId: requestSessionId,
+            message: text,
+            idempotencyKey: this.chatCommand!.key,
+          },
           (event) => {
             if (event.type === "token") {
               streamedContent += event.content || "";
@@ -133,6 +164,7 @@ export const useChatStore = defineStore("chat", {
         flushStream();
         const last = this.messages[this.messages.length - 1];
         if (this.streamRequestId === requestId && last?.role === "assistant") {
+          this.chatCommand = null;
           last.pending = false;
           if (!answer) last.content = "Agent 没有返回文本内容。";
           api.trackEvent(

@@ -4,14 +4,13 @@ from typing import Any
 from langchain.agents import create_agent
 from langchain.tools import tool
 from langchain_core.messages import HumanMessage
-from langchain_openai import ChatOpenAI
-
 from app.config import get_settings
 from app.interview_engine import (
     assess_answer as _assess_answer,
     generate_question as _generate_question,
 )
 from app.operations import request_metrics
+from app.model_gateway import PolicyChatOpenAI, create_chat_model
 from app.tools import (
     create_personal_learning_plan,
     get_learning_progress,
@@ -59,16 +58,19 @@ PLANNER_PROMPT = """你是 Planner Agent，负责跨场次能力画像与长期�
 工具。输出按优先级排列的学习主题、行动、复习节奏和可衡量完成标准。"""
 
 
-def _model(*, temperature: float = 0.3) -> ChatOpenAI:
+def _model(
+    *,
+    purpose: str,
+    temperature: float = 0.3,
+) -> PolicyChatOpenAI:
     settings = get_settings()
     if not settings.zhipu_api_key:
         raise RuntimeError("未配置 ZHIPU_API_KEY，无法启动多 Agent。")
-    return ChatOpenAI(
-        model=settings.zhipu_model,
-        api_key=settings.zhipu_api_key,
-        base_url=settings.zhipu_api_base,
+    return create_chat_model(
+        purpose,
         temperature=temperature,
         streaming=True,
+        settings=settings,
     )
 
 
@@ -112,7 +114,7 @@ def get_knowledge_agent() -> Any:
         tools.append(search_public_web)
     return create_agent(
         name="knowledge_agent",
-        model=_model(temperature=0.2),
+        model=_model(purpose="knowledge", temperature=0.2),
         tools=tools,
         system_prompt=KNOWLEDGE_PROMPT,
     )
@@ -122,7 +124,7 @@ def get_knowledge_agent() -> Any:
 def get_interviewer_agent() -> Any:
     return create_agent(
         name="interviewer_agent",
-        model=_model(temperature=0.6),
+        model=_model(purpose="interviewer", temperature=0.6),
         tools=[],
         system_prompt=INTERVIEWER_PROMPT,
     )
@@ -132,7 +134,7 @@ def get_interviewer_agent() -> Any:
 def get_evaluator_agent() -> Any:
     return create_agent(
         name="evaluator_agent",
-        model=_model(temperature=0.2),
+        model=_model(purpose="evaluator", temperature=0.2),
         tools=[],
         system_prompt=EVALUATOR_PROMPT,
     )
@@ -142,7 +144,7 @@ def get_evaluator_agent() -> Any:
 def get_planner_agent() -> Any:
     return create_agent(
         name="planner_agent",
-        model=_model(temperature=0.2),
+        model=_model(purpose="planner", temperature=0.2),
         tools=[get_learning_progress, create_personal_learning_plan],
         system_prompt=PLANNER_PROMPT,
     )
@@ -153,7 +155,6 @@ def _invoke(agent: Any, task: str, metric_name: str) -> str:
         result = agent.invoke(
             {"messages": [HumanMessage(content=task.strip())]},
         )
-    record_result_token_usage(result, metric_name.removeprefix("agent_"))
     return _last_message_text(result)
 
 
@@ -185,7 +186,7 @@ def planner_agent(task: str) -> str:
 def get_supervisor_agent() -> Any:
     return create_agent(
         name="interview_supervisor",
-        model=_model(temperature=0.2),
+        model=_model(purpose="supervisor", temperature=0.2),
         tools=[
             knowledge_agent,
             interviewer_agent,

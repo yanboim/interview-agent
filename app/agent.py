@@ -2,9 +2,8 @@ from functools import lru_cache
 from typing import Any
 
 from langchain.agents import create_agent
-from langchain_openai import ChatOpenAI
-
 from app.config import get_settings
+from app.model_gateway import create_chat_model
 from app.tools import (
     create_personal_learning_plan,
     get_learning_progress,
@@ -40,12 +39,11 @@ def get_single_interview_agent() -> Any:
     if not settings.zhipu_api_key:
         raise RuntimeError("未配置 ZHIPU_API_KEY，请先在 .env 中填写智谱 API Key。")
 
-    model = ChatOpenAI(
-        model=settings.zhipu_model,
-        api_key=settings.zhipu_api_key,
-        base_url=settings.zhipu_api_base,
+    model = create_chat_model(
+        "single_agent",
         temperature=0.7,
         streaming=True,
+        settings=settings,
     )
     tools = [
         search_interview_knowledge,

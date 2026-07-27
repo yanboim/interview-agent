@@ -3,8 +3,8 @@
 - Status: completed
 - Date: 2026-07-26
 - Owner: repository maintainers
-- Next action: schedule the isolated Vite/vue-tsc major-version upgrade tracked
-  as TD-011.
+- Follow-up: the isolated Vite/vue-tsc upgrade tracked as TD-011 was completed
+  on 2026-07-26.
 
 ## Objective
 
@@ -66,8 +66,9 @@ product review.
   boundary.
 - Valid credentials for the wrong surface are rejected before a token pair is
   issued.
-- Vite/vue-tsc major-version warnings remain developer-only tracked follow-up
-  and do not enter the production runtime image.
+- Vite/vue-tsc major-version warnings were isolated as developer-only debt and
+  subsequently resolved by TD-011; these packages do not enter the production
+  runtime image.
 
 ## Rollback
 

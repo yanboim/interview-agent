@@ -50,19 +50,26 @@ describe("streamChat", () => {
       '{"type":"sources","knowledge_used":true,"sources":[]}',
       '{"type":"done"}',
     ].join("\n");
-    vi.stubGlobal(
-      "fetch",
-      vi.fn().mockResolvedValue(new Response(body, { status: 200 })),
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(body, { status: 200 }),
     );
+    vi.stubGlobal("fetch", fetchMock);
     const events: string[] = [];
 
     const answer = await streamChat(
-      { userId: "user-1", sessionId: "session-1", message: "hello" },
+      {
+        userId: "user-1",
+        sessionId: "session-1",
+        message: "hello",
+        idempotencyKey: "chat-command-1",
+      },
       (event) => events.push(event.type),
     );
 
     expect(answer).toBe("Hello world");
     expect(events).toEqual(["token", "token", "sources", "done"]);
+    const [, options] = fetchMock.mock.calls[0];
+    expect(options.headers["Idempotency-Key"]).toBe("chat-command-1");
   });
 
   it("把服务端 error 事件转换为异常", async () => {
@@ -75,7 +82,12 @@ describe("streamChat", () => {
 
     await expect(
       streamChat(
-        { userId: "user-1", sessionId: "session-1", message: "hello" },
+        {
+          userId: "user-1",
+          sessionId: "session-1",
+          message: "hello",
+          idempotencyKey: "chat-command-1",
+        },
         () => undefined,
       ),
     ).rejects.toThrow("模型不可用");

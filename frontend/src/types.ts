@@ -57,7 +57,13 @@ export type StreamEvent =
   | { type: "token"; content: string }
   | { type: "sources"; knowledge_used: boolean; sources: ChatSource[] }
   | { type: "error"; detail: string }
-  | { type: "done" };
+  | {
+      type: "done";
+      user_id?: string;
+      session_id?: string;
+      turn_id?: string;
+      replayed?: boolean;
+    };
 
 export interface ConversationMeta {
   session_id: string;

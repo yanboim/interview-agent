@@ -10,6 +10,13 @@ class Settings(BaseSettings):
     zhipu_api_key: str = ""
     zhipu_api_base: str = "https://open.bigmodel.cn/api/coding/paas/v4"
     zhipu_model: str = "glm-5.2"
+    llm_timeout_seconds: float = 45.0
+    llm_max_retries: int = 2
+    llm_max_concurrency: int = 8
+    llm_input_char_budget: int = 60000
+    llm_max_output_tokens: int = 2000
+    chat_context_token_budget: int = 12000
+    chat_summary_token_budget: int = 2000
     multi_agent_enabled: bool = True
     zhipu_embedding_api_key: str = ""
     zhipu_embedding_api_base: str = "https://open.bigmodel.cn/api/paas/v4"
@@ -17,6 +24,8 @@ class Settings(BaseSettings):
     sparse_embedding_model: str = "Qdrant/bm25"
     qdrant_url: str = "http://localhost:6333"
     qdrant_collection: str = "interview_knowledge"
+    qdrant_collection_alias: str = "interview_knowledge_current"
+    knowledge_publish_lock_seconds: int = 3600
     conversation_db_path: Path = Path("data/interview-agent.db")
     database_url: str = ""
     auto_create_schema: bool = True
@@ -46,6 +55,10 @@ class Settings(BaseSettings):
     redis_url: str = ""
     redis_cache_ttl_seconds: int = 300
     redis_queue_name: str = "interview-agent:jobs"
+    job_lease_seconds: int = 900
+    job_max_attempts: int = 3
+    job_retry_base_seconds: int = 30
+    job_poll_seconds: float = 1.0
     log_level: str = "INFO"
     json_logs: bool = True
     otel_enabled: bool = False

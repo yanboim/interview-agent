@@ -7,9 +7,12 @@ from uuid import uuid4
 
 from sqlalchemy import create_engine, delete, event, func, insert, select, update
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import IntegrityError
 
+from app.chat_context import ContextMessage, plan_chat_context
 from app.database import (
     auth_tokens,
+    chat_turns,
     conversations,
     interview_answer_attempts,
     interview_turns,
@@ -63,11 +66,13 @@ class ConversationStore:
                 cursor = dbapi_connection.cursor()
                 cursor.execute("PRAGMA foreign_keys = ON")
                 cursor.close()
-        self._lock = threading.RLock()
+        # This lock only avoids duplicate local create_all work. Business
+        # transitions rely exclusively on database transactions/constraints.
+        self._initialization_lock = threading.Lock()
         self._initialized = False
 
     def initialize(self) -> None:
-        with self._lock:
+        with self._initialization_lock:
             if self._initialized:
                 return
             if self.auto_create_schema:
@@ -86,6 +91,7 @@ class ConversationStore:
             "users": users,
             "conversations": conversations,
             "messages": messages,
+            "chat_turns": chat_turns,
             "interviews": interviews,
             "interview_turns": interview_turns,
             "learning_tasks": learning_tasks,
@@ -202,14 +208,25 @@ class ConversationStore:
         self.initialize()
         now = datetime.now(UTC).isoformat()
         title = content.replace("\n", " ").strip()[:60] or "新会话"
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 update(conversations)
                 .where(
                     conversations.c.user_id == user_id,
                     conversations.c.session_id == session_id,
                 )
-                .values(updated_at=now)
+                .values(
+                    updated_at=now,
+                    **(
+                        {
+                            "next_chat_turn_index": (
+                                conversations.c.next_chat_turn_index + 1
+                            )
+                        }
+                        if role == "user"
+                        else {}
+                    ),
+                )
             )
             if result.rowcount == 0:
                 connection.execute(
@@ -218,6 +235,7 @@ class ConversationStore:
                         session_id=session_id,
                         title=title,
                         mode=mode,
+                        next_chat_turn_index=2 if role == "user" else 1,
                         created_at=now,
                         updated_at=now,
                     )
@@ -253,7 +271,7 @@ class ConversationStore:
             )
             .order_by(messages.c.id)
         )
-        with self._lock, self.engine.connect() as connection:
+        with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
         return [
             StoredMessage(
@@ -268,6 +286,400 @@ class ConversationStore:
             )
             for row in rows
         ]
+
+    def begin_chat_turn(
+        self,
+        *,
+        user_id: str,
+        session_id: str,
+        content: str,
+        idempotency_key: str,
+        request_digest: str,
+        turn_id: str,
+        claim_token: str,
+        context_token_budget: int,
+        summary_token_budget: int,
+    ) -> dict[str, object]:
+        """Claim the session before a chat model invocation."""
+        self.initialize()
+        now = datetime.now(UTC).isoformat()
+        title = content.replace("\n", " ").strip()[:60] or "新会话"
+
+        try:
+            with self.engine.begin() as connection:
+                exists = connection.execute(
+                    select(conversations.c.session_id).where(
+                        conversations.c.user_id == user_id,
+                        conversations.c.session_id == session_id,
+                    )
+                ).first()
+                if not exists:
+                    connection.execute(
+                        insert(conversations).values(
+                            user_id=user_id,
+                            session_id=session_id,
+                            title=title,
+                            mode="chat",
+                            next_chat_turn_index=1,
+                            created_at=now,
+                            updated_at=now,
+                        )
+                    )
+        except IntegrityError:
+            # Another replica created the same conversation first.
+            pass
+
+        with self.engine.begin() as connection:
+            existing = connection.execute(
+                select(chat_turns).where(
+                    chat_turns.c.user_id == user_id,
+                    chat_turns.c.session_id == session_id,
+                    chat_turns.c.idempotency_key == idempotency_key,
+                )
+            ).mappings().first()
+            if existing:
+                if existing["request_digest"] != request_digest:
+                    return {"outcome": "key_reused"}
+                status = str(existing["status"])
+                if status == "completed":
+                    return {
+                        "outcome": "completed",
+                        "turn_id": str(existing["turn_id"]),
+                        "answer": str(existing["assistant_content"] or ""),
+                        "metadata": (
+                            json.loads(str(existing["metadata_json"]))
+                            if existing["metadata_json"]
+                            else {}
+                        ),
+                    }
+                if status in {"pending", "generating"}:
+                    return {"outcome": "in_progress"}
+                if status not in {"failed", "cancelled"}:
+                    return {"outcome": "conflict"}
+
+                active = connection.execute(
+                    update(conversations)
+                    .where(
+                        conversations.c.user_id == user_id,
+                        conversations.c.session_id == session_id,
+                        conversations.c.active_chat_turn_id.is_(None),
+                    )
+                    .values(
+                        active_chat_turn_id=existing["turn_id"],
+                        updated_at=now,
+                    )
+                )
+                if active.rowcount != 1:
+                    return {"outcome": "conflict"}
+                claimed = connection.execute(
+                    update(chat_turns)
+                    .where(
+                        chat_turns.c.turn_id == existing["turn_id"],
+                        chat_turns.c.status.in_(("failed", "cancelled")),
+                        chat_turns.c.request_digest == request_digest,
+                    )
+                    .values(
+                        status="generating",
+                        claim_token=claim_token,
+                        assistant_content=None,
+                        metadata_json=None,
+                        error=None,
+                        updated_at=now,
+                    )
+                )
+                if claimed.rowcount != 1:
+                    raise ValueError("chat turn claim lost")
+                claimed_turn_id = str(existing["turn_id"])
+                turn_index = int(existing["turn_index"])
+            else:
+                activated = connection.execute(
+                    update(conversations)
+                    .where(
+                        conversations.c.user_id == user_id,
+                        conversations.c.session_id == session_id,
+                        conversations.c.active_chat_turn_id.is_(None),
+                    )
+                    .values(
+                        active_chat_turn_id=turn_id,
+                        next_chat_turn_index=(
+                            conversations.c.next_chat_turn_index + 1
+                        ),
+                        updated_at=now,
+                    )
+                )
+                if activated.rowcount != 1:
+                    return {"outcome": "conflict"}
+                next_index = connection.execute(
+                    select(conversations.c.next_chat_turn_index).where(
+                        conversations.c.user_id == user_id,
+                        conversations.c.session_id == session_id,
+                    )
+                ).scalar_one()
+                turn_index = int(next_index) - 1
+                connection.execute(
+                    insert(chat_turns).values(
+                        turn_id=turn_id,
+                        user_id=user_id,
+                        session_id=session_id,
+                        turn_index=turn_index,
+                        idempotency_key=idempotency_key,
+                        request_digest=request_digest,
+                        request_content=content,
+                        status="pending",
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+                claimed = connection.execute(
+                    update(chat_turns)
+                    .where(
+                        chat_turns.c.turn_id == turn_id,
+                        chat_turns.c.status == "pending",
+                    )
+                    .values(
+                        status="generating",
+                        claim_token=claim_token,
+                        updated_at=now,
+                    )
+                )
+                if claimed.rowcount != 1:
+                    raise ValueError("chat turn claim lost")
+                claimed_turn_id = turn_id
+
+            conversation = connection.execute(
+                select(
+                    conversations.c.chat_summary,
+                    conversations.c.chat_summary_through_message_id,
+                ).where(
+                    conversations.c.user_id == user_id,
+                    conversations.c.session_id == session_id,
+                )
+            ).mappings().one()
+            history = connection.execute(
+                select(messages.c.id, messages.c.role, messages.c.content)
+                .where(
+                    messages.c.user_id == user_id,
+                    messages.c.session_id == session_id,
+                    *(
+                        (
+                            messages.c.id
+                            > conversation[
+                                "chat_summary_through_message_id"
+                            ],
+                        )
+                        if conversation["chat_summary_through_message_id"]
+                        is not None
+                        else ()
+                    ),
+                )
+                .order_by(messages.c.id)
+            ).mappings().all()
+            context = plan_chat_context(
+                (
+                    ContextMessage(
+                        id=int(row["id"]),
+                        role=str(row["role"]),
+                        content=str(row["content"]),
+                    )
+                    for row in history
+                ),
+                current_content=content,
+                existing_summary=str(conversation["chat_summary"] or ""),
+                summary_through_message_id=(
+                    int(conversation["chat_summary_through_message_id"])
+                    if conversation["chat_summary_through_message_id"]
+                    is not None
+                    else None
+                ),
+                token_budget=context_token_budget,
+                summary_token_budget=summary_token_budget,
+            )
+            if (
+                context.summary_through_message_id
+                != conversation["chat_summary_through_message_id"]
+                or context.summary != str(conversation["chat_summary"] or "")
+            ):
+                connection.execute(
+                    update(conversations)
+                    .where(
+                        conversations.c.user_id == user_id,
+                        conversations.c.session_id == session_id,
+                    )
+                    .values(
+                        chat_summary=context.summary,
+                        chat_summary_through_message_id=(
+                            context.summary_through_message_id
+                        ),
+                        updated_at=now,
+                    )
+                )
+            return {
+                "outcome": "claimed",
+                "turn_id": claimed_turn_id,
+                "turn_index": turn_index,
+                "claim_token": claim_token,
+                "history": list(context.history),
+                "context_estimated_tokens": context.estimated_tokens,
+                "context_truncated_messages": context.truncated_messages,
+            }
+
+    def complete_chat_turn(
+        self,
+        *,
+        user_id: str,
+        session_id: str,
+        turn_id: str,
+        claim_token: str,
+        answer: str,
+        metadata: dict[str, object],
+    ) -> None:
+        self.initialize()
+        now = datetime.now(UTC).isoformat()
+        metadata_json = (
+            json.dumps(metadata, ensure_ascii=False)
+            if metadata
+            else None
+        )
+        with self.engine.begin() as connection:
+            turn = connection.execute(
+                select(
+                    chat_turns.c.request_content,
+                    chat_turns.c.turn_index,
+                ).where(
+                    chat_turns.c.turn_id == turn_id,
+                    chat_turns.c.user_id == user_id,
+                    chat_turns.c.session_id == session_id,
+                    chat_turns.c.status == "generating",
+                    chat_turns.c.claim_token == claim_token,
+                )
+            ).mappings().first()
+            if not turn:
+                raise ValueError("chat turn claim lost")
+
+            completed = connection.execute(
+                update(chat_turns)
+                .where(
+                    chat_turns.c.turn_id == turn_id,
+                    chat_turns.c.status == "generating",
+                    chat_turns.c.claim_token == claim_token,
+                )
+                .values(
+                    status="completed",
+                    claim_token=None,
+                    assistant_content=answer,
+                    metadata_json=metadata_json,
+                    error=None,
+                    updated_at=now,
+                )
+            )
+            if completed.rowcount != 1:
+                raise ValueError("chat turn claim lost")
+            connection.execute(
+                insert(messages),
+                [
+                    {
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "role": "user",
+                        "content": str(turn["request_content"]),
+                        "metadata_json": None,
+                        "created_at": now,
+                    },
+                    {
+                        "user_id": user_id,
+                        "session_id": session_id,
+                        "role": "assistant",
+                        "content": answer,
+                        "metadata_json": metadata_json,
+                        "created_at": now,
+                    },
+                ],
+            )
+            released = connection.execute(
+                update(conversations)
+                .where(
+                    conversations.c.user_id == user_id,
+                    conversations.c.session_id == session_id,
+                    conversations.c.active_chat_turn_id == turn_id,
+                )
+                .values(active_chat_turn_id=None, updated_at=now)
+            )
+            if released.rowcount != 1:
+                raise ValueError("chat session ownership lost")
+
+    def terminate_chat_turn(
+        self,
+        *,
+        turn_id: str,
+        claim_token: str,
+        status: str,
+        partial_answer: str,
+        error: str,
+    ) -> bool:
+        if status not in {"failed", "cancelled"}:
+            raise ValueError("invalid terminal chat status")
+        self.initialize()
+        now = datetime.now(UTC).isoformat()
+        with self.engine.begin() as connection:
+            turn = connection.execute(
+                select(
+                    chat_turns.c.user_id,
+                    chat_turns.c.session_id,
+                ).where(
+                    chat_turns.c.turn_id == turn_id,
+                    chat_turns.c.status == "generating",
+                    chat_turns.c.claim_token == claim_token,
+                )
+            ).mappings().first()
+            if not turn:
+                return False
+            changed = connection.execute(
+                update(chat_turns)
+                .where(
+                    chat_turns.c.turn_id == turn_id,
+                    chat_turns.c.status == "generating",
+                    chat_turns.c.claim_token == claim_token,
+                )
+                .values(
+                    status=status,
+                    claim_token=None,
+                    assistant_content=partial_answer,
+                    error=error[:1000],
+                    updated_at=now,
+                )
+            )
+            if changed.rowcount != 1:
+                return False
+            released = connection.execute(
+                update(conversations)
+                .where(
+                    conversations.c.user_id == turn["user_id"],
+                    conversations.c.session_id == turn["session_id"],
+                    conversations.c.active_chat_turn_id == turn_id,
+                )
+                .values(active_chat_turn_id=None, updated_at=now)
+            )
+            if released.rowcount != 1:
+                raise ValueError("chat session ownership lost")
+        return True
+
+    def get_chat_turn(
+        self,
+        *,
+        user_id: str,
+        session_id: str,
+        turn_id: str,
+    ) -> dict[str, object] | None:
+        self.initialize()
+        with self.engine.connect() as connection:
+            row = connection.execute(
+                select(chat_turns).where(
+                    chat_turns.c.user_id == user_id,
+                    chat_turns.c.session_id == session_id,
+                    chat_turns.c.turn_id == turn_id,
+                )
+            ).mappings().first()
+        return dict(row) if row else None
 
     def list_conversations(
         self,
@@ -290,7 +702,7 @@ class ConversationStore:
         )
         if not include_archived:
             statement = statement.where(conversations.c.archived_at.is_(None))
-        with self._lock, self.engine.connect() as connection:
+        with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
         return [
             {
@@ -311,7 +723,7 @@ class ConversationStore:
         if not session_ids:
             return 0
         now = datetime.now(UTC).isoformat()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 update(conversations)
                 .where(
@@ -327,7 +739,7 @@ class ConversationStore:
 
     def delete_conversation(self, *, user_id: str, session_id: str) -> bool:
         self.initialize()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 delete(conversations).where(
                     conversations.c.user_id == user_id,
@@ -345,7 +757,7 @@ class ConversationStore:
     ) -> dict[str, str] | None:
         self.initialize()
         now = datetime.now(UTC).isoformat()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 update(conversations)
                 .where(
@@ -386,7 +798,7 @@ class ConversationStore:
     ) -> None:
         self.initialize()
         now = datetime.now(UTC).isoformat()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             connection.execute(
                 insert(interviews).values(
                     user_id=user_id,
@@ -421,7 +833,7 @@ class ConversationStore:
             interviews.c.user_id == user_id,
             interviews.c.interview_id == interview_id,
         )
-        with self._lock, self.engine.connect() as connection:
+        with self.engine.connect() as connection:
             row = connection.execute(statement).mappings().first()
         return dict(row) if row else None
 
@@ -472,7 +884,7 @@ class ConversationStore:
         )
         if not include_archived:
             statement = statement.where(interviews.c.archived_at.is_(None))
-        with self._lock, self.engine.connect() as connection:
+        with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
         result = []
         for row in rows:
@@ -497,7 +909,7 @@ class ConversationStore:
     ) -> bool:
         self.initialize()
         now = datetime.now(UTC).isoformat()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 update(interviews)
                 .where(
@@ -518,7 +930,7 @@ class ConversationStore:
         interview_id: str,
     ) -> bool:
         self.initialize()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 delete(interviews).where(
                     interviews.c.user_id == user_id,
@@ -554,7 +966,7 @@ class ConversationStore:
             )
             .order_by(interview_turns.c.turn_index)
         )
-        with self._lock, self.engine.connect() as connection:
+        with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
         return [dict(row) for row in rows]
 
@@ -586,7 +998,7 @@ class ConversationStore:
             "job_description": job_description,
             "updated_at": now,
         }
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 update(user_profiles)
                 .where(user_profiles.c.user_id == user_id)
@@ -621,7 +1033,7 @@ class ConversationStore:
             "reminder_timezone": timezone,
             "updated_at": now,
         }
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 update(user_profiles)
                 .where(user_profiles.c.user_id == user_id)
@@ -653,7 +1065,7 @@ class ConversationStore:
         properties: dict[str, object],
     ) -> None:
         self.initialize()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             connection.execute(
                 insert(product_events).values(
                     event_id=str(uuid4()),
@@ -725,7 +1137,7 @@ class ConversationStore:
                 interview_turns.c.turn_index,
             )
         )
-        with self._lock, self.engine.connect() as connection:
+        with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
         return [dict(row) for row in rows]
 
@@ -739,7 +1151,7 @@ class ConversationStore:
         self.initialize()
         now = datetime.now(UTC)
         now_iso = now.isoformat()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             for candidate in candidates:
                 existing = connection.execute(
                     select(learning_tasks.c.task_id).where(
@@ -788,7 +1200,7 @@ class ConversationStore:
             learning_tasks.c.due_at,
             learning_tasks.c.created_at.desc(),
         )
-        with self._lock, self.engine.connect() as connection:
+        with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
         return [dict(row) for row in rows]
 
@@ -808,7 +1220,7 @@ class ConversationStore:
             values["status"] = status
         if due_at is not None:
             values["due_at"] = due_at
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 update(learning_tasks)
                 .where(
@@ -837,7 +1249,7 @@ class ConversationStore:
 
         self.initialize()
         now = datetime.now(UTC)
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             current = connection.execute(
                 select(
                     learning_tasks.c.review_count,
@@ -886,7 +1298,7 @@ class ConversationStore:
         task_id: str,
     ) -> bool:
         self.initialize()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             result = connection.execute(
                 delete(learning_tasks).where(
                     learning_tasks.c.user_id == user_id,
@@ -907,7 +1319,7 @@ class ConversationStore:
         result_summary: str | None,
     ) -> None:
         self.initialize()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             connection.execute(
                 insert(tool_audit_logs).values(
                     audit_id=str(uuid4()),
@@ -958,7 +1370,7 @@ class ConversationStore:
     ) -> str:
         self.initialize()
         now = datetime.now(UTC).isoformat()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             interview = connection.execute(
                 select(interviews.c.total_questions).where(
                     interviews.c.user_id == user_id,
@@ -983,6 +1395,7 @@ class ConversationStore:
                     strengths_json=strengths_json,
                     weaknesses_json=weaknesses_json,
                     reference_answer=reference_answer,
+                    submission_status="completed",
                     updated_at=now,
                 )
             )
@@ -1024,6 +1437,281 @@ class ConversationStore:
             )
         return status
 
+    def claim_interview_answer(
+        self,
+        *,
+        user_id: str,
+        interview_id: str,
+        idempotency_key: str,
+        answer_digest: str,
+        claim_token: str,
+    ) -> dict[str, object]:
+        """Atomically claim the one pending turn before any model call."""
+        self.initialize()
+        now = datetime.now(UTC).isoformat()
+        with self.engine.begin() as connection:
+            interview = connection.execute(
+                select(interviews).where(
+                    interviews.c.user_id == user_id,
+                    interviews.c.interview_id == interview_id,
+                )
+            ).mappings().first()
+            if not interview:
+                return {"outcome": "not_found"}
+            if interview["archived_at"]:
+                return {"outcome": "archived"}
+
+            existing = connection.execute(
+                select(interview_turns).where(
+                    interview_turns.c.user_id == user_id,
+                    interview_turns.c.interview_id == interview_id,
+                    interview_turns.c.idempotency_key == idempotency_key,
+                )
+            ).mappings().first()
+            if existing:
+                if existing["answer_digest"] != answer_digest:
+                    return {"outcome": "key_reused"}
+                if existing["submission_status"] == "completed":
+                    return {
+                        "outcome": "completed",
+                        "result": json.loads(str(existing["result_json"])),
+                    }
+                if existing["submission_status"] == "generating":
+                    return {"outcome": "in_progress"}
+                if existing["submission_status"] != "failed":
+                    return {"outcome": "conflict"}
+                candidate_id = int(existing["id"])
+                claim_result = connection.execute(
+                    update(interview_turns)
+                    .where(
+                        interview_turns.c.id == candidate_id,
+                        interview_turns.c.submission_status == "failed",
+                        interview_turns.c.idempotency_key == idempotency_key,
+                        interview_turns.c.answer_digest == answer_digest,
+                    )
+                    .values(
+                        submission_status="generating",
+                        claim_token=claim_token,
+                        submission_error=None,
+                        processing_started_at=now,
+                        updated_at=now,
+                    )
+                )
+            else:
+                candidate = connection.execute(
+                    select(interview_turns)
+                    .where(
+                        interview_turns.c.user_id == user_id,
+                        interview_turns.c.interview_id == interview_id,
+                        interview_turns.c.answer.is_(None),
+                        interview_turns.c.submission_status == "pending",
+                    )
+                    .order_by(interview_turns.c.turn_index)
+                    .limit(1)
+                ).mappings().first()
+                if not candidate:
+                    busy = connection.execute(
+                        select(interview_turns.c.id).where(
+                            interview_turns.c.user_id == user_id,
+                            interview_turns.c.interview_id == interview_id,
+                            interview_turns.c.answer.is_(None),
+                            interview_turns.c.submission_status.in_(
+                                ("generating", "failed")
+                            ),
+                        )
+                    ).first()
+                    return {
+                        "outcome": "conflict" if busy else "no_pending"
+                    }
+                candidate_id = int(candidate["id"])
+                claim_result = connection.execute(
+                    update(interview_turns)
+                    .where(
+                        interview_turns.c.id == candidate_id,
+                        interview_turns.c.answer.is_(None),
+                        interview_turns.c.submission_status == "pending",
+                        interview_turns.c.idempotency_key.is_(None),
+                    )
+                    .values(
+                        submission_status="generating",
+                        idempotency_key=idempotency_key,
+                        answer_digest=answer_digest,
+                        claim_token=claim_token,
+                        submission_error=None,
+                        processing_started_at=now,
+                        updated_at=now,
+                    )
+                )
+
+            if not claim_result.rowcount:
+                replay = connection.execute(
+                    select(
+                        interview_turns.c.submission_status,
+                        interview_turns.c.answer_digest,
+                        interview_turns.c.result_json,
+                    ).where(
+                        interview_turns.c.user_id == user_id,
+                        interview_turns.c.interview_id == interview_id,
+                        interview_turns.c.idempotency_key == idempotency_key,
+                    )
+                ).mappings().first()
+                if replay and replay["answer_digest"] != answer_digest:
+                    return {"outcome": "key_reused"}
+                if replay and replay["submission_status"] == "completed":
+                    return {
+                        "outcome": "completed",
+                        "result": json.loads(str(replay["result_json"])),
+                    }
+                return {"outcome": "in_progress" if replay else "conflict"}
+
+            turn = connection.execute(
+                select(interview_turns).where(
+                    interview_turns.c.id == candidate_id
+                )
+            ).mappings().one()
+            turns = connection.execute(
+                select(interview_turns)
+                .where(
+                    interview_turns.c.user_id == user_id,
+                    interview_turns.c.interview_id == interview_id,
+                )
+                .order_by(interview_turns.c.turn_index)
+            ).mappings().all()
+            return {
+                "outcome": "claimed",
+                "interview": dict(interview),
+                "turn": dict(turn),
+                "turns": [dict(row) for row in turns],
+            }
+
+    def fail_interview_answer(
+        self,
+        *,
+        turn_id: int,
+        claim_token: str,
+        error: str,
+    ) -> bool:
+        self.initialize()
+        now = datetime.now(UTC).isoformat()
+        with self.engine.begin() as connection:
+            result = connection.execute(
+                update(interview_turns)
+                .where(
+                    interview_turns.c.id == turn_id,
+                    interview_turns.c.submission_status == "generating",
+                    interview_turns.c.claim_token == claim_token,
+                )
+                .values(
+                    submission_status="failed",
+                    claim_token=None,
+                    submission_error=error[:1000],
+                    updated_at=now,
+                )
+            )
+        return bool(result.rowcount)
+
+    def complete_interview_answer(
+        self,
+        *,
+        turn_id: int,
+        claim_token: str,
+        user_id: str,
+        interview_id: str,
+        turn_index: int,
+        answer: str,
+        score: float,
+        feedback: str,
+        dimensions_json: str,
+        strengths_json: str,
+        weaknesses_json: str,
+        reference_answer: str | None,
+        next_question: str | None,
+        response: dict[str, object],
+    ) -> str:
+        """Commit the answer and successor only when the caller owns the claim."""
+        self.initialize()
+        now = datetime.now(UTC).isoformat()
+        with self.engine.begin() as connection:
+            interview = connection.execute(
+                select(interviews.c.total_questions).where(
+                    interviews.c.user_id == user_id,
+                    interviews.c.interview_id == interview_id,
+                )
+            ).mappings().first()
+            if not interview:
+                raise KeyError("interview not found")
+
+            result = connection.execute(
+                update(interview_turns)
+                .where(
+                    interview_turns.c.id == turn_id,
+                    interview_turns.c.user_id == user_id,
+                    interview_turns.c.interview_id == interview_id,
+                    interview_turns.c.turn_index == turn_index,
+                    interview_turns.c.submission_status == "generating",
+                    interview_turns.c.claim_token == claim_token,
+                )
+                .values(
+                    answer=answer,
+                    score=score,
+                    feedback=feedback,
+                    dimensions_json=dimensions_json,
+                    strengths_json=strengths_json,
+                    weaknesses_json=weaknesses_json,
+                    reference_answer=reference_answer,
+                    submission_status="completed",
+                    claim_token=None,
+                    result_json=json.dumps(
+                        response,
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
+                    submission_error=None,
+                    updated_at=now,
+                )
+            )
+            if result.rowcount != 1:
+                raise ValueError("interview answer claim lost")
+
+            self._insert_interview_answer_attempt(
+                connection,
+                user_id=user_id,
+                interview_id=interview_id,
+                turn_index=turn_index,
+                answer=answer,
+                score=score,
+                feedback=feedback,
+                dimensions_json=dimensions_json,
+                strengths_json=strengths_json,
+                weaknesses_json=weaknesses_json,
+                reference_answer=reference_answer,
+                created_at=now,
+            )
+
+            status = "completed"
+            if next_question and turn_index < int(interview["total_questions"]):
+                connection.execute(
+                    insert(interview_turns).values(
+                        user_id=user_id,
+                        interview_id=interview_id,
+                        turn_index=turn_index + 1,
+                        question=next_question,
+                        submission_status="pending",
+                        created_at=now,
+                        updated_at=now,
+                    )
+                )
+                status = "active"
+            connection.execute(
+                update(interviews)
+                .where(
+                    interviews.c.user_id == user_id,
+                    interviews.c.interview_id == interview_id,
+                )
+                .values(status=status, updated_at=now)
+            )
+        return status
+
     def retry_interview_answer(
         self,
         *,
@@ -1040,7 +1728,7 @@ class ConversationStore:
     ) -> dict[str, object]:
         self.initialize()
         now = datetime.now(UTC).isoformat()
-        with self._lock, self.engine.begin() as connection:
+        with self.engine.begin() as connection:
             previous = connection.execute(
                 select(
                     interview_turns.c.answer,
@@ -1125,7 +1813,7 @@ class ConversationStore:
             interview_answer_attempts.c.turn_index,
             interview_answer_attempts.c.attempt_index,
         )
-        with self._lock, self.engine.connect() as connection:
+        with self.engine.connect() as connection:
             rows = connection.execute(statement).mappings().all()
         return [dict(row) for row in rows]
 

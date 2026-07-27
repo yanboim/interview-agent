@@ -44,7 +44,10 @@ export async function deleteKnowledgeFile(filename: string): Promise<void> {
 }
 
 export async function enqueueKnowledgeImport(): Promise<{ job_id: string }> {
-  const response = await adminFetch("/api/admin/jobs/knowledge-import", { method: "POST" });
+  const response = await adminFetch("/api/admin/jobs/knowledge-import", {
+    method: "POST",
+    headers: { "Idempotency-Key": crypto.randomUUID() },
+  });
   await expectAdminOk(response);
   return response.json();
 }
