@@ -1,5 +1,5 @@
 # ---------- 阶段 1:前端构建 ----------
-FROM node:20.19-slim@sha256:2b082e775b783759418ee22c67644b5fe4a1660138f99b27c0f44b3c5818ed70 AS frontend-build
+FROM node:26.5-slim@sha256:715e55e4b84e4bb0ff48e49b398a848f08e55daed8eb6a0ea1839ae53bc57583 AS frontend-build
 
 WORKDIR /frontend
 COPY frontend/package.json frontend/package-lock.json ./
