@@ -97,7 +97,10 @@ watch(
 
 onMounted(async () => {
   await auth.initialize();
-  startClientObservability(() => auth.userId);
+  startClientObservability(
+    () => auth.userId,
+    () => !auth.authRequired || auth.isAuthenticated,
+  );
   const sessionId = route.params.sessionId;
   if (typeof sessionId === "string" && sessionId && sessionId !== auth.sessionId) {
     auth.sessionId = sessionId;
