@@ -32,7 +32,10 @@ jobs:
         run: make harness-static PYTHON=python
       - run: python -m compileall -q app scripts migrations
       - run: pytest -q
-      - run: alembic upgrade head
+      - name: Validate migrations on a fresh database
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: sqlite:///${{ runner.temp }}/migration.db
 
   frontend:
     runs-on: ubuntu-latest
