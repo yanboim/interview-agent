@@ -1,3 +1,5 @@
+import base64
+import binascii
 import re
 from datetime import datetime
 from pathlib import Path
@@ -247,6 +249,39 @@ class ReminderPreferencesRequest(UserIdentityRequest):
     enabled: bool
     reminder_time: str = Field(pattern=r"^(?:[01]\d|2[0-3]):[0-5]\d$")
     timezone: str = Field(min_length=1, max_length=64)
+
+
+class ProfileAvatarRequest(UserIdentityRequest):
+    avatar_data_url: str | None = Field(default=None, max_length=700_000)
+
+    @field_validator("avatar_data_url")
+    @classmethod
+    def validate_avatar_data_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        match = re.fullmatch(
+            r"data:(image/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})",
+            value,
+        )
+        if not match:
+            raise ValueError("头像仅支持 JPEG、PNG 或 WebP 图片")
+        try:
+            raw = base64.b64decode(match.group(2), validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("头像图片编码无效") from exc
+        if not raw or len(raw) > 512_000:
+            raise ValueError("头像图片不能超过 500 KB")
+        mime = match.group(1)
+        signatures = {
+            "image/jpeg": raw.startswith(b"\xff\xd8\xff"),
+            "image/png": raw.startswith(b"\x89PNG\r\n\x1a\n"),
+            "image/webp": raw.startswith(b"RIFF")
+            and len(raw) >= 12
+            and raw[8:12] == b"WEBP",
+        }
+        if not signatures[mime]:
+            raise ValueError("头像图片内容与格式不匹配")
+        return value
 
 
 class AdminUserRoleRequest(BaseModel):

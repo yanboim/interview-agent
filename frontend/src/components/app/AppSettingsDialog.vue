@@ -9,6 +9,7 @@ import {
   fetchReminderPreferences,
   regenerateRecoveryCode,
   saveReminderPreferences,
+  updateProfileAvatar,
 } from "@/api/client";
 
 const emit = defineEmits<{ (e: "close"): void }>();
@@ -26,6 +27,9 @@ const newPassword = ref("");
 const passwordChanging = ref(false);
 const recoveryCode = ref("");
 const recoveryCodeLoading = ref(false);
+const avatarInput = ref<HTMLInputElement | null>(null);
+const avatarPreview = ref(auth.avatarDataUrl);
+const avatarDirty = ref(false);
 const goal = ref<InterviewGoal>({
   targetRole: auth.interviewGoal?.targetRole || "",
   experienceLevel: auth.interviewGoal?.experienceLevel || "高级",
@@ -44,6 +48,13 @@ async function save() {
         jobDescription: goal.value.jobDescription.trim(),
       });
     }
+    if (avatarDirty.value) {
+      const savedAvatar = await updateProfileAvatar(
+        auth.userId,
+        avatarPreview.value || null,
+      );
+      auth.setAvatar(savedAvatar);
+    }
     await saveReminderPreferences(auth.userId, {
       enabled: reminderEnabled.value,
       reminder_time: reminderTime.value,
@@ -61,6 +72,75 @@ async function save() {
   } catch (error) {
     toast.show(error instanceof Error ? error.message : "设置保存失败", "error");
   }
+}
+
+function loadAvatarImage(source: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error("无法读取头像图片"));
+    image.src = source;
+  });
+}
+
+function readAvatarFile(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === "string") resolve(reader.result);
+      else reject(new Error("无法读取头像图片"));
+    };
+    reader.onerror = () => reject(new Error("无法读取头像图片"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function chooseAvatar(event: Event) {
+  const input = event.currentTarget as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) {
+    toast.show("头像仅支持 JPEG、PNG 或 WebP 图片", "error");
+    input.value = "";
+    return;
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.show("原始头像图片不能超过 5 MB", "error");
+    input.value = "";
+    return;
+  }
+  try {
+    const image = await loadAvatarImage(await readAvatarFile(file));
+    const size = Math.min(image.naturalWidth, image.naturalHeight);
+    if (!size) throw new Error("头像图片尺寸无效");
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("当前浏览器无法处理头像图片");
+    context.drawImage(
+      image,
+      (image.naturalWidth - size) / 2,
+      (image.naturalHeight - size) / 2,
+      size,
+      size,
+      0,
+      0,
+      256,
+      256,
+    );
+    avatarPreview.value = canvas.toDataURL("image/webp", 0.84);
+    avatarDirty.value = true;
+  } catch (error) {
+    toast.show(error instanceof Error ? error.message : "头像处理失败", "error");
+  } finally {
+    input.value = "";
+  }
+}
+
+function removeAvatar() {
+  avatarPreview.value = "";
+  avatarDirty.value = true;
 }
 
 async function submitPasswordChange() {
@@ -130,6 +210,39 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
         </button>
       </div>
       <form class="interview-form" @submit.prevent="save">
+        <section class="avatar-settings" aria-labelledby="avatar-settings-title">
+          <div class="avatar-preview" aria-hidden="true">
+            <img v-if="avatarPreview" :src="avatarPreview" alt="" />
+            <span v-else>
+              {{ auth.username ? Array.from(auth.username).slice(0, 2).join("").toUpperCase() : "ME" }}
+            </span>
+          </div>
+          <div class="avatar-settings-copy">
+            <strong id="avatar-settings-title">个人头像</strong>
+            <small>上传后会自动裁成方形，并在账号设备间同步。</small>
+            <div class="avatar-settings-actions">
+              <button class="text-action" type="button" @click="avatarInput?.click()">
+                {{ avatarPreview ? "更换头像" : "上传头像" }}
+              </button>
+              <button
+                v-if="avatarPreview"
+                class="text-action avatar-remove"
+                type="button"
+                @click="removeAvatar"
+              >
+                移除
+              </button>
+            </div>
+            <input
+              ref="avatarInput"
+              class="visually-hidden"
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              aria-label="选择头像图片"
+              @change="chooseAvatar"
+            />
+          </div>
+        </section>
         <label>
           目标岗位
           <input ref="firstInput" v-model="goal.targetRole" maxlength="100" />
@@ -161,9 +274,12 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
         </label>
         <fieldset class="settings-section">
           <legend>训练提醒</legend>
-          <label class="inline-check">
+          <label class="reminder-switch">
             <input v-model="reminderEnabled" type="checkbox" />
-            开启每日到期复习提醒
+            <span class="reminder-switch-track" aria-hidden="true">
+              <span></span>
+            </span>
+            <span>开启每日到期复习提醒</span>
           </label>
           <label v-if="reminderEnabled">
             提醒时间

@@ -176,9 +176,10 @@
   text-decoration: none;
 }
 .sidebar-footer {
-  display: flex;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   margin-top: 17px;
   padding: 14px 5px 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -186,24 +187,44 @@
 }
 .avatar {
   display: grid;
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   place-items: center;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
   border-radius: 50%;
   color: #163134;
   background: var(--lime);
+  cursor: pointer;
   font-size: var(--fs-xs);
   font-weight: 800;
+  line-height: 1;
+  text-align: center;
+}
+.avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.avatar:hover {
+  box-shadow: 0 0 0 3px rgba(216, 239, 114, 0.18);
+}
+.sidebar-account-copy {
+  min-width: 0;
 }
 .sidebar-footer strong,
 .sidebar-footer span {
   display: block;
 }
 .sidebar-footer strong {
+  overflow: hidden;
   font-size: var(--fs-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.sidebar-footer div span {
-  max-width: 150px;
+.sidebar-account-copy span {
   margin-top: 2px;
   overflow: hidden;
   color: var(--sidebar-muted);
@@ -211,9 +232,13 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.sidebar-account-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
 .logout-button {
-  margin-left: auto;
-  padding: 8px 10px;
+  padding: 8px 9px;
   min-height: 32px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;

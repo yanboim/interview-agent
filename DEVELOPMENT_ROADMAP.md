@@ -1,5 +1,9 @@
 # AI 面试教练后续开发路线图
 
+> 历史状态：本文记录2026-07基础能力建设路线，所列任务已经完成，不再作为当前
+> 产品路线图或实现事实来源。当前产品范围见 `docs/product/PRD.md`，当前行为见
+> `docs/product-specs/feature-contract.json`。
+
 ## 当前进度
 
 - [x] T1：SQLite / PostgreSQL 双兼容存储

@@ -1,50 +1,64 @@
-# Repository documentation
+# Interview Agent 文档中心
 
-This directory is the maintained knowledge base for Interview Agent. Start with
-the task-oriented links below instead of reading every document.
+本目录覆盖从产品发现、原型、架构、开发、验证、发布到运行和复盘的完整生命周期。
 
-## Start here
+## 按角色进入
 
-| Need | Read |
+| 角色/任务 | 建议入口 |
 |---|---|
-| Understand the product and run it locally | [Root README](../README.md) |
-| Understand module and dependency boundaries | [Architecture](../ARCHITECTURE.md) |
-| Set up a development environment and make a change | [Development guide](development.md) |
-| Choose and run the right verification | [Testing guide](testing.md) |
-| Check machine-verifiable product behavior | [Feature contract](product-specs/README.md) |
-| Deploy, diagnose, back up, or recover the service | [Reliability and operations](reliability/README.md) |
-| Review authentication, authorization, data, or secrets | [Security model](security/README.md) |
-| Propose a durable architecture decision | [Design documents](design-docs/README.md) |
-| Plan a non-trivial implementation | [Execution plans](exec-plans/README.md) |
-| Check known structural limitations | [Technical-debt tracker](tech-debt-tracker.md) |
-| Update or add documentation | [Documentation guide](documentation-guide.md) |
+| 产品负责人 | [产品愿景与PRD](product/README.md) |
+| 产品/交互设计 | [信息架构、流程和原型](ux/README.md) |
+| 架构师/后端开发 | [系统架构](architecture/README.md) |
+| 前端/后端贡献者 | [开发指南](development.md)与[SDLC](sdlc/README.md) |
+| 测试与质量 | [质量体系](quality/README.md) |
+| 发布负责人 | [发布流程](release/README.md) |
+| 运维与事故响应 | [运维手册](operations/README.md) |
+| 安全与隐私评审 | [安全模型](security/README.md) |
+| 项目负责人 | [项目治理](project/README.md) |
+| Coding Agent | [AGENTS.md](../AGENTS.md) |
 
-`AGENTS.md` is the concise entry map for coding agents. It points to this
-knowledge base and defines mandatory repository gates.
+## 文档体系
 
-## Information architecture
+```text
+docs/
+├── product/         产品愿景、PRD、用户、功能与非功能需求
+├── ux/              信息架构、用户流程、页面、原型和交互状态
+├── product-specs/   机器可读功能契约
+├── architecture/    系统、组件、领域、数据、Agent、RAG和API架构
+├── design-docs/     持久技术决策与替代方案
+├── sdlc/            开发流程、DoR、DoD和评审
+├── exec-plans/      活动与已完成实施计划
+├── quality/         测试策略、验收矩阵和质量门禁
+├── release/         发布、部署、回滚和环境
+├── reliability/     可靠性行为总览
+├── operations/      日常运维、事故、备份和灾备
+├── security/        信任边界、威胁、数据分级和隐私
+├── project/         计划、风险、决策、责任和状态报告
+├── generated/       只存放可复现生成的参考
+└── tech-debt-tracker.md
+```
 
-- `product-specs/`: machine-readable behavior and acceptance contracts.
-- `design-docs/`: durable architectural decisions and design proposals.
-- `exec-plans/`: active and completed implementation plans.
-- `reliability/`: dependency behavior, operations, recovery, and runbooks.
-- `security/`: trust boundaries, data handling, and security controls.
-- `generated/`: reproducible references generated from code or schemas.
-- `tech-debt-tracker.md`: prioritized architectural debt.
+## 事实来源
 
-The root [README](../README.md) remains the product overview and operator quick
-start. Detailed procedures belong here and should be linked from the root
-README rather than duplicated.
+发生冲突时使用以下优先级：
 
-## Authority and freshness
+1. 可执行测试和数据库约束；
+2. `product-specs/feature-contract.json`；
+3. `ARCHITECTURE.md` 和已接受设计文档；
+4. 产品、开发、发布和运行指南；
+5. 历史路线图、完成报告和执行记录。
 
-When sources disagree, use this order:
+## 历史材料
 
-1. executable tests and database constraints;
-2. `product-specs/feature-contract.json`;
-3. `ARCHITECTURE.md` and accepted design documents;
-4. operational and development guides;
-5. historical plans, roadmaps, and evaluation reports.
+- [`DEVELOPMENT_ROADMAP.md`](../DEVELOPMENT_ROADMAP.md)：2026-07早期基础能力路线图；
+- [`P0_P2_COMPLETION.md`](../P0_P2_COMPLETION.md)：2026-07-25产品体验验收记录；
+- [`plan.md`](../plan.md)：项目早期构想和演进背景。
 
-The update triggers, ownership rules, and lifecycle for each document type are
-defined in the [documentation guide](documentation-guide.md).
+历史材料不作为当前行为或架构规范。当前行为以功能契约和测试为准。
+
+文档职责、更新触发和评审规则见
+[文档维护规范](documentation-guide.md)。
+
+完整生命周期必需文件由
+[`document-manifest.json`](document-manifest.json)机器校验；API、配置和数据字典
+由[`generated/`](generated/README.md)从源码生成。

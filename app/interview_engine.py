@@ -118,7 +118,9 @@ def assess_answer(
                     '"depth":7,"communication":8,"practicality":7},'
                     '"strengths":["..."],"weaknesses":["..."],'
                     '"feedback":"包含改进建议的具体点评",'
-                    '"reference_answer":"结构完整、可供复盘的参考回答"}'
+                    '"reference_answer":"结构完整、可供复盘的参考回答"}。'
+                    "reference_answer 使用 Markdown 组织内容；编号、标题和"
+                    "列表项之间必须使用换行，并在 JSON 字符串中写成 \\n。"
                 )
             ),
             HumanMessage(

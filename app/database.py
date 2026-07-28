@@ -131,6 +131,7 @@ user_profiles = Table(
     Column("reminder_enabled", Boolean, nullable=False, server_default="0"),
     Column("reminder_time", String(5), nullable=False, server_default="09:00"),
     Column("reminder_timezone", String(64), nullable=False, server_default="UTC"),
+    Column("avatar_data_url", Text),
     Column("created_at", String(40), nullable=False),
     Column("updated_at", String(40), nullable=False),
 )
@@ -308,6 +309,9 @@ tool_audit_logs = Table(
     Column("status", String(30), nullable=False),
     Column("duration_ms", Integer, nullable=False),
     Column("result_summary", String(500)),
+    Column("request_id", String(128)),
+    Column("interaction_type", String(30)),
+    Column("interaction_id", String(256)),
     Column("created_at", String(40), nullable=False),
     CheckConstraint(
         "status IN ('success', 'error', 'denied')",
@@ -318,6 +322,70 @@ Index(
     "idx_tool_audit_user_created",
     tool_audit_logs.c.user_id,
     tool_audit_logs.c.created_at,
+)
+
+audit_events = Table(
+    "audit_events",
+    metadata,
+    Column("event_id", String(128), primary_key=True),
+    Column("request_id", String(128), nullable=False),
+    Column("actor_user_id", String(128)),
+    Column("actor_username", String(100)),
+    Column("actor_role", String(20)),
+    Column("action", String(160), nullable=False),
+    Column("resource_type", String(80), nullable=False),
+    Column("resource_id", String(256)),
+    Column("outcome", String(20), nullable=False),
+    Column("method", String(10), nullable=False),
+    Column("path", String(300), nullable=False),
+    Column("status_code", Integer, nullable=False),
+    Column("duration_ms", Integer, nullable=False),
+    Column("detail_json", Text, nullable=False, server_default="{}"),
+    Column("created_at", String(40), nullable=False),
+    CheckConstraint(
+        "outcome IN ('success', 'error', 'denied')",
+        name="ck_audit_events_outcome",
+    ),
+)
+Index(
+    "idx_audit_events_created",
+    audit_events.c.created_at,
+)
+Index(
+    "idx_audit_events_actor_created",
+    audit_events.c.actor_user_id,
+    audit_events.c.created_at,
+)
+Index(
+    "idx_audit_events_action_created",
+    audit_events.c.action,
+    audit_events.c.created_at,
+)
+
+execution_traces = Table(
+    "execution_traces",
+    metadata,
+    Column("trace_id", String(128), primary_key=True),
+    Column("request_id", String(128), nullable=False),
+    Column("user_id", String(128), nullable=False),
+    Column("interaction_type", String(30), nullable=False),
+    Column("interaction_id", String(256), nullable=False),
+    Column("stage", String(80), nullable=False),
+    Column("status", String(30), nullable=False),
+    Column("duration_ms", Integer),
+    Column("detail_json", Text, nullable=False, server_default="{}"),
+    Column("created_at", String(40), nullable=False),
+)
+Index(
+    "idx_execution_trace_interaction",
+    execution_traces.c.interaction_type,
+    execution_traces.c.interaction_id,
+    execution_traces.c.created_at,
+)
+Index(
+    "idx_execution_trace_request",
+    execution_traces.c.request_id,
+    execution_traces.c.created_at,
 )
 
 product_events = Table(
@@ -334,6 +402,42 @@ Index(
     "idx_product_events_user_created",
     product_events.c.user_id,
     product_events.c.created_at,
+)
+
+deployment_releases = Table(
+    "deployment_releases",
+    metadata,
+    Column("release_id", String(128), primary_key=True),
+    Column("version", String(100), nullable=False),
+    Column("title", String(200), nullable=False),
+    Column("summary", Text, nullable=False, server_default=""),
+    Column("environment", String(20), nullable=False),
+    Column("status", String(20), nullable=False),
+    Column("commit_sha", String(64)),
+    Column("changes_json", Text, nullable=False, server_default="[]"),
+    Column("verification_json", Text, nullable=False, server_default="{}"),
+    Column("app_image", String(200)),
+    Column("worker_image", String(200)),
+    Column("migration_revision", String(64)),
+    Column("recovery_point", String(200)),
+    Column("triggered_by", String(100), nullable=False),
+    Column("started_at", String(40), nullable=False),
+    Column("completed_at", String(40)),
+    Column("created_at", String(40), nullable=False),
+    Column("updated_at", String(40), nullable=False),
+    CheckConstraint(
+        "environment IN ('canary', 'production')",
+        name="ck_deployment_releases_environment",
+    ),
+    CheckConstraint(
+        "status IN ('deploying', 'succeeded', 'failed', 'rolled_back')",
+        name="ck_deployment_releases_status",
+    ),
+)
+Index(
+    "idx_deployment_releases_environment_completed",
+    deployment_releases.c.environment,
+    deployment_releases.c.completed_at,
 )
 
 

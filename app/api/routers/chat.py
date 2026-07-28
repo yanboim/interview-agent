@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from fastapi.responses import StreamingResponse
@@ -18,6 +19,32 @@ from app.tool_context import reset_tool_identity, set_tool_identity
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+async def _record_chat_trace(
+    http_request: Request,
+    *,
+    user_id: str,
+    turn_id: str,
+    stage: str,
+    status: str,
+    duration_ms: int | None = None,
+    detail: dict[str, object] | None = None,
+) -> None:
+    try:
+        await run_sync(
+            get_runtime().conversation_store.record_execution_trace,
+            request_id=str(getattr(http_request.state, "request_id", "")),
+            user_id=user_id,
+            interaction_type="chat",
+            interaction_id=turn_id,
+            stage=stage,
+            status=status,
+            duration_ms=duration_ms,
+            detail=detail or {},
+        )
+    except Exception:
+        logger.warning("Chat execution trace write failed.", exc_info=True)
 
 
 @router.post("/api/chat", response_model=ChatResponse)
@@ -50,6 +77,14 @@ async def chat(
             headers={"Retry-After": "1"} if exc.retryable else None,
         ) from exc
     if claim["outcome"] == "completed":
+        await _record_chat_trace(
+            http_request,
+            user_id=user_id,
+            turn_id=str(claim["turn_id"]),
+            stage="response_replay",
+            status="completed",
+            detail={"idempotent_replay": True},
+        )
         return ChatResponse(
             user_id=user_id,
             session_id=request.session_id,
@@ -59,9 +94,14 @@ async def chat(
 
     current_user = getattr(http_request.state, "current_user", None)
     identity_token = set_tool_identity(
-        user_id, current_user.role if current_user else "user"
+        user_id,
+        current_user.role if current_user else "user",
+        request_id=str(getattr(http_request.state, "request_id", "")),
+        interaction_type="chat",
+        interaction_id=str(claim["turn_id"]),
     )
     answer = ""
+    agent_started = time.monotonic()
     try:
         with request_metrics.dependency("glm"):
             result = await runtime.get_interview_agent().ainvoke(
@@ -96,6 +136,21 @@ async def chat(
             answer=answer,
             metadata=metadata_payload if source_map else {},
         )
+        await _record_chat_trace(
+            http_request,
+            user_id=user_id,
+            turn_id=str(claim["turn_id"]),
+            stage="agent_execution",
+            status="completed",
+            duration_ms=int(
+                (time.monotonic() - agent_started) * 1000
+            ),
+            detail={
+                "model": runtime.settings.zhipu_model,
+                "knowledge_used": metadata_payload["knowledge_used"],
+                "source_count": len(source_map),
+            },
+        )
         return ChatResponse(
             user_id=user_id,
             session_id=request.session_id,
@@ -108,6 +163,17 @@ async def chat(
             claim,
             partial_answer=answer,
             error=f"{type(exc).__name__}: {exc}",
+        )
+        await _record_chat_trace(
+            http_request,
+            user_id=user_id,
+            turn_id=str(claim["turn_id"]),
+            stage="agent_execution",
+            status="failed",
+            duration_ms=int(
+                (time.monotonic() - agent_started) * 1000
+            ),
+            detail={"error_type": type(exc).__name__},
         )
         logger.exception("Agent execution failed for session %s", request.session_id)
         raise HTTPException(status_code=500, detail=f"Agent 执行失败：{exc}") from exc
@@ -174,8 +240,15 @@ async def chat_stream(
         knowledge_used = False
         current_user = getattr(http_request.state, "current_user", None)
         identity_token = set_tool_identity(
-            user_id, current_user.role if current_user else "user"
+            user_id,
+            current_user.role if current_user else "user",
+            request_id=str(
+                getattr(http_request.state, "request_id", "")
+            ),
+            interaction_type="chat",
+            interaction_id=str(claim["turn_id"]),
         )
+        agent_started = time.monotonic()
         try:
             with request_metrics.dependency("glm"):
                 async for message, _ in runtime.get_interview_agent().astream(
@@ -223,6 +296,22 @@ async def chat_stream(
                 answer=answer,
                 metadata=metadata_payload if source_map else {},
             )
+            await _record_chat_trace(
+                http_request,
+                user_id=user_id,
+                turn_id=str(claim["turn_id"]),
+                stage="agent_execution",
+                status="completed",
+                duration_ms=int(
+                    (time.monotonic() - agent_started) * 1000
+                ),
+                detail={
+                    "model": runtime.settings.zhipu_model,
+                    "knowledge_used": knowledge_used,
+                    "source_count": len(source_map),
+                    "streaming": True,
+                },
+            )
             yield json.dumps(
                 {
                     "type": "done",
@@ -237,6 +326,17 @@ async def chat_stream(
             runtime.chat_turn_service.cancel(
                 claim, partial_answer="".join(answer_parts)
             )
+            await _record_chat_trace(
+                http_request,
+                user_id=user_id,
+                turn_id=str(claim["turn_id"]),
+                stage="agent_execution",
+                status="cancelled",
+                duration_ms=int(
+                    (time.monotonic() - agent_started) * 1000
+                ),
+                detail={"streaming": True},
+            )
             raise
         except Exception as exc:
             await run_sync(
@@ -244,6 +344,20 @@ async def chat_stream(
                 claim,
                 partial_answer="".join(answer_parts),
                 error=f"{type(exc).__name__}: {exc}",
+            )
+            await _record_chat_trace(
+                http_request,
+                user_id=user_id,
+                turn_id=str(claim["turn_id"]),
+                stage="agent_execution",
+                status="failed",
+                duration_ms=int(
+                    (time.monotonic() - agent_started) * 1000
+                ),
+                detail={
+                    "error_type": type(exc).__name__,
+                    "streaming": True,
+                },
             )
             logger.exception(
                 "Streaming agent execution failed for session %s",

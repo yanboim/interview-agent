@@ -28,6 +28,9 @@ def test_initial_migration_creates_schema(tmp_path, monkeypatch):
         "user_profiles",
         "interview_answer_attempts",
         "product_events",
+        "deployment_releases",
+        "audit_events",
+        "execution_traces",
         "alembic_version",
     }.issubset(set(inspector.get_table_names()))
     assert "metadata_json" in {
@@ -46,6 +49,16 @@ def test_initial_migration_creates_schema(tmp_path, monkeypatch):
         "submission_error",
         "processing_started_at",
     }.issubset(turn_columns)
+    assert {
+        "request_id",
+        "interaction_type",
+        "interaction_id",
+    }.issubset(
+        {
+            column["name"]
+            for column in inspector.get_columns("tool_audit_logs")
+        }
+    )
     assert "archived_at" in {
         column["name"] for column in inspector.get_columns("conversations")
     }
@@ -64,6 +77,7 @@ def test_initial_migration_creates_schema(tmp_path, monkeypatch):
         "reminder_enabled",
         "reminder_time",
         "reminder_timezone",
+        "avatar_data_url",
     }.issubset(
         {column["name"] for column in inspector.get_columns("user_profiles")}
     )
@@ -74,7 +88,55 @@ def test_initial_migration_creates_schema(tmp_path, monkeypatch):
         revision = connection.execute(
             text("SELECT version_num FROM alembic_version")
         ).scalar_one()
-    assert revision == "20260726_0010"
+    release_columns = {
+        column["name"]
+        for column in inspector.get_columns("deployment_releases")
+    }
+    assert {
+        "release_id",
+        "version",
+        "environment",
+        "status",
+        "changes_json",
+        "verification_json",
+        "app_image",
+        "migration_revision",
+    }.issubset(release_columns)
+    assert revision == "20260728_0013"
+    get_settings.cache_clear()
+
+
+def test_admin_observability_migration_can_rollback(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    database_url = f"sqlite:///{tmp_path / 'observability-rollback.db'}"
+    monkeypatch.setenv("DATABASE_URL", database_url)
+    get_settings.cache_clear()
+    config = Config("alembic.ini")
+    command.upgrade(config, "20260728_0012")
+    engine = create_engine(database_url)
+
+    command.downgrade(config, "20260728_0011")
+
+    inspector = inspect(engine)
+    assert "audit_events" not in inspector.get_table_names()
+    assert "execution_traces" not in inspector.get_table_names()
+    assert {
+        "request_id",
+        "interaction_type",
+        "interaction_id",
+    }.isdisjoint(
+        {
+            column["name"]
+            for column in inspector.get_columns("tool_audit_logs")
+        }
+    )
+    command.upgrade(config, "20260728_0012")
+    assert {
+        "audit_events",
+        "execution_traces",
+    }.issubset(set(inspect(engine).get_table_names()))
     get_settings.cache_clear()
 
 

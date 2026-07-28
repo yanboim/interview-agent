@@ -21,6 +21,7 @@ interface PersistShape {
   role?: AuthUser["role"];
   userId?: string;
   sessionId?: string;
+  avatarDataUrl?: string;
 }
 
 /** 顶层应用持久化结构(与旧 app.js 兼容)。 */
@@ -56,6 +57,7 @@ export const useAuthStore = defineStore("auth", {
       sessionId: persisted.sessionId || api.makeId("web"),
       username: persisted.username || "",
       role: persisted.role as AuthUser["role"] | undefined,
+      avatarDataUrl: persisted.avatarDataUrl || "",
       interviewGoal: loadGoal(persisted.userId || "anonymous") as InterviewGoal | null,
       pendingRecoveryCode: "" as string,
       goalLoading: false,
@@ -73,6 +75,7 @@ export const useAuthStore = defineStore("auth", {
       this.userId = payload.user.user_id;
       this.username = payload.user.username;
       this.role = payload.user.role;
+      this.avatarDataUrl = "";
       // 登录后开启新的服务端会话
       this.sessionId = api.makeId("web");
       this.interviewGoal = loadGoal(this.userId);
@@ -83,6 +86,7 @@ export const useAuthStore = defineStore("auth", {
         role: this.role,
         userId: this.userId,
         sessionId: this.sessionId,
+        avatarDataUrl: "",
       });
     },
 
@@ -106,16 +110,26 @@ export const useAuthStore = defineStore("auth", {
       if (cached) this.interviewGoal = cached;
       this.goalLoading = true;
       try {
-        const serverGoal = await api.fetchInterviewGoal(this.userId);
+        const [serverGoal, avatarDataUrl] = await Promise.all([
+          api.fetchInterviewGoal(this.userId),
+          api.fetchProfileAvatar(this.userId),
+        ]);
         this.interviewGoal = serverGoal;
+        this.avatarDataUrl = avatarDataUrl || "";
         if (serverGoal) {
           localStorage.setItem(`${GOAL_KEY}:${this.userId}`, JSON.stringify(serverGoal));
         }
+        savePersisted({ avatarDataUrl: this.avatarDataUrl });
       } catch {
         this.interviewGoal = cached;
       } finally {
         this.goalLoading = false;
       }
+    },
+
+    setAvatar(avatarDataUrl: string | null) {
+      this.avatarDataUrl = avatarDataUrl || "";
+      savePersisted({ avatarDataUrl: this.avatarDataUrl });
     },
 
     newSession() {
@@ -200,6 +214,7 @@ export const useAuthStore = defineStore("auth", {
       this.refreshToken = undefined;
       this.username = "";
       this.role = undefined;
+      this.avatarDataUrl = "";
       this.interviewGoal = null;
       this.pendingRecoveryCode = "";
       this.userId = api.makeId("user");
@@ -213,6 +228,7 @@ export const useAuthStore = defineStore("auth", {
         role: undefined,
         userId: this.userId,
         sessionId: this.sessionId,
+        avatarDataUrl: "",
       });
     },
   },

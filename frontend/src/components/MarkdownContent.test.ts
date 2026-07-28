@@ -4,7 +4,11 @@ import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import MarkdownContent from "@/components/MarkdownContent.vue";
 import UiButton from "@/components/ui/UiButton.vue";
-import { renderInlineMarkdown } from "@/lib/markdown";
+import {
+  normalizeLooseMarkdown,
+  renderInlineMarkdown,
+  renderMarkdown,
+} from "@/lib/markdown";
 
 describe("MarkdownContent", () => {
   it("renders headings, tables and code without unsafe markup", async () => {
@@ -53,5 +57,23 @@ describe("renderInlineMarkdown", () => {
     expect(html).not.toContain("**");
     expect(html).not.toContain("<img");
     expect(html).not.toContain("onerror");
+  });
+});
+
+describe("normalizeLooseMarkdown", () => {
+  it("repairs compact numbered sections, bullets and emphasis spacing", () => {
+    const compact =
+      "先说明原则。  1. **通信机制设计 **： - 局部智能体自治。 "
+      + "- **意图黑板**：广播意图。  2. **冲突仲裁**： - 检测环路。";
+    const normalized = normalizeLooseMarkdown(compact);
+    const html = renderMarkdown(normalized);
+
+    expect(normalized).toContain("\n\n1. **通信机制设计**：\n\n- 局部智能体自治。");
+    expect(normalized).toContain("\n- **意图黑板**：广播意图。");
+    expect(normalized).toContain("\n\n2. **冲突仲裁**：\n\n- 检测环路。");
+    expect(html).toContain("<ol>");
+    expect(html).toContain("<ul>");
+    expect(html).toContain("<strong>通信机制设计</strong>");
+    expect(html).not.toContain("**");
   });
 });

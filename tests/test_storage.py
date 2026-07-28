@@ -230,6 +230,13 @@ def test_profiles_and_product_events_are_user_scoped(tmp_path):
         )
 
     assert store.get_user_profile(user_id="user-a")["target_role"] == "Java 工程师"
+    avatar = "data:image/png;base64,iVBORw0KGgo="
+    updated = store.update_profile_avatar(
+        user_id="user-a",
+        avatar_data_url=avatar,
+    )
+    assert updated["avatar_data_url"] == avatar
+    assert store.get_user_profile(user_id="user-b")["avatar_data_url"] is None
     events = store.list_product_events(user_id="user-a")
     assert len(events) == 1
     assert events[0]["user_id"] == "user-a"

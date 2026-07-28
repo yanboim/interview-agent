@@ -6,7 +6,8 @@ import { useInterviewsStore } from "@/stores/interviews";
 import { useToastStore } from "@/stores/toast";
 import { confirm } from "@/composables/confirm";
 import { formatProfileDate } from "@/lib/format";
-import { renderInlineMarkdown } from "@/lib/markdown";
+import { normalizeLooseMarkdown, renderInlineMarkdown } from "@/lib/markdown";
+import MarkdownContent from "@/components/MarkdownContent.vue";
 import type { InterviewSummary } from "@/types";
 
 const props = defineProps<{
@@ -30,11 +31,14 @@ const count = ref(5);
 const answer = ref("");
 const retryAnswer = ref("");
 const showRetryForm = ref(false);
-const view = ref<"setup" | "session" | "history">("setup");
+const view = ref<"setup" | "session">("setup");
 
 const showHistoryDetail = ref(false);
 const renderedQuestion = computed(() =>
   renderInlineMarkdown(store.active?.question || ""),
+);
+const renderedReferenceAnswer = computed(() =>
+  normalizeLooseMarkdown(store.lastAnswer?.reference_answer || ""),
 );
 const dimensionLabels: Record<string, string> = {
   accuracy: "技术准确性",
@@ -85,8 +89,10 @@ function nextQuestion() {
 }
 
 async function backToHistory() {
-  view.value = "history";
+  view.value = "setup";
   store.lastAnswer = null;
+  showHistoryDetail.value = false;
+  await store.loadHistory();
   await router.push("/interviews");
 }
 
@@ -349,7 +355,7 @@ onMounted(async () => {
         </div>
         <details v-if="store.lastAnswer.reference_answer" class="reference-answer">
           <summary>查看参考回答</summary>
-          <p>{{ store.lastAnswer.reference_answer }}</p>
+          <MarkdownContent :content="renderedReferenceAnswer" />
         </details>
         <div v-if="store.lastAnswer.comparison" class="answer-comparison" aria-live="polite">
           <strong>

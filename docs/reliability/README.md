@@ -11,8 +11,8 @@ This document describes the current operating model and safe first actions. The
 | PostgreSQL or SQLite | Durable users, sessions, interviews, learning, audits | Readiness fails when the configured database is unavailable |
 | Redis | Shared rate limits, RAG cache, publication lock, job queue | Rate limiting falls back locally; publication fails closed when Redis is configured but unavailable |
 | Qdrant | Versioned private knowledge index | Readiness and knowledge retrieval fail; the last published alias remains unchanged on failed ingestion |
-| Zhipu APIs | Chat, interview, scoring, embeddings, optional reranking | Call failure is mapped to the request; provider policy is not yet unified (TD-007) |
-| Worker | Long-running knowledge ingestion | Owner-fenced Redis leases, retries, crash recovery, and dead-lettering |
+| Zhipu APIs | Chat, interview, scoring, embeddings, optional reranking | The model gateway applies timeout, retry, concurrency, budget, safe errors, and metrics |
+| Worker | Long-running knowledge ingestion | Process heartbeat plus owner-fenced Redis job leases, retries, crash recovery, and dead-lettering |
 
 ## Health and observation
 
@@ -104,22 +104,17 @@ The restore script does not restore Qdrant automatically. Follow the snapshot
 metadata in the manifest and confirm the target collection separately. A backup
 is not proven until restore has been rehearsed in a non-production environment.
 
-## Known reliability gaps
+## Operational limits
 
-The prioritized source is the
-[technical-debt tracker](../tech-debt-tracker.md). The most operationally
-significant open items are:
+The prioritized structural register is the
+[technical-debt tracker](../tech-debt-tracker.md); its current entries are
+completed. Residual operational limits still require explicit handling:
 
-- TD-007: one policy-bearing model gateway;
-- TD-009: isolated Compose resources per worktree.
+- a hard process crash can leave a chat or interview turn in `generating`;
+  automatic takeover is prohibited until an external model call can be fenced;
+- Qdrant historical-version retention is not automated;
+- formal RPO, RTO, data-retention periods, and capacity targets are not yet
+  approved.
 
-TD-002 is complete: initial interview-answer submission now uses a durable
-database lifecycle, idempotency key, conditional claim, and stored response
-replay. Process crashes that leave a turn in `generating` still require explicit
-operator recovery so a slow prior model call cannot be taken over unsafely.
-
-TD-003 is complete: chat turns are durable, generation is serialized per
-session, successful message pairs commit atomically, and provider failure or
-stream cancellation releases the session for same-command retry. A hard process
-crash can still leave a `generating` turn for explicit operator recovery; it is
-not automatically stolen because an unfenced provider call could resume.
+Detailed procedures now live in the [operations manual](../operations/README.md)
+and [release runbooks](../release/README.md).

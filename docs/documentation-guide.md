@@ -18,6 +18,14 @@ and the next safe action without reconstructing intent from source history.
 | `exec-plans/completed/*.md` | Historical implementation and verification record | A plan meets its acceptance criteria |
 | `reliability/` | Dependency failure behavior, operations, recovery | Runtime topology, health checks, backup, rollback, or alerting changes |
 | `security/` | Trust boundaries and security invariants | Auth, authorization, secrets, external data flow, or exposure changes |
+| `product/` | Vision, users, PRD, scope, business rules, and NFRs | Product intent, scope, rules, or success criteria change |
+| `ux/` | Information architecture, journeys, prototype, and states | Navigation, page scope, interaction, or user recovery changes |
+| `architecture/` | Current system, domain, data, Agent, RAG, and API design | Components, ownership, protocols, or data flows change |
+| `sdlc/` | Readiness, implementation, review, and completion process | Delivery governance or review gates change |
+| `quality/` | Test strategy, acceptance, and quality gates | Verification scope or release evidence changes |
+| `release/` | Environments, deployment, and rollback | Packaging, migration, promotion, or rollback changes |
+| `operations/` | Day-2 operations, incident, backup, and DR | Operational procedure or recovery behavior changes |
+| `project/` | Milestones, risks, decisions, responsibilities, and status | Cross-domain scope, ownership, or delivery risk changes |
 | `tech-debt-tracker.md` | Prioritized recurring boundary problems | Debt is found, reprioritized, completed, or superseded |
 | `generated/` | Reproducible references only | Its source changes and the generator is run |
 
@@ -73,3 +81,16 @@ private knowledge text, or database dumps in documentation.
 - Does changed behavior update its feature contract, design record, runbook,
   or debt entry as appropriate?
 - Does `make harness-static` pass?
+
+## Automated completeness
+
+`docs/document-manifest.json` lists the required corpus by lifecycle stage.
+`tests/test_harness_contract.py` verifies every entry exists and is unique.
+API routes, Settings, and relational metadata are generated with:
+
+```bash
+python -m scripts.generate_docs
+python -m scripts.generate_docs --check
+```
+
+Generated-reference drift fails the Harness static gate.

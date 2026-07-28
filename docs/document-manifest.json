@@ -1,0 +1,128 @@
+{
+  "schema_version": 1,
+  "lifecycle": {
+    "entrypoints": [
+      "README.md",
+      "CONTRIBUTING.md",
+      "SECURITY.md",
+      "CHANGELOG.md",
+      "ARCHITECTURE.md",
+      "docs/README.md",
+      "docs/documentation-guide.md"
+    ],
+    "product": [
+      "docs/product/README.md",
+      "docs/product/PRODUCT-VISION.md",
+      "docs/product/PRD.md",
+      "docs/product/USER-PERSONAS.md",
+      "docs/product/USER-JOURNEYS.md",
+      "docs/product/FEATURE-MAP.md",
+      "docs/product/NON-FUNCTIONAL-REQUIREMENTS.md",
+      "docs/product/METRICS.md",
+      "docs/product/REQUIREMENTS-TRACEABILITY.md",
+      "docs/product/GLOSSARY.md",
+      "docs/product-specs/README.md",
+      "docs/product-specs/feature-contract.json"
+    ],
+    "experience": [
+      "docs/ux/README.md",
+      "docs/ux/INFORMATION-ARCHITECTURE.md",
+      "docs/ux/USER-FLOWS.md",
+      "docs/ux/SCREEN-INVENTORY.md",
+      "docs/ux/PROTOTYPE-SPEC.md",
+      "docs/ux/INTERACTION-STATES.md",
+      "docs/ux/DESIGN-SYSTEM.md",
+      "docs/ux/CONTENT-GUIDELINES.md",
+      "docs/ux/ACCESSIBILITY.md"
+    ],
+    "architecture": [
+      "docs/architecture/README.md",
+      "docs/architecture/SYSTEM-CONTEXT.md",
+      "docs/architecture/CONTAINER-ARCHITECTURE.md",
+      "docs/architecture/COMPONENT-ARCHITECTURE.md",
+      "docs/architecture/DOMAIN-MODEL.md",
+      "docs/architecture/DATA-ARCHITECTURE.md",
+      "docs/architecture/AGENT-ARCHITECTURE.md",
+      "docs/architecture/RAG-ARCHITECTURE.md",
+      "docs/architecture/API-DESIGN.md",
+      "docs/architecture/STREAMING-PROTOCOL.md",
+      "docs/design-docs/README.md"
+    ],
+    "delivery": [
+      "docs/development.md",
+      "docs/sdlc/README.md",
+      "docs/sdlc/DEVELOPMENT-LIFECYCLE.md",
+      "docs/sdlc/DEFINITION-OF-READY.md",
+      "docs/sdlc/DEFINITION-OF-DONE.md",
+      "docs/sdlc/CODE-REVIEW.md",
+      "docs/sdlc/BACKEND-STANDARDS.md",
+      "docs/sdlc/FRONTEND-STANDARDS.md",
+      "docs/sdlc/DATABASE-CHANGES.md",
+      "docs/sdlc/DEPENDENCY-MANAGEMENT.md",
+      "docs/sdlc/CONFIGURATION.md",
+      "docs/exec-plans/README.md",
+      "docs/exec-plans/active/README.md",
+      "docs/tech-debt-tracker.md"
+    ],
+    "quality": [
+      "docs/testing.md",
+      "docs/quality/README.md",
+      "docs/quality/TEST-STRATEGY.md",
+      "docs/quality/ACCEPTANCE-TESTS.md",
+      "docs/quality/QUALITY-GATES.md",
+      "docs/quality/PERFORMANCE-TESTING.md",
+      "docs/quality/SECURITY-TESTING.md",
+      "docs/quality/AI-EVALUATION.md",
+      "docs/quality/ACCESSIBILITY-TESTING.md",
+      "docs/quality/COMPATIBILITY-MATRIX.md"
+    ],
+    "release": [
+      "docs/release/README.md",
+      "docs/release/RELEASE-PROCESS.md",
+      "docs/release/DEPLOYMENT-RUNBOOK.md",
+      "docs/release/ROLLBACK-RUNBOOK.md",
+      "docs/release/ENVIRONMENTS.md",
+      "docs/release/DATABASE-RELEASE.md",
+      "docs/release/KNOWLEDGE-RELEASE.md",
+      "docs/release/VERSIONING.md",
+      "docs/release/RELEASE-NOTES-TEMPLATE.md"
+    ],
+    "operations": [
+      "docs/reliability/README.md",
+      "docs/operations/README.md",
+      "docs/operations/OPERATIONS-MANUAL.md",
+      "docs/operations/INCIDENT-RESPONSE.md",
+      "docs/operations/BACKUP-RESTORE.md",
+      "docs/operations/DISASTER-RECOVERY.md",
+      "docs/operations/SLO-SLI.md",
+      "docs/operations/MONITORING-CATALOG.md",
+      "docs/operations/TROUBLESHOOTING.md",
+      "docs/operations/CAPACITY-PLANNING.md",
+      "docs/operations/MAINTENANCE.md",
+      "docs/operations/POSTMORTEM-TEMPLATE.md"
+    ],
+    "security": [
+      "docs/security/README.md",
+      "docs/security/THREAT-MODEL.md",
+      "docs/security/DATA-CLASSIFICATION.md",
+      "docs/security/PRIVACY.md",
+      "docs/security/ACCESS-CONTROL.md",
+      "docs/security/SECRET-MANAGEMENT.md",
+      "docs/security/SECURITY-REVIEW.md"
+    ],
+    "governance": [
+      "docs/project/README.md",
+      "docs/project/PROJECT-PLAN.md",
+      "docs/project/RISK-REGISTER.md",
+      "docs/project/DECISION-LOG.md",
+      "docs/project/STAKEHOLDERS.md",
+      "docs/project/STATUS-REPORT-TEMPLATE.md"
+    ],
+    "generated": [
+      "docs/generated/README.md",
+      "docs/generated/api-routes.md",
+      "docs/generated/configuration.md",
+      "docs/generated/data-dictionary.md"
+    ]
+  }
+}

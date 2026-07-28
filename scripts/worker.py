@@ -2,6 +2,7 @@ import logging
 import threading
 import time
 from collections.abc import Callable
+from uuid import uuid4
 
 from app.config import get_settings
 from app.logging_config import configure_logging
@@ -9,6 +10,43 @@ from app.operations import JobClaim, RedisRuntime
 from scripts.ingest import ingest_knowledge
 
 logger = logging.getLogger(__name__)
+
+
+def start_worker_heartbeat(
+    runtime: RedisRuntime,
+    *,
+    interval_seconds: float,
+    ttl_seconds: int,
+) -> tuple[threading.Event, threading.Thread]:
+    stopped = threading.Event()
+    instance_id = str(uuid4())
+    ttl = max(3, int(ttl_seconds))
+    interval = min(
+        max(0.1, float(interval_seconds)),
+        max(0.1, ttl / 3),
+    )
+
+    def publish() -> None:
+        try:
+            runtime.publish_worker_heartbeat(
+                instance_id,
+                ttl_seconds=ttl,
+            )
+        except Exception:
+            logger.exception("worker_process_heartbeat_failed")
+
+    def refresh() -> None:
+        while not stopped.wait(interval):
+            publish()
+
+    publish()
+    thread = threading.Thread(
+        target=refresh,
+        name="worker-process-heartbeat",
+        daemon=True,
+    )
+    thread.start()
+    return stopped, thread
 
 
 def _run_with_heartbeat(
@@ -103,19 +141,32 @@ def main() -> None:
     if not runtime.client:
         raise RuntimeError("后台 Worker 需要配置 REDIS_URL")
     logger.info(
-        "worker_started queue=%s lease_seconds=%s max_attempts=%s",
+        (
+            "worker_started queue=%s lease_seconds=%s max_attempts=%s "
+            "heartbeat_ttl_seconds=%s"
+        ),
         settings.redis_queue_name,
         settings.job_lease_seconds,
         settings.job_max_attempts,
+        settings.worker_heartbeat_ttl_seconds,
     )
-    while True:
-        processed = process_one_job(
-            runtime,
-            lease_seconds=settings.job_lease_seconds,
-            retry_base_seconds=settings.job_retry_base_seconds,
-        )
-        if not processed:
-            time.sleep(max(0.05, settings.job_poll_seconds))
+    heartbeat_stopped, heartbeat_thread = start_worker_heartbeat(
+        runtime,
+        interval_seconds=settings.worker_heartbeat_interval_seconds,
+        ttl_seconds=settings.worker_heartbeat_ttl_seconds,
+    )
+    try:
+        while True:
+            processed = process_one_job(
+                runtime,
+                lease_seconds=settings.job_lease_seconds,
+                retry_base_seconds=settings.job_retry_base_seconds,
+            )
+            if not processed:
+                time.sleep(max(0.05, settings.job_poll_seconds))
+    finally:
+        heartbeat_stopped.set()
+        heartbeat_thread.join(timeout=1)
 
 
 if __name__ == "__main__":

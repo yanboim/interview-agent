@@ -202,6 +202,41 @@ export interface AdminRuntime {
   };
 }
 
+export type AdminResourceStatus =
+  | "healthy"
+  | "unavailable"
+  | "configured"
+  | "disabled"
+  | "unknown";
+
+export type AdminResourceExposure =
+  | "public_gateway"
+  | "loopback"
+  | "private_network"
+  | "external_provider";
+
+export interface AdminResource {
+  id: string;
+  name: string;
+  category: string;
+  status: AdminResourceStatus;
+  detail: string;
+  exposure: AdminResourceExposure;
+  critical: boolean;
+  description: string;
+  runbook: string;
+  latency_ms: number | null;
+  console_url: string | null;
+}
+
+export interface AdminResourceCenter {
+  operator: string;
+  overall_status: "healthy" | "degraded";
+  checked_at: string;
+  summary: Record<AdminResourceStatus, number>;
+  resources: AdminResource[];
+}
+
 export interface AdminKnowledgeFile {
   filename: string;
   size: number;
@@ -227,6 +262,54 @@ export interface AdminAudit {
   input_summary: string;
 }
 
+export interface AdminAuditEvent {
+  event_id: string;
+  request_id: string;
+  actor_user_id: string | null;
+  actor_username: string | null;
+  actor_role: string | null;
+  action: string;
+  resource_type: string;
+  resource_id: string | null;
+  outcome: "success" | "error" | "denied";
+  method: string;
+  path: string;
+  status_code: number;
+  duration_ms: number;
+  detail_json: string;
+  created_at: string;
+}
+
+export interface AdminInteraction {
+  interaction_type: "chat" | "interview";
+  interaction_id: string;
+  user_id: string;
+  username: string;
+  container_id: string;
+  container_title: string;
+  prompt_text: string;
+  input_text: string;
+  output_text: string;
+  status: string;
+  error: string;
+  metadata_json: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AdminExecutionTrace {
+  trace_id: string;
+  request_id: string;
+  user_id: string;
+  interaction_type: "chat" | "interview";
+  interaction_id: string;
+  stage: string;
+  status: string;
+  duration_ms: number | null;
+  detail_json: string;
+  created_at: string;
+}
+
 export interface ProductEvent {
   event_id: string;
   user_id: string;
@@ -234,4 +317,31 @@ export interface ProductEvent {
   event_name: string;
   properties_json: string;
   created_at: string;
+}
+
+export type DeploymentReleaseStatus =
+  | "deploying"
+  | "succeeded"
+  | "failed"
+  | "rolled_back";
+
+export interface DeploymentRelease {
+  release_id: string;
+  version: string;
+  title: string;
+  summary: string;
+  environment: "canary" | "production";
+  status: DeploymentReleaseStatus;
+  commit_sha: string | null;
+  changes: string[];
+  verification: Record<string, string>;
+  app_image: string | null;
+  worker_image: string | null;
+  migration_revision: string | null;
+  recovery_point: string | null;
+  triggered_by: string;
+  started_at: string;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
 }

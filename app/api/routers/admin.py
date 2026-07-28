@@ -2,6 +2,7 @@ import asyncio
 import logging
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
@@ -76,6 +77,15 @@ async def admin_runtime(request: Request) -> dict[str, object]:
     }
 
 
+@router.get("/api/admin/resources")
+async def admin_resources(request: Request) -> dict[str, object]:
+    admin = require_role(request, {"admin"})
+    snapshot = await run_sync(
+        get_runtime().system_resource_center.snapshot
+    )
+    return {"operator": admin.username, **snapshot}
+
+
 @router.get("/api/admin/users")
 async def admin_users(
     request: Request, limit: int = 200
@@ -119,6 +129,56 @@ async def admin_tool_audits(
     )
 
 
+@router.get("/api/admin/audit-events")
+async def admin_audit_events(
+    request: Request,
+    user_id: str | None = None,
+    action: str | None = None,
+    outcome: Literal["success", "error", "denied"] | None = None,
+    limit: int = 100,
+) -> list[dict[str, object]]:
+    require_role(request, {"admin"})
+    return await run_sync(
+        get_runtime().conversation_store.list_audit_events,
+        user_id=user_id,
+        action=action,
+        outcome=outcome,
+        limit=limit,
+    )
+
+
+@router.get("/api/admin/interactions")
+async def admin_interactions(
+    request: Request,
+    interaction_type: Literal["chat", "interview"] | None = None,
+    user_id: str | None = None,
+    limit: int = 100,
+) -> list[dict[str, object]]:
+    require_role(request, {"admin"})
+    return await run_sync(
+        get_runtime().conversation_store.list_admin_interactions,
+        interaction_type=interaction_type,
+        user_id=user_id,
+        limit=limit,
+    )
+
+
+@router.get(
+    "/api/admin/interactions/{interaction_type}/{interaction_id}/trace"
+)
+async def admin_interaction_trace(
+    interaction_type: Literal["chat", "interview"],
+    interaction_id: str,
+    request: Request,
+) -> list[dict[str, object]]:
+    require_role(request, {"admin"})
+    return await run_sync(
+        get_runtime().conversation_store.list_execution_trace,
+        interaction_type=interaction_type,
+        interaction_id=interaction_id,
+    )
+
+
 @router.get("/api/admin/product-events")
 async def admin_product_events(
     request: Request,
@@ -129,6 +189,31 @@ async def admin_product_events(
     return await run_sync(
         get_runtime().conversation_store.list_product_events,
         user_id=user_id,
+        limit=limit,
+    )
+
+
+@router.get("/api/admin/releases")
+async def admin_releases(
+    request: Request,
+    environment: str | None = None,
+    status: str | None = None,
+    limit: int = 50,
+) -> list[dict[str, object]]:
+    require_role(request, {"admin"})
+    if environment and environment not in {"canary", "production"}:
+        raise HTTPException(status_code=422, detail="不支持的部署环境")
+    if status and status not in {
+        "deploying",
+        "succeeded",
+        "failed",
+        "rolled_back",
+    }:
+        raise HTTPException(status_code=422, detail="不支持的发布状态")
+    return await run_sync(
+        get_runtime().conversation_store.list_deployment_releases,
+        environment=environment,
+        status=status,
         limit=limit,
     )
 

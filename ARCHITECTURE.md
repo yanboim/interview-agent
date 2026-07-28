@@ -73,16 +73,20 @@ Coordinate a use case and its transaction/concurrency boundary, such as
 submitting an interview answer or generating a chat turn. They depend on
 repository and model interfaces rather than global clients.
 
-Current and target modules:
+Current application services:
 
 ```text
 app/application/chat_service.py
 app/application/interview_service.py
-app/application/knowledge_service.py
 ```
 
 New complex behavior should continue moving toward this boundary rather than
 placing orchestration in API routers or `app/main.py`.
+
+Knowledge publication is currently coordinated by the ingestion/worker adapters
+and `app/knowledge_publication.py`. Introduce a dedicated
+`app/application/knowledge_service.py` only when an additional API use case
+needs an application-facing boundary; it is not present today.
 
 ### Domain policy
 
@@ -109,6 +113,19 @@ rewrite.
 The server-resolved authenticated identity is authoritative. Every user-owned
 query and mutation includes `user_id`; a client-supplied ID is never sufficient
 authorization.
+
+Administrator observability has three distinct persistence concerns:
+
+- `audit_events` records who performed an API action, its sanitized target,
+  request ID, outcome, and timing;
+- canonical chat/interview tables remain the only source for exact user input
+  and system output;
+- `execution_traces` and correlated tool audits record model/tool stages and
+  safe metadata without copying prompts, credentials, or private knowledge
+  text.
+
+Cross-user interaction reads are administrator-only and are themselves captured
+by request auditing.
 
 ### Database writes
 
@@ -161,8 +178,10 @@ build versioned collection
   -> retain previous version for rollback
 ```
 
-Deleting the serving collection before validation is prohibited for new
-implementation work and tracked as an existing P0 issue.
+The implementation uses versioned physical collections, validates candidates,
+switches the serving alias atomically, versions cache keys by physical target,
+and retains the previous version for rollback. Deleting the serving collection
+before validation remains prohibited.
 
 ### Model calls
 
@@ -188,8 +207,15 @@ claims the chat turn, so failed/retried calls cannot duplicate compaction.
   and isolated tests only.
 - Migrations run before the application accepts traffic.
 - `/health` is a liveness signal; `/ready` verifies required dependencies.
-- The worker must use durable job semantics before jobs become business
-  critical.
+- The worker uses owner-fenced Redis claims, job-lease heartbeat,
+  acknowledgement, bounded retry, crash recovery, and terminal failure state.
+  An independent process heartbeat with a bounded Redis TTL remains active
+  while the Worker is idle or processing and supplies the administrator
+  resource center's live Worker signal.
+- Verified Canary and production outcomes are written to an idempotent
+  deployment-release ledger by the operator-side deployment process. Git
+  history is not treated as proof that a version reached an environment, and
+  product users cannot access this administrator read model.
 - Compose is the developer reference environment. Each worktree derives a
   stable `COMPOSE_PROJECT_NAME` and host-port block; Compose project names
   isolate its containers, network, and named volumes.

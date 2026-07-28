@@ -1,6 +1,8 @@
+import json
 from unittest.mock import MagicMock
 
 import pytest
+from redis.exceptions import RedisError
 
 from app.operations import (
     FixedWindowRateLimiter,
@@ -70,6 +72,86 @@ def test_shared_rate_limiter_uses_redis_when_available():
 
     assert limiter.allow("client") == (False, 10)
     runtime.allow.assert_called_once_with("client", 2, 10)
+
+
+def test_worker_heartbeat_is_bounded_and_fresh() -> None:
+    runtime = RedisRuntime("", "jobs")
+    runtime.client = MagicMock()
+
+    runtime.publish_worker_heartbeat(
+        "worker-instance-1",
+        ttl_seconds=20,
+        now=100,
+    )
+
+    set_args = runtime.client.set.call_args
+    assert set_args.args[0] == "jobs:worker:heartbeat"
+    assert set_args.kwargs["ex"] == 20
+    payload = json.loads(set_args.args[1])
+    runtime.client.get.return_value = set_args.args[1]
+
+    heartbeat = runtime.read_worker_heartbeat(
+        max_age_seconds=20,
+        now=119,
+    )
+
+    assert payload["version"] == 1
+    assert heartbeat["instance_id"] == "worker-instance-1"
+
+
+@pytest.mark.parametrize(
+    ("payload", "now"),
+    [
+        (None, 100),
+        ("not-json", 100),
+        (
+            '{"version":1,"instance_id":"worker-1","heartbeat_at":70}',
+            100,
+        ),
+        (
+            '{"version":1,"instance_id":"worker-1","heartbeat_at":110}',
+            100,
+        ),
+        (
+            '{"version":1,"instance_id":"worker-1","heartbeat_at":NaN}',
+            100,
+        ),
+    ],
+)
+def test_worker_heartbeat_rejects_crash_expiry_and_invalid_freshness(
+    payload,
+    now,
+) -> None:
+    runtime = RedisRuntime("", "jobs")
+    runtime.client = MagicMock()
+    runtime.client.get.return_value = payload
+
+    with pytest.raises(RedisError):
+        runtime.read_worker_heartbeat(max_age_seconds=20, now=now)
+
+
+def test_worker_restart_replaces_prior_heartbeat_identity() -> None:
+    runtime = RedisRuntime("", "jobs")
+    runtime.client = MagicMock()
+
+    runtime.publish_worker_heartbeat(
+        "worker-before-restart",
+        ttl_seconds=20,
+        now=100,
+    )
+    runtime.publish_worker_heartbeat(
+        "worker-after-restart",
+        ttl_seconds=20,
+        now=101,
+    )
+    runtime.client.get.return_value = runtime.client.set.call_args.args[1]
+
+    heartbeat = runtime.read_worker_heartbeat(
+        max_age_seconds=20,
+        now=101,
+    )
+
+    assert heartbeat["instance_id"] == "worker-after-restart"
 
 
 def test_redis_runtime_enqueues_serialized_job():

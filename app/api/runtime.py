@@ -8,6 +8,7 @@ from app.auth import AuthService
 from app.config import Settings
 from app.operations import RedisRuntime, SharedRateLimiter
 from app.storage import ConversationStore
+from app.system_resources import SystemResourceCenter
 
 
 @dataclass(slots=True)
@@ -29,6 +30,7 @@ class ApiRuntime:
     knowledge_status: Callable[..., Any]
     rollback_knowledge: Callable[..., Any]
     require_serving_knowledge: Callable[..., Any]
+    system_resource_center: SystemResourceCenter
 
 
 _runtime: ApiRuntime | None = None

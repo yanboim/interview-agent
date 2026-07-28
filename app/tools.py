@@ -68,6 +68,9 @@ def _run_audited(tool_name: str, input_summary: str, callback) -> str:
                         (time.monotonic() - started) * 1000
                     ),
                     result_summary=result,
+                    request_id=identity.request_id or None,
+                    interaction_type=identity.interaction_type or None,
+                    interaction_id=identity.interaction_id or None,
                 )
             except Exception:
                 logger.warning("Tool audit write failed.", exc_info=True)

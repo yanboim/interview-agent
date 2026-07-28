@@ -43,7 +43,9 @@ from app.knowledge_publication import (
 from app.logging_config import configure_logging, reset_request_id, set_request_id
 from app.multi_agent import assess_answer, generate_question
 from app.operations import RedisRuntime, SharedRateLimiter, request_metrics
+from app.request_audit import audit_api_request
 from app.storage import ConversationStore
+from app.system_resources import create_system_resource_center
 from app.telemetry import configure_telemetry
 from scripts.ingest import ingest_knowledge
 
@@ -57,20 +59,12 @@ app = FastAPI(
 
 WEB_DIRECTORY = Path(__file__).parent / "web"
 settings = get_settings()
-_dist_candidate = (
-    Path(settings.frontend_dist)
-    if settings.frontend_dist
-    else Path(__file__).parent.parent / "frontend" / "dist"
+_dist_candidate = Path(settings.frontend_dist) if settings.frontend_dist else (
+    Path(__file__).parent.parent / "frontend" / "dist"
 )
-FRONTEND_DIST = (
-    _dist_candidate if (_dist_candidate / "index.html").exists() else None
-)
+FRONTEND_DIST = _dist_candidate if (_dist_candidate / "index.html").exists() else None
 STATIC_DIRECTORY = FRONTEND_DIST if FRONTEND_DIST else WEB_DIRECTORY
-app.mount(
-    "/static",
-    StaticFiles(directory=STATIC_DIRECTORY, check_dir=False),
-    name="static",
-)
+app.mount("/static", StaticFiles(directory=STATIC_DIRECTORY, check_dir=False), name="static")
 
 configure_logging(settings.log_level, settings.json_logs)
 conversation_store = ConversationStore(
@@ -93,10 +87,18 @@ auth_service = AuthService(
     refresh_token_days=settings.refresh_token_days,
 )
 redis_runtime = RedisRuntime(settings.redis_url, settings.redis_queue_name)
+system_resource_center = create_system_resource_center(
+    settings,
+    database_check=conversation_store.check_connection,
+    redis_check=redis_runtime.check,
+    redis_enabled=bool(redis_runtime.client),
+    worker_check=lambda: redis_runtime.check_worker_heartbeat(
+        max_age_seconds=max(3, settings.worker_heartbeat_ttl_seconds)
+    ),
+    qdrant_check=require_serving_knowledge,
+)
 rate_limiter = SharedRateLimiter(
-    settings.rate_limit_requests,
-    settings.rate_limit_window_seconds,
-    redis_runtime,
+    settings.rate_limit_requests, settings.rate_limit_window_seconds, redis_runtime
 )
 runtime = ApiRuntime(
     settings=settings,
@@ -114,6 +116,7 @@ runtime = ApiRuntime(
     knowledge_status=knowledge_status,
     rollback_knowledge=rollback_knowledge,
     require_serving_knowledge=require_serving_knowledge,
+    system_resource_center=system_resource_center,
 )
 configure_runtime(runtime)
 
@@ -198,6 +201,14 @@ async def operational_controls(request: Request, call_next):
         status_code = response.status_code
         return response
     finally:
+        await audit_api_request(
+            request,
+            status_code=status_code,
+            started_at=started_at,
+            settings=settings,
+            store=conversation_store,
+            execute=run_sync,
+        )
         request_metrics.finish(started_at, status_code)
 
 
@@ -307,41 +318,24 @@ admin_login = auth_routes.admin_login
 admin_knowledge_files = admin_routes.admin_knowledge_files
 admin_save_knowledge_file = admin_routes.admin_save_knowledge_file
 admin_delete_knowledge_file = admin_routes.admin_delete_knowledge_file
-
-
 async def admin_import_knowledge(request: Request) -> dict[str, object]:
     runtime.ingest_knowledge = ingest_knowledge
     return await admin_routes.admin_import_knowledge(request)
-
-
 async def admin_knowledge_status(request: Request) -> dict[str, object]:
     runtime.knowledge_status = knowledge_status
     return await admin_routes.admin_knowledge_status(request)
-
-
 async def admin_knowledge_rollback(payload, request: Request) -> dict[str, object]:
     runtime.rollback_knowledge = rollback_knowledge
     return await admin_routes.admin_knowledge_rollback(payload, request)
-
-
 async def chat(request, http_request: Request, idempotency_key: str):
     runtime.chat_turn_service = chat_turn_service
     runtime.get_interview_agent = get_interview_agent
     return await chat_routes.chat(request, http_request, idempotency_key)
-
-
 async def chat_stream(request, http_request: Request, idempotency_key: str):
     runtime.chat_turn_service = chat_turn_service
     runtime.get_interview_agent = get_interview_agent
     return await chat_routes.chat_stream(request, http_request, idempotency_key)
-
-
-async def answer_interview(
-    interview_id: str,
-    request,
-    http_request: Request,
-    idempotency_key: str,
-):
+async def answer_interview(interview_id, request, http_request, idempotency_key):
     runtime.interview_answer_service = interview_answer_service
     return await interview_routes.answer_interview(
         interview_id, request, http_request, idempotency_key

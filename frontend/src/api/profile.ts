@@ -7,6 +7,7 @@ interface ProfileResponse {
   focus_areas: string;
   interview_date: string | null;
   job_description: string;
+  avatar_data_url: string | null;
 }
 
 function fromResponse(profile: ProfileResponse): InterviewGoal | null {
@@ -24,6 +25,30 @@ export async function fetchInterviewGoal(userId: string): Promise<InterviewGoal 
   const response = await apiFetch(`/api/profile?user_id=${encodeURIComponent(userId)}`);
   await expectOk(response);
   return fromResponse(await response.json());
+}
+
+export async function fetchProfileAvatar(userId: string): Promise<string | null> {
+  const response = await apiFetch(`/api/profile?user_id=${encodeURIComponent(userId)}`);
+  await expectOk(response);
+  const profile = (await response.json()) as ProfileResponse;
+  return profile.avatar_data_url || null;
+}
+
+export async function updateProfileAvatar(
+  userId: string,
+  avatarDataUrl: string | null,
+): Promise<string | null> {
+  const response = await apiFetch("/api/profile/avatar", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId,
+      avatar_data_url: avatarDataUrl,
+    }),
+  });
+  await expectOk(response);
+  const payload = (await response.json()) as { avatar_data_url: string | null };
+  return payload.avatar_data_url || null;
 }
 
 export async function updateInterviewGoal(

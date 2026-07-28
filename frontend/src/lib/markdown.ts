@@ -77,6 +77,26 @@ export function renderInlineMarkdown(source: string): string {
   });
 }
 
+/**
+ * Repair compact Markdown commonly returned inside structured model fields.
+ * This is intentionally opt-in for reference answers; chat content is left
+ * untouched. The rules only split explicit numbered bold sections and
+ * sentence-delimited bullet markers.
+ */
+export function normalizeLooseMarkdown(source: string): string {
+  return (source || "")
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n")
+    .replace(/\*\*([^*\n]*?\S)\s+\*\*(?=[：:])/gu, "**$1**")
+    .replace(/([。！？；;])\s+(\d{1,2}\.\s+\*\*)/gu, "$1\n\n$2")
+    .replace(/(\*\*[^*\n]{1,100}\*\*[：:])\s*-\s+/gu, "$1\n\n- ")
+    .replace(
+      /([。！？；;])\s+-\s+(?=(?:\*\*)?[\p{L}\p{N}])/gu,
+      "$1\n- ",
+    )
+    .trim();
+}
+
 export function escapeText(value: unknown): string {
   return escapeHtml(String(value ?? ""));
 }

@@ -3,6 +3,7 @@ import time
 import json
 import logging
 import hashlib
+import math
 from contextlib import contextmanager
 from collections import defaultdict, deque
 from dataclasses import dataclass
@@ -325,6 +326,73 @@ return promoted
     def check(self) -> None:
         if self.client:
             self.client.ping()
+
+    @property
+    def _worker_heartbeat_key(self) -> str:
+        return f"{self.queue_name}:worker:heartbeat"
+
+    def publish_worker_heartbeat(
+        self,
+        instance_id: str,
+        *,
+        ttl_seconds: int,
+        now: float | None = None,
+    ) -> None:
+        if not self.client:
+            raise RedisError("Redis is not configured")
+        if not instance_id:
+            raise ValueError("Worker heartbeat instance ID is required")
+        payload = json.dumps(
+            {
+                "version": 1,
+                "instance_id": instance_id,
+                "heartbeat_at": (
+                    float(now) if now is not None else time.time()
+                ),
+            },
+            separators=(",", ":"),
+            sort_keys=True,
+        )
+        self.client.set(
+            self._worker_heartbeat_key,
+            payload,
+            ex=max(3, int(ttl_seconds)),
+        )
+
+    def read_worker_heartbeat(
+        self,
+        *,
+        max_age_seconds: int,
+        now: float | None = None,
+    ) -> dict[str, object]:
+        if not self.client:
+            raise RedisError("Redis is not configured")
+        raw = self.client.get(self._worker_heartbeat_key)
+        if not raw:
+            raise RedisError("Worker heartbeat is unavailable")
+        try:
+            payload = json.loads(str(raw))
+            version = int(payload["version"])
+            instance_id = str(payload["instance_id"])
+            heartbeat_at = float(payload["heartbeat_at"])
+        except (KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            raise RedisError("Worker heartbeat is invalid") from exc
+        if version != 1 or not instance_id:
+            raise RedisError("Worker heartbeat is invalid")
+
+        current = float(now) if now is not None else time.time()
+        max_age = max(1, int(max_age_seconds))
+        age = current - heartbeat_at
+        if not math.isfinite(heartbeat_at) or age < 0 or age > max_age:
+            raise RedisError("Worker heartbeat is stale")
+        return {
+            "version": version,
+            "instance_id": instance_id,
+            "heartbeat_at": heartbeat_at,
+        }
+
+    def check_worker_heartbeat(self, *, max_age_seconds: int) -> None:
+        self.read_worker_heartbeat(max_age_seconds=max_age_seconds)
 
     def allow(
         self,

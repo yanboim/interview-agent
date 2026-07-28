@@ -8,6 +8,7 @@ from fastapi import APIRouter, HTTPException, Request
 from app.api.execution import run_sync
 from app.api.runtime import get_runtime
 from app.api.schemas import (
+    ProfileAvatarRequest,
     ProductEventRequest,
     ReminderPreferencesRequest,
     UserProfileRequest,
@@ -31,6 +32,7 @@ async def user_profile(request: Request, user_id: str) -> dict[str, object]:
         "focus_areas": "",
         "interview_date": None,
         "job_description": "",
+        "avatar_data_url": None,
         "created_at": None,
         "updated_at": None,
     }
@@ -51,6 +53,20 @@ async def update_user_profile(
         interview_date=payload.interview_date,
         job_description=payload.job_description,
     )
+
+
+@router.put("/api/profile/avatar")
+async def update_profile_avatar(
+    payload: ProfileAvatarRequest,
+    request: Request,
+) -> dict[str, object]:
+    user_id = resolve_user_id(request, payload.user_id)
+    profile = await run_sync(
+        get_runtime().conversation_store.update_profile_avatar,
+        user_id=user_id,
+        avatar_data_url=payload.avatar_data_url,
+    )
+    return {"avatar_data_url": profile["avatar_data_url"]}
 
 
 @router.get("/api/reminders/preferences")

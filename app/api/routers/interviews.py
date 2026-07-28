@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import time
 from uuid import uuid4
 
 from fastapi import APIRouter, Header, HTTPException, Request
@@ -22,6 +23,34 @@ from app.interview_engine import build_report
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+async def _record_interview_trace(
+    http_request: Request,
+    *,
+    user_id: str,
+    interaction_id: str,
+    status: str,
+    duration_ms: int,
+    detail: dict[str, object],
+) -> None:
+    try:
+        await run_sync(
+            get_runtime().conversation_store.record_execution_trace,
+            request_id=str(getattr(http_request.state, "request_id", "")),
+            user_id=user_id,
+            interaction_type="interview",
+            interaction_id=interaction_id,
+            stage="assessment",
+            status=status,
+            duration_ms=duration_ms,
+            detail=detail,
+        )
+    except Exception:
+        logger.warning(
+            "Interview execution trace write failed.",
+            exc_info=True,
+        )
 
 
 @router.get("/api/interviews")
@@ -192,14 +221,30 @@ async def answer_interview(
     ),
 ) -> dict[str, object]:
     user_id = resolve_user_id(http_request, request.user_id)
+    started_at = time.monotonic()
     try:
-        return await run_sync(
+        result = await run_sync(
             get_runtime().interview_answer_service.submit,
             user_id=user_id,
             interview_id=interview_id,
             answer=request.answer,
             idempotency_key=idempotency_key,
         )
+        await _record_interview_trace(
+            http_request,
+            user_id=user_id,
+            interaction_id=(
+                f"{interview_id}:{result.get('turn_index', 'unknown')}"
+            ),
+            status="completed",
+            duration_ms=int((time.monotonic() - started_at) * 1000),
+            detail={
+                "model": get_runtime().settings.zhipu_model,
+                "score": result.get("score"),
+                "has_next_question": bool(result.get("next_question")),
+            },
+        )
+        return result
     except InterviewAnswerNotFound as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     except InterviewAnswerConflict as exc:
@@ -209,6 +254,14 @@ async def answer_interview(
             headers={"Retry-After": "1"} if exc.retryable else None,
         ) from exc
     except Exception as exc:
+        await _record_interview_trace(
+            http_request,
+            user_id=user_id,
+            interaction_id=f"{interview_id}:unknown",
+            status="failed",
+            duration_ms=int((time.monotonic() - started_at) * 1000),
+            detail={"error_type": type(exc).__name__},
+        )
         logger.exception("Failed to score interview %s", interview_id)
         raise HTTPException(status_code=500, detail=f"回答评分失败：{exc}") from exc
 

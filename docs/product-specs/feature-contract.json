@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product": "interview-agent",
-  "updated_at": "2026-07-26",
+  "updated_at": "2026-07-28",
   "status_values": [
     "passing",
     "planned"
@@ -54,17 +54,21 @@
     {
       "id": "interview-lifecycle",
       "category": "functional",
-      "description": "An interview persists questions, answers, scores, history, archive state, and report inputs.",
+      "description": "An interview persists questions, answers, scores, safely rendered reference answers, history, archive state, and report inputs.",
       "status": "passing",
       "steps": [
         "Create an interview and its first question.",
         "Store a scored answer and successor question.",
+        "Render compact reference-answer Markdown as readable numbered sections, bullets, emphasis, and code without unsafe HTML.",
         "Reload, archive, restore, and delete the interview.",
+        "Return from an active question to the populated interview history list.",
         "Verify report aggregation uses persisted scored turns."
       ],
       "verification": [
         "tests/test_storage.py",
-        "tests/test_interview_engine.py"
+        "tests/test_interview_engine.py",
+        "frontend/e2e/interview-question.spec.ts",
+        "frontend/src/components/MarkdownContent.test.ts"
       ]
     },
     {
@@ -142,6 +146,25 @@
         "frontend/e2e/product.spec.ts",
         "frontend/e2e/goal-dialog.spec.ts",
         "frontend/e2e/interview-question.spec.ts"
+      ]
+    },
+    {
+      "id": "account-avatar-and-reminder-preferences",
+      "category": "user-experience",
+      "description": "A product user can upload or remove an account-scoped avatar, while avatar and reminder controls remain compact, accessible, and stable at supported viewports.",
+      "status": "passing",
+      "steps": [
+        "Open settings from the sidebar avatar.",
+        "Upload a supported image and save it as an account preference.",
+        "Reload and verify the avatar remains visible without clipping.",
+        "Toggle the daily reminder with the keyboard-accessible switch.",
+        "Verify unsupported or oversized avatar payloads are rejected."
+      ],
+      "verification": [
+        "frontend/e2e/profile-settings.spec.ts",
+        "tests/test_profile_preferences.py",
+        "tests/test_storage.py",
+        "tests/test_migrations.py"
       ]
     },
     {
@@ -358,6 +381,27 @@
       ]
     },
     {
+      "id": "admin-system-resource-center",
+      "category": "operations",
+      "description": "Administrators can inspect a sanitized inventory and bounded live health summary for application, data, job, gateway, and observability resources without exposing infrastructure credentials or management ports.",
+      "status": "passing",
+      "steps": [
+        "Authenticate through the separate administrator surface and open the system resource center.",
+        "Inspect live, unavailable, and disabled resource states with network-exposure labels, including Worker freshness from its bounded Redis heartbeat.",
+        "Stop or expire a Worker heartbeat and verify the resource becomes unavailable; publish a restarted instance heartbeat and verify it becomes healthy.",
+        "Verify failed probes return generic details without connection strings, credentials, internal probe URLs, or raw exceptions.",
+        "Verify non-administrators are denied and infrastructure consoles remain private unless an approved credential-free HTTP(S) link is configured."
+      ],
+      "verification": [
+        "tests/test_system_resources.py",
+        "tests/test_operations.py",
+        "tests/test_worker.py",
+        "tests/test_architecture.py",
+        "frontend/src/lib/adminResources.test.ts",
+        "frontend/src/components/admin/AdminResourcesSection.vue"
+      ]
+    },
+    {
       "id": "frontend-toolchain-audit",
       "category": "security",
       "description": "The upgraded frontend build toolchain is lockfile-enforced and has no moderate-or-higher npm audit findings.",
@@ -373,6 +417,44 @@
         "frontend/package-lock.json",
         ".github/workflows/ci.yml",
         "frontend/e2e/product.spec.ts"
+      ]
+    },
+    {
+      "id": "admin-observability-and-audit",
+      "category": "operations",
+      "description": "Administrators can correlate authoritative user activity, canonical user-input/system-output interactions, and sanitized execution traces without copying interaction content into generic logs.",
+      "status": "passing",
+      "steps": [
+        "Perform authenticated API actions and verify actor, action, request ID, target, outcome, status, and duration are recorded server-side.",
+        "Open the administrator audit center and filter recent activity by user, action text, outcome, target, or request ID.",
+        "Inspect canonical chat and interview records and verify exact persisted user input and system output are displayed.",
+        "Open an interaction timeline and correlate agent or assessment execution and tool calls by interaction and request ID.",
+        "Verify administrator content reads are audited and audit/trace details redact credentials and content-shaped fields."
+      ],
+      "verification": [
+        "tests/test_admin_observability.py",
+        "tests/test_migrations.py",
+        "tests/test_architecture.py",
+        "frontend/src/components/admin/AdminAuditsSection.vue"
+      ]
+    },
+    {
+      "id": "admin-deployment-release-ledger",
+      "category": "operations",
+      "description": "Administrators can inspect a reverse-chronological, deployment-authored ledger of recent Canary and production releases without treating unshipped Git commits as releases.",
+      "status": "passing",
+      "steps": [
+        "Record a stable release ID when deployment starts and reuse it when the deployment reaches a terminal outcome.",
+        "Attach sanitized change, image, migration, recovery-point, and verification summaries after deployment checks.",
+        "Authenticate through the administrator surface and open the release timeline.",
+        "Filter releases and inspect the accessible detail drawer on desktop and mobile.",
+        "Verify product users cannot access the administrator release API."
+      ],
+      "verification": [
+        "tests/test_deployment_releases.py",
+        "tests/test_migrations.py",
+        "frontend/e2e/admin-releases.spec.ts",
+        "scripts/record_release.py"
       ]
     }
   ]

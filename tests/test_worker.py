@@ -1,7 +1,7 @@
 from unittest.mock import MagicMock
 
 from app.operations import JobClaim
-from scripts.worker import process_one_job
+from scripts.worker import process_one_job, start_worker_heartbeat
 
 
 def claim(attempt: int = 1) -> JobClaim:
@@ -13,6 +13,28 @@ def claim(attempt: int = 1) -> JobClaim:
         attempt=attempt,
         max_attempts=3,
     )
+
+
+def test_worker_publishes_process_heartbeat_at_startup() -> None:
+    runtime = MagicMock()
+
+    stopped, thread = start_worker_heartbeat(
+        runtime,
+        interval_seconds=5,
+        ttl_seconds=20,
+    )
+    try:
+        runtime.publish_worker_heartbeat.assert_called_once()
+        assert (
+            runtime.publish_worker_heartbeat.call_args.kwargs["ttl_seconds"]
+            == 20
+        )
+        assert thread.is_alive()
+    finally:
+        stopped.set()
+        thread.join(timeout=1)
+
+    assert not thread.is_alive()
 
 
 def test_worker_acknowledges_successful_job() -> None:

@@ -38,6 +38,29 @@ test("long interview questions use readable typography and inline Markdown", asy
       body: JSON.stringify(activeInterview),
     });
   });
+  await page.route(`**/api/interviews/${interviewId}/answer`, async (route) => {
+    await route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({
+        score: 8,
+        feedback: "结构清晰。",
+        reference_answer:
+          "先说明原则。  1. **通信机制设计 **： - 局部智能体自治。 "
+          + "- **意图黑板**：广播意图。  2. **冲突仲裁**： - 检测环路。",
+        dimensions: {
+          accuracy: 8,
+          depth: 8,
+          communication: 8,
+          practicality: 8,
+        },
+        strengths: ["结构清晰"],
+        weaknesses: ["补充案例"],
+        next_question: null,
+        turn_index: 1,
+        status: "completed",
+      }),
+    });
+  });
 
   await page.goto(`/interviews/${interviewId}`);
   const heading = page.locator(".interview-question");
@@ -61,4 +84,20 @@ test("long interview questions use readable typography and inline Markdown", asy
   expect(typography.fontSize).toBeGreaterThanOrEqual(19);
   expect(typography.lineHeightRatio).toBeGreaterThanOrEqual(1.5);
   expect(typography.hasHorizontalOverflow).toBe(false);
+
+  await page.getByLabel("你的回答").fill("我的回答");
+  await page.getByRole("button", { name: "提交并评分" }).click();
+  await page.getByText("查看参考回答").click();
+  const reference = page.locator(".reference-answer .markdown-content");
+  await expect(reference.locator("strong").first()).toHaveText("通信机制设计");
+  await expect(reference.locator("ol")).toHaveCount(2);
+  await expect(reference.locator("ol").first()).toBeVisible();
+  await expect(reference.locator("ul")).toHaveCount(2);
+  await expect(reference).not.toContainText("**");
+
+  await page.getByRole("button", { name: "返回历史" }).click();
+  await expect(page).toHaveURL(/\/interviews$/);
+  await expect(page.getByRole("heading", { name: "创建一场模拟面试" })).toBeVisible();
+  await expect(page.getByText("历史面试")).toBeVisible();
+  await expect(page.getByText("Agent 系统设计", { exact: true })).toBeVisible();
 });

@@ -26,7 +26,7 @@ let mobileQuery: MediaQueryList | null = null;
 let syncMobile: (() => void) | null = null;
 
 const avatarInitials = computed(() => {
-  if (auth.username) return auth.username.slice(0, 2).toUpperCase();
+  if (auth.username) return Array.from(auth.username).slice(0, 2).join("").toUpperCase();
   return "ME";
 });
 
@@ -172,28 +172,39 @@ watch(
     </div>
 
     <div class="sidebar-footer">
-      <span class="avatar" aria-hidden="true">{{ avatarInitials }}</span>
-      <div>
+      <button
+        class="avatar"
+        type="button"
+        aria-label="设置头像"
+        title="设置头像"
+        @click="emit('open-settings')"
+      >
+        <img v-if="auth.avatarDataUrl" :src="auth.avatarDataUrl" alt="" />
+        <span v-else aria-hidden="true">{{ avatarInitials }}</span>
+      </button>
+      <div class="sidebar-account-copy">
         <strong id="account-name">{{ auth.username || "未登录" }}</strong>
         <span>{{ auth.isAuthenticated ? "已登录" : "本地会话" }}</span>
       </div>
-      <button
-        class="sidebar-settings"
-        type="button"
-        aria-label="打开设置"
-        title="设置"
-        @click="emit('open-settings')"
-      >
-        <i class="ph ph-gear" aria-hidden="true"></i>
-      </button>
-      <button
-        v-if="auth.isAuthenticated"
-        class="logout-button"
-        type="button"
-        @click="auth.logout()"
-      >
-        退出
-      </button>
+      <div class="sidebar-account-actions">
+        <button
+          class="sidebar-settings"
+          type="button"
+          aria-label="打开设置"
+          title="设置"
+          @click="emit('open-settings')"
+        >
+          <i class="ph ph-gear" aria-hidden="true"></i>
+        </button>
+        <button
+          v-if="auth.isAuthenticated"
+          class="logout-button"
+          type="button"
+          @click="auth.logout()"
+        >
+          退出
+        </button>
+      </div>
     </div>
   </aside>
 </template>

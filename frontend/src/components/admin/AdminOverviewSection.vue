@@ -10,6 +10,8 @@ const countLabels: Record<string, string> = {
   learning_tasks: "学习任务",
   messages: "消息",
   tool_audit_logs: "工具调用",
+  audit_events: "操作审计",
+  execution_traces: "执行追踪",
   active_tokens: "有效令牌",
   interview_turns: "面试问答",
 };

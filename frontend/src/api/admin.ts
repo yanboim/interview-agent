@@ -1,9 +1,14 @@
 import type {
   AdminAudit,
+  AdminAuditEvent,
+  AdminExecutionTrace,
+  AdminInteraction,
   AdminKnowledgeFile,
   AdminRuntime,
+  AdminResourceCenter,
   AdminSummary,
   AdminUser,
+  DeploymentRelease,
   ProductEvent,
 } from "@/types";
 import { adminFetch, expectAdminOk } from "@/api/adminCore";
@@ -16,6 +21,12 @@ export async function fetchAdminSummary(): Promise<AdminSummary> {
 
 export async function fetchAdminRuntime(): Promise<AdminRuntime> {
   const response = await adminFetch("/api/admin/runtime");
+  await expectAdminOk(response);
+  return response.json();
+}
+
+export async function fetchAdminResources(): Promise<AdminResourceCenter> {
+  const response = await adminFetch("/api/admin/resources");
   await expectAdminOk(response);
   return response.json();
 }
@@ -72,8 +83,42 @@ export async function fetchAdminAudits(limit = 100): Promise<AdminAudit[]> {
   return response.json();
 }
 
+export async function fetchAdminAuditEvents(
+  limit = 200,
+): Promise<AdminAuditEvent[]> {
+  const response = await adminFetch(`/api/admin/audit-events?limit=${limit}`);
+  await expectAdminOk(response);
+  return response.json();
+}
+
+export async function fetchAdminInteractions(
+  limit = 100,
+): Promise<AdminInteraction[]> {
+  const response = await adminFetch(`/api/admin/interactions?limit=${limit}`);
+  await expectAdminOk(response);
+  return response.json();
+}
+
+export async function fetchAdminInteractionTrace(
+  interaction: AdminInteraction,
+): Promise<AdminExecutionTrace[]> {
+  const response = await adminFetch(
+    `/api/admin/interactions/${interaction.interaction_type}/${
+      encodeURIComponent(interaction.interaction_id)
+    }/trace`,
+  );
+  await expectAdminOk(response);
+  return response.json();
+}
+
 export async function fetchAdminProductEvents(limit = 500): Promise<ProductEvent[]> {
   const response = await adminFetch(`/api/admin/product-events?limit=${limit}`);
+  await expectAdminOk(response);
+  return response.json();
+}
+
+export async function fetchAdminReleases(limit = 100): Promise<DeploymentRelease[]> {
+  const response = await adminFetch(`/api/admin/releases?limit=${limit}`);
   await expectAdminOk(response);
   return response.json();
 }

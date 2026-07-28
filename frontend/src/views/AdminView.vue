@@ -8,12 +8,16 @@ import AdminKnowledgeSection from "@/components/admin/AdminKnowledgeSection.vue"
 import AdminUsersSection from "@/components/admin/AdminUsersSection.vue";
 import AdminAuditsSection from "@/components/admin/AdminAuditsSection.vue";
 import AdminAnalyticsSection from "@/components/admin/AdminAnalyticsSection.vue";
+import AdminResourcesSection from "@/components/admin/AdminResourcesSection.vue";
+import AdminReleasesSection from "@/components/admin/AdminReleasesSection.vue";
 
 const toast = useToastStore();
 const admin = useAdminStore();
 const adminAuth = useAdminAuthStore();
 
-const section = ref<"overview" | "analytics" | "knowledge" | "users" | "audits">("overview");
+const section = ref<
+  "overview" | "resources" | "releases" | "analytics" | "knowledge" | "users" | "audits"
+>("overview");
 const loginError = ref("");
 const loginUsername = ref("");
 const loginPassword = ref("");
@@ -21,10 +25,12 @@ const loginSubmitting = ref(false);
 
 const titles: Record<typeof section.value, string> = {
   overview: "运行概览",
+  resources: "系统资源",
+  releases: "发版记录",
   analytics: "产品分析",
   knowledge: "知识库",
   users: "用户管理",
-  audits: "工具审计",
+  audits: "审计中心",
 };
 
 const isReady = computed(() => adminAuth.isAuthenticated && !adminAuth.initializing);
@@ -46,6 +52,8 @@ async function showSection(name: typeof section.value) {
   section.value = name;
   try {
     if (name === "overview") await admin.loadOverview();
+    if (name === "resources") await admin.loadResources();
+    if (name === "releases") await admin.loadReleases();
     if (name === "analytics") await admin.loadAnalytics();
     if (name === "knowledge") await admin.loadKnowledge();
     if (name === "users") await admin.loadUsers();
@@ -99,13 +107,13 @@ onMounted(async () => {
   <!-- 已登录:后台主体 -->
   <div v-else class="admin-shell">
     <aside class="admin-sidebar">
-      <a class="admin-brand" href="/">
+      <a class="admin-brand" href="/" aria-label="返回 Interview Lab">
         <span class="brand-mark" aria-hidden="true">IL</span>
         <span><strong>Interview Lab</strong><small>管理控制台</small></span>
       </a>
       <nav aria-label="后台导航">
         <button
-          v-for="key in (['overview', 'analytics', 'knowledge', 'users', 'audits'] as const)"
+          v-for="key in (['overview', 'resources', 'releases', 'analytics', 'knowledge', 'users', 'audits'] as const)"
           :key="key"
           class="nav-button"
           :class="{ active: section === key }"
@@ -140,6 +148,8 @@ onMounted(async () => {
       </header>
 
       <AdminOverviewSection v-show="section === 'overview'" />
+      <AdminResourcesSection v-show="section === 'resources'" />
+      <AdminReleasesSection v-show="section === 'releases'" />
       <AdminAnalyticsSection v-show="section === 'analytics'" />
       <AdminKnowledgeSection v-show="section === 'knowledge'" />
       <AdminUsersSection v-show="section === 'users'" />
