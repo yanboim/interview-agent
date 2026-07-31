@@ -1,4 +1,4 @@
-import type { InterviewGoal } from "@/types";
+import type { CoachingMemory, InterviewGoal } from "@/types";
 import { apiFetch, expectOk } from "@/api/core";
 
 interface ProfileResponse {
@@ -69,4 +69,55 @@ export async function updateInterviewGoal(
   });
   await expectOk(response);
   return fromResponse(await response.json()) as InterviewGoal;
+}
+
+export async function fetchCoachingMemories(userId: string): Promise<CoachingMemory[]> {
+  const response = await apiFetch(
+    `/api/coaching-memories?user_id=${encodeURIComponent(userId)}`,
+  );
+  await expectOk(response);
+  return response.json();
+}
+
+export async function proposeCoachingMemory(
+  userId: string,
+  kind: CoachingMemory["kind"],
+  content: string,
+): Promise<CoachingMemory> {
+  const response = await apiFetch("/api/coaching-memories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ user_id: userId, kind, content }),
+  });
+  await expectOk(response);
+  return response.json();
+}
+
+export async function updateCoachingMemory(
+  userId: string,
+  memoryId: string,
+  action: "confirm" | "reject" | "correct",
+  content?: string,
+): Promise<CoachingMemory> {
+  const response = await apiFetch(
+    `/api/coaching-memories/${encodeURIComponent(memoryId)}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, action, content }),
+    },
+  );
+  await expectOk(response);
+  return response.json();
+}
+
+export async function deleteCoachingMemory(
+  userId: string,
+  memoryId: string,
+): Promise<void> {
+  const response = await apiFetch(
+    `/api/coaching-memories/${encodeURIComponent(memoryId)}?user_id=${encodeURIComponent(userId)}`,
+    { method: "DELETE" },
+  );
+  await expectOk(response);
 }

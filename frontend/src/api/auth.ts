@@ -39,7 +39,13 @@ export async function fetchCurrentUser(): Promise<AuthPayload["user"]> {
   return response.json();
 }
 
-export async function fetchPublicConfig(): Promise<{ auth_required: boolean }> {
+export async function fetchPublicConfig(): Promise<{
+  auth_required: boolean;
+  resume_feature_enabled?: boolean;
+  review_feature_enabled?: boolean;
+  transcription_enabled?: boolean;
+  transcription_provider_name?: string;
+}> {
   const response = await fetch("/api/config");
   await expectOk(response);
   return response.json();

@@ -1,3 +1,5 @@
+"""外部模型统一策略网关：集中执行预算、并发、超时、重试、指标和安全错误映射。"""
+
 import asyncio
 import threading
 import weakref
@@ -11,6 +13,7 @@ from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 from app.config import Settings, get_settings
 from app.operations import request_metrics
+from app.model_routing import ModelUnavailable, fallback_policy, model_for_purpose
 
 
 class ModelGatewayError(RuntimeError):
@@ -33,10 +36,52 @@ def _raise_gateway_error(name: str, exc: Exception) -> None:
     ) from exc
 
 
+def _claim_budget_call(purpose: str) -> None:
+    from app.agent_budget import current_agent_budget
+
+    budget = current_agent_budget()
+    if budget:
+        budget.claim_call(purpose)
+
+
+def _record_budget_usage(input_tokens: int, output_tokens: int) -> None:
+    from app.agent_budget import current_agent_budget
+
+    budget = current_agent_budget()
+    if budget:
+        budget.record_usage(input_tokens, output_tokens)
+
+
+def _record_first_token() -> None:
+    from app.agent_budget import current_agent_budget
+
+    budget = current_agent_budget()
+    if budget:
+        budget.record_first_token()
+
+
 class PolicyChatOpenAI(ChatOpenAI):
+    """在 LangChain 模型实现外包一层同步/异步一致的运行策略。"""
+
     gateway_name: str
     input_char_budget: int
     max_concurrency: int
+    schema_repair_model_name: str
+    fallback_model_name: str = ""
+
+    def for_schema_repair(self) -> "PolicyChatOpenAI":
+        if self.model_name == self.schema_repair_model_name:
+            return self
+        return self.model_copy(update={
+            "model_name": self.schema_repair_model_name,
+            "gateway_name": "schema_repair",
+        })
+
+    def _fallback_copy(self) -> "PolicyChatOpenAI":
+        return self.model_copy(update={
+            "model_name": self.fallback_model_name,
+            "fallback_model_name": "",
+        })
 
     _sync_limiters: ClassVar[dict[tuple[str, int], threading.BoundedSemaphore]] = {}
     _async_limiters: ClassVar[
@@ -70,6 +115,7 @@ class PolicyChatOpenAI(ChatOpenAI):
             limiter.release()
 
     def _async_slot(self) -> asyncio.Semaphore:
+        # asyncio 原语绑定事件循环，不能像线程信号量一样跨 loop 全局复用。
         loop = asyncio.get_running_loop()
         key = (self.gateway_name, self.max_concurrency)
         with self._limiter_lock:
@@ -80,10 +126,15 @@ class PolicyChatOpenAI(ChatOpenAI):
             )
 
     def _record_result(self, result: ChatResult) -> None:
+        _record_first_token()
         for generation in result.generations:
             usage = getattr(generation.message, "usage_metadata", None) or {}
             request_metrics.observe_tokens(
                 self.gateway_name,
+                int(usage.get("input_tokens", 0)),
+                int(usage.get("output_tokens", 0)),
+            )
+            _record_budget_usage(
                 int(usage.get("input_tokens", 0)),
                 int(usage.get("output_tokens", 0)),
             )
@@ -96,6 +147,7 @@ class PolicyChatOpenAI(ChatOpenAI):
         **kwargs: Any,
     ) -> ChatResult:
         self._validate_budget(messages)
+        _claim_budget_call(self.gateway_name)
         try:
             with self._sync_slot(), request_metrics.dependency(
                 f"model_{self.gateway_name}"
@@ -109,6 +161,23 @@ class PolicyChatOpenAI(ChatOpenAI):
             self._record_result(result)
             return result
         except Exception as exc:
+            if self.fallback_model_name and not isinstance(exc, ModelBudgetExceeded):
+                try:
+                    _claim_budget_call(f"{self.gateway_name}_fallback")
+                    fallback = self._fallback_copy()
+                    with request_metrics.dependency(
+                        f"model_{self.gateway_name}_fallback"
+                    ):
+                        result = ChatOpenAI._generate(
+                            fallback, messages, stop=stop,
+                            run_manager=run_manager, **kwargs,
+                        )
+                    self._record_result(result)
+                    return result
+                except Exception as fallback_error:
+                    raise ModelUnavailable(
+                        f"{self.gateway_name} primary and fallback unavailable"
+                    ) from fallback_error
             _raise_gateway_error(self.gateway_name, exc)
 
     async def _agenerate(
@@ -119,6 +188,7 @@ class PolicyChatOpenAI(ChatOpenAI):
         **kwargs: Any,
     ) -> ChatResult:
         self._validate_budget(messages)
+        _claim_budget_call(self.gateway_name)
         try:
             async with self._async_slot():
                 with request_metrics.dependency(f"model_{self.gateway_name}"):
@@ -131,24 +201,73 @@ class PolicyChatOpenAI(ChatOpenAI):
             self._record_result(result)
             return result
         except Exception as exc:
+            if self.fallback_model_name and not isinstance(exc, ModelBudgetExceeded):
+                try:
+                    _claim_budget_call(f"{self.gateway_name}_fallback")
+                    fallback = self._fallback_copy()
+                    async with fallback._async_slot():
+                        with request_metrics.dependency(
+                            f"model_{self.gateway_name}_fallback"
+                        ):
+                            result = await ChatOpenAI._agenerate(
+                                fallback, messages, stop=stop,
+                                run_manager=run_manager, **kwargs,
+                            )
+                    self._record_result(result)
+                    return result
+                except Exception as fallback_error:
+                    raise ModelUnavailable(
+                        f"{self.gateway_name} primary and fallback unavailable"
+                    ) from fallback_error
             _raise_gateway_error(self.gateway_name, exc)
 
     def _stream(self, *args: Any, **kwargs: Any) -> Iterator[Any]:
         messages = args[0] if args else kwargs.get("messages", [])
         self._validate_budget(messages)
+        _claim_budget_call(self.gateway_name)
         try:
             with self._sync_slot(), request_metrics.dependency(
                 f"model_{self.gateway_name}"
             ):
                 for chunk in super()._stream(*args, **kwargs):
+                    _record_first_token()
                     usage = getattr(chunk.message, "usage_metadata", None) or {}
                     request_metrics.observe_tokens(
                         self.gateway_name,
                         int(usage.get("input_tokens", 0)),
                         int(usage.get("output_tokens", 0)),
                     )
+                    _record_budget_usage(
+                        int(usage.get("input_tokens", 0)),
+                        int(usage.get("output_tokens", 0)),
+                    )
                     yield chunk
         except Exception as exc:
+            if self.fallback_model_name and not isinstance(exc, ModelBudgetExceeded):
+                try:
+                    _claim_budget_call(f"{self.gateway_name}_fallback")
+                    fallback = self._fallback_copy()
+                    with request_metrics.dependency(
+                        f"model_{self.gateway_name}_fallback"
+                    ):
+                        for chunk in ChatOpenAI._stream(fallback, *args, **kwargs):
+                            _record_first_token()
+                            usage = getattr(chunk.message, "usage_metadata", None) or {}
+                            request_metrics.observe_tokens(
+                                f"{self.gateway_name}_fallback",
+                                int(usage.get("input_tokens", 0)),
+                                int(usage.get("output_tokens", 0)),
+                            )
+                            _record_budget_usage(
+                                int(usage.get("input_tokens", 0)),
+                                int(usage.get("output_tokens", 0)),
+                            )
+                            yield chunk
+                    return
+                except Exception as fallback_error:
+                    raise ModelUnavailable(
+                        f"{self.gateway_name} primary and fallback unavailable"
+                    ) from fallback_error
             _raise_gateway_error(self.gateway_name, exc)
 
     async def _astream(
@@ -158,10 +277,12 @@ class PolicyChatOpenAI(ChatOpenAI):
     ) -> AsyncIterator[Any]:
         messages = args[0] if args else kwargs.get("messages", [])
         self._validate_budget(messages)
+        _claim_budget_call(self.gateway_name)
         try:
             async with self._async_slot():
                 with request_metrics.dependency(f"model_{self.gateway_name}"):
                     async for chunk in super()._astream(*args, **kwargs):
+                        _record_first_token()
                         usage = (
                             getattr(chunk.message, "usage_metadata", None) or {}
                         )
@@ -170,12 +291,48 @@ class PolicyChatOpenAI(ChatOpenAI):
                             int(usage.get("input_tokens", 0)),
                             int(usage.get("output_tokens", 0)),
                         )
+                        _record_budget_usage(
+                            int(usage.get("input_tokens", 0)),
+                            int(usage.get("output_tokens", 0)),
+                        )
                         yield chunk
         except Exception as exc:
+            if self.fallback_model_name and not isinstance(exc, ModelBudgetExceeded):
+                try:
+                    _claim_budget_call(f"{self.gateway_name}_fallback")
+                    fallback = self._fallback_copy()
+                    async with fallback._async_slot():
+                        with request_metrics.dependency(
+                            f"model_{self.gateway_name}_fallback"
+                        ):
+                            async for chunk in ChatOpenAI._astream(
+                                fallback, *args, **kwargs
+                            ):
+                                _record_first_token()
+                                usage = (
+                                    getattr(chunk.message, "usage_metadata", None) or {}
+                                )
+                                request_metrics.observe_tokens(
+                                    f"{self.gateway_name}_fallback",
+                                    int(usage.get("input_tokens", 0)),
+                                    int(usage.get("output_tokens", 0)),
+                                )
+                                _record_budget_usage(
+                                    int(usage.get("input_tokens", 0)),
+                                    int(usage.get("output_tokens", 0)),
+                                )
+                                yield chunk
+                    return
+                except Exception as fallback_error:
+                    raise ModelUnavailable(
+                        f"{self.gateway_name} primary and fallback unavailable"
+                    ) from fallback_error
             _raise_gateway_error(self.gateway_name, exc)
 
 
 class PolicyEmbeddings(OpenAIEmbeddings):
+    """对向量化调用应用与聊天模型相同的预算和并发保护。"""
+
     gateway_name: str = "embeddings"
     input_char_budget: int
     max_concurrency: int
@@ -261,6 +418,8 @@ def create_chat_model(
     temperature: float,
     streaming: bool = False,
     max_tokens: int | None = None,
+    timeout_seconds: float | None = None,
+    max_retries: int | None = None,
     settings: Settings | None = None,
 ) -> PolicyChatOpenAI:
     current = settings or get_settings()
@@ -270,18 +429,29 @@ def create_chat_model(
         max_tokens or current.llm_max_output_tokens,
         current.llm_max_output_tokens,
     )
+    fallback = fallback_policy(current, purpose)
     return PolicyChatOpenAI(
         gateway_name=purpose,
         input_char_budget=current.llm_input_char_budget,
         max_concurrency=current.llm_max_concurrency,
-        model=current.zhipu_model,
+        schema_repair_model_name=model_for_purpose(current, "schema_repair"),
+        fallback_model_name=fallback.fallback_model or "",
+        model=model_for_purpose(current, purpose),
         api_key=current.zhipu_api_key,
         base_url=current.zhipu_api_base,
         temperature=temperature,
         streaming=streaming,
         max_tokens=output_limit,
-        timeout=current.llm_timeout_seconds,
-        max_retries=current.llm_max_retries,
+        timeout=(
+            timeout_seconds
+            if timeout_seconds is not None
+            else current.llm_timeout_seconds
+        ),
+        max_retries=(
+            max_retries
+            if max_retries is not None
+            else current.llm_max_retries
+        ),
     )
 
 

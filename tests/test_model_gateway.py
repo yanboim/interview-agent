@@ -57,6 +57,19 @@ def test_gateway_applies_timeout_retry_and_output_budget() -> None:
     assert model.request_timeout == 3
 
 
+def test_gateway_allows_purpose_specific_timeout_and_retry_policy() -> None:
+    model = create_chat_model(
+        "resume_analysis",
+        temperature=0,
+        timeout_seconds=180,
+        max_retries=0,
+        settings=settings(),
+    )
+
+    assert model.request_timeout == 180
+    assert model.max_retries == 0
+
+
 def test_gateway_rejects_oversized_input_before_provider_call(
     monkeypatch,
 ) -> None:
@@ -82,6 +95,34 @@ def test_gateway_maps_provider_errors_without_leaking_message(
 
     assert "RuntimeError" in str(captured.value)
     assert "secret provider payload" not in str(captured.value)
+
+
+def test_gateway_uses_only_evaluation_approved_same_provider_fallback(
+    monkeypatch,
+) -> None:
+    calls = []
+
+    def generate(model, *_args, **_kwargs):
+        calls.append(model.model_name)
+        if model.model_name == "primary-v1":
+            raise RuntimeError("primary unavailable")
+        return result("fallback")
+
+    monkeypatch.setattr(ChatOpenAI, "_generate", generate)
+    model = create_chat_model(
+        "knowledge",
+        temperature=0,
+        settings=settings(
+            zhipu_model="primary-v1",
+            llm_fallback_enabled=True,
+            llm_fallback_evaluation_approved=True,
+            llm_fallback_model="fallback-v1",
+            llm_fallback_approved_purposes="knowledge",
+        ),
+    )
+
+    assert model.invoke([HumanMessage(content="short")]).content == "fallback"
+    assert calls == ["primary-v1", "fallback-v1"]
 
 
 def test_gateway_limits_concurrent_sync_calls(monkeypatch) -> None:

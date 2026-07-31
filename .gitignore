@@ -13,3 +13,5 @@ frontend/dist/
 frontend/coverage/
 frontend/test-results/
 frontend/*.tsbuildinfo
+/.idea/
+/test-results/

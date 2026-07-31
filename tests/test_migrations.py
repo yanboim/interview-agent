@@ -29,8 +29,18 @@ def test_initial_migration_creates_schema(tmp_path, monkeypatch):
         "interview_answer_attempts",
         "product_events",
         "deployment_releases",
+        "resume_documents",
+        "resume_analyses",
+        "interview_reviews",
+        "interview_review_turns",
         "audit_events",
         "execution_traces",
+            "agent_action_confirmations",
+            "coaching_memories",
+            "agent_runs",
+            "agent_steps",
+            "assistant_feedback",
+            "evaluation_candidates",
         "alembic_version",
     }.issubset(set(inspector.get_table_names()))
     assert "metadata_json" in {
@@ -48,6 +58,9 @@ def test_initial_migration_creates_schema(tmp_path, monkeypatch):
         "result_json",
         "submission_error",
         "processing_started_at",
+        "assessment_prompt_version",
+        "assessment_schema_version",
+        "assessment_model_version",
     }.issubset(turn_columns)
     assert {
         "request_id",
@@ -102,7 +115,132 @@ def test_initial_migration_creates_schema(tmp_path, monkeypatch):
         "app_image",
         "migration_revision",
     }.issubset(release_columns)
-    assert revision == "20260728_0013"
+    resume_columns = {
+        column["name"]
+        for column in inspector.get_columns("resume_analyses")
+    }
+    assert {
+        "analysis_id",
+        "resume_id",
+        "status",
+        "claim_token",
+        "report_json",
+        "draft_json",
+        "warnings_json",
+        "revision",
+    }.issubset(resume_columns)
+    interview_columns = {
+        column["name"]
+        for column in inspector.get_columns("interviews")
+    }
+    assert {
+        "source_type",
+        "source_resume_id",
+        "source_analysis_id",
+        "source_display_name",
+        "resume_context_json",
+            "question_prompt_version",
+            "question_schema_version",
+            "question_model_version",
+    }.issubset(interview_columns)
+    review_columns = {
+        column["name"]
+        for column in inspector.get_columns("interview_reviews")
+    }
+    assert {
+        "review_id",
+        "input_type",
+        "status",
+        "transcript_json",
+        "transcript_revision",
+        "confirmed_revision",
+        "claim_token",
+        "report_json",
+        "schema_version",
+    }.issubset(review_columns)
+    confirmation_columns = {
+        column["name"]
+        for column in inspector.get_columns("agent_action_confirmations")
+    }
+    assert {
+        "confirmation_id",
+        "user_id",
+        "action_type",
+        "payload_digest",
+        "status",
+        "expires_at",
+        "consumed_at",
+    }.issubset(confirmation_columns)
+    trace_columns = {
+        column["name"] for column in inspector.get_columns("execution_traces")
+    }
+    assert {"prompt_version", "schema_version", "model_version"}.issubset(
+        trace_columns
+    )
+    memory_columns = {
+        column["name"] for column in inspector.get_columns("coaching_memories")
+    }
+    assert {
+        "memory_id",
+        "user_id",
+        "kind",
+        "content",
+        "status",
+        "source_type",
+        "source_revision",
+        "expires_at",
+    }.issubset(memory_columns)
+    run_columns = {
+        column["name"] for column in inspector.get_columns("agent_runs")
+    }
+    assert {
+        "run_id",
+        "user_id",
+        "status",
+        "idempotency_key",
+        "input_digest",
+        "proposal_json",
+        "result_json",
+    }.issubset(run_columns)
+    step_columns = {
+        column["name"] for column in inspector.get_columns("agent_steps")
+    }
+    assert {
+        "step_id",
+        "run_id",
+        "step_type",
+        "status",
+        "idempotency_key",
+        "claim_owner",
+        "claimed_at",
+        "attempt_count",
+        "result_json",
+    }.issubset(step_columns)
+    learning_columns = {
+        column["name"] for column in inspector.get_columns("learning_tasks")
+    }
+    assert {
+        "recall_outcome",
+        "difficulty_rating",
+        "lapse_count",
+        "review_confidence",
+    }.issubset(learning_columns)
+    feedback_columns = {
+        column["name"] for column in inspector.get_columns("assistant_feedback")
+    }
+    assert {
+        "feedback_id",
+        "user_id",
+        "turn_id",
+        "rating",
+        "reason_code",
+        "comment",
+        "prompt_version",
+        "schema_version",
+        "model_version",
+        "source_ids_json",
+    }.issubset(feedback_columns)
+    assert revision == "20260731_0021"
     get_settings.cache_clear()
 
 

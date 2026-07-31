@@ -1,3 +1,5 @@
+"""知识分块的稳定标识与离线检索评估计算，保持为无基础设施依赖的纯模块。"""
+
 from uuid import UUID, uuid5
 
 CHUNK_NAMESPACE = UUID("73873de7-6bd4-4ec4-bb25-e6871a6a40f3")

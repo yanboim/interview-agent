@@ -1,3 +1,5 @@
+"""Agent/RAG 评估指标与报告聚合纯函数，供脚本和测试共同复用。"""
+
 from collections.abc import Sequence
 from math import log2
 

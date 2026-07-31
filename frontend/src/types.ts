@@ -24,21 +24,42 @@ export interface InterviewGoal {
   jobDescription: string;
 }
 
+export interface CoachingMemory {
+  memory_id: string;
+  kind: "fact" | "preference" | "goal" | "observation";
+  content: string;
+  status: "proposed" | "confirmed" | "rejected";
+  source_type: string;
+  source_id?: string | null;
+  expires_at?: string | null;
+  updated_at: string;
+}
+
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  turnId?: string;
   pending?: boolean;
   feedback?: "up" | "down";
   knowledgeUsed?: boolean;
   sources?: ChatSource[];
+  citations?: AnswerCitation[];
+  unsupportedClaims?: string[];
 }
 
 export interface ChatSource {
+  evidence_id?: string;
   label: string;
   kind: "private" | "public";
   url?: string;
   fetched_at?: string;
   snippet?: string;
+}
+
+export interface AnswerCitation {
+  claim: string;
+  evidence_ids: string[];
+  support: "supported" | "unsupported" | "conflicting";
 }
 
 /** 服务端历史消息(含时间戳)。 */
@@ -47,8 +68,14 @@ export interface HistoryMessage {
   content: string;
   created_at: string;
   metadata?: {
+    turn_id?: string;
     knowledge_used?: boolean;
     sources?: ChatSource[];
+    schema_version?: number | string;
+    citations?: AnswerCitation[];
+    unsupported_claims?: string[];
+    prompt_version?: string;
+    model_version?: string;
   };
 }
 
@@ -56,7 +83,13 @@ export interface HistoryMessage {
 export type StreamEvent =
   | { type: "token"; content: string }
   | { type: "sources"; knowledge_used: boolean; sources: ChatSource[] }
-  | { type: "error"; detail: string }
+  | {
+      type: "citations";
+      schema_version: number | string;
+      citations: AnswerCitation[];
+      unsupported_claims: string[];
+    }
+  | { type: "error"; detail: string; code?: string; retryable?: boolean }
   | {
       type: "done";
       user_id?: string;
@@ -84,6 +117,15 @@ export interface InterviewSummary {
   average_score: number | null;
   archived_at: string | null;
   updated_at: string;
+  source_type: "general" | "resume";
+  source_resume?: InterviewResumeSource | null;
+}
+
+export interface InterviewResumeSource {
+  resume_id: string;
+  analysis_id: string;
+  display_name: string;
+  available: boolean;
 }
 
 export interface InterviewTurn {
@@ -108,6 +150,8 @@ export interface ActiveInterview {
   turn_index: number;
   question_count: number;
   question: string;
+  source_type: "general" | "resume";
+  source_resume?: InterviewResumeSource | null;
 }
 
 export interface AnswerResult {
@@ -146,6 +190,19 @@ export interface CapabilityProfile {
     improvement: number;
   };
   dimension_scores: Record<string, number>;
+  calibrated_dimension_scores: Record<string, number>;
+  calibration: {
+    version: string;
+    sample_count: number;
+    confidence: number;
+    recency_weighted_score: number;
+    cohorts: Record<string, Array<{
+      cohort: string;
+      sample_count: number;
+      confidence: number;
+      recency_weighted_score: number;
+    }>>;
+  };
   trend: Array<{ updated_at: string; average_score: number }>;
   topic_breakdown: Array<{
     topic: string;
@@ -185,6 +242,145 @@ export interface LearningTask {
 }
 
 export type LearningStatus = LearningTask["status"];
+
+export interface AgentRunStep {
+  step_id: string;
+  step_key: string;
+  step_type: "read" | "model" | "command";
+  status: "pending" | "claimed" | "completed" | "failed" | "skipped";
+  attempt_count: number;
+  error_code: string | null;
+}
+
+export interface TrainingProgramRun {
+  run_id: string;
+  run_type: "personalized_training_program";
+  status:
+    | "proposed"
+    | "awaiting_confirmation"
+    | "running"
+    | "completed"
+    | "failed"
+    | "cancelled";
+  proposal: {
+    schema_version: "training-program-proposal-v1";
+    target_role: string;
+    topic: string;
+    answered_questions: number;
+    candidates: Array<{ dimension: string; weakness: string; action: string }>;
+    interview_create_url: string;
+  };
+  result: {
+    task_ids: string[];
+    task_count: number;
+    interview_create_url: string;
+  } | null;
+  steps: AgentRunStep[];
+  events: Array<{ event: string; run_id: string; step_id?: string; step_key?: string }>;
+  error_code: string | null;
+}
+
+export interface ResumeIssue {
+  severity: "high" | "medium" | "low" | string;
+  category: string;
+  message: string;
+  evidence: string;
+  suggestion: string;
+}
+
+export interface ResumeDraftSection {
+  title: string;
+  items: string[];
+}
+
+export interface ResumeDraft {
+  name: string;
+  headline: string;
+  summary: string;
+  sections: ResumeDraftSection[];
+  pending_questions: string[];
+}
+
+export interface ResumeAnalysis {
+  analysis_id: string;
+  resume_id: string;
+  status: "pending" | "processing" | "ready" | "failed";
+  job_description: string;
+  target_role: string;
+  experience_level: string;
+  report: {
+    scores: Record<string, number>;
+    keyword_matches: string[];
+    keyword_gaps: string[];
+    issues: ResumeIssue[];
+  } | null;
+  draft: ResumeDraft | null;
+  warnings: Array<{ code: string; message: string }>;
+  revision: number;
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ResumeDocument {
+  resume_id: string;
+  original_filename: string;
+  content_type: string;
+  size_bytes: number;
+  status: "uploaded" | "processing" | "ready" | "failed";
+  error: string | null;
+  created_at: string;
+  updated_at: string;
+  latest_analysis?: ResumeAnalysis | null;
+  analyses?: ResumeAnalysis[];
+}
+
+export interface TranscriptSegment {
+  segment_id: string;
+  speaker: "interviewer" | "candidate" | "unknown";
+  text: string;
+  start_seconds?: number | null;
+  end_seconds?: number | null;
+}
+
+export interface InterviewReviewTurn {
+  turn_index: number;
+  question: string;
+  answer: string;
+  score: number | null;
+  dimensions: Record<string, number>;
+  strengths: string[];
+  weaknesses: string[];
+  feedback: string | null;
+  improved_answer: string | null;
+}
+
+export interface InterviewReview {
+  review_id: string;
+  input_type: "audio" | "text";
+  original_filename?: string | null;
+  status:
+    | "transcribing"
+    | "awaiting_confirmation"
+    | "analyzing"
+    | "ready"
+    | "failed";
+  transcript_revision: number;
+  confirmed_revision?: number | null;
+  segments?: TranscriptSegment[];
+  report?: {
+    overall_summary: string;
+    dimension_scores: Record<string, number>;
+    strengths: string[];
+    weaknesses: string[];
+    action_plan: string[];
+  } | null;
+  turns?: InterviewReviewTurn[];
+  error_category?: string | null;
+  error?: string | null;
+  created_at: string;
+  updated_at: string;
+}
 
 /** 后台相关类型 */
 export interface AdminSummary {

@@ -18,10 +18,10 @@
 }
 .interview-card .interview-question {
   max-width: 880px;
-  font-size: clamp(20px, 1.45vw, 24px);
-  font-weight: 650;
-  line-height: 1.55;
-  letter-spacing: -0.015em;
+  font-size: clamp(18px, 1.15vw, 20px);
+  font-weight: 600;
+  line-height: 1.65;
+  letter-spacing: -0.008em;
   overflow-wrap: anywhere;
 }
 .interview-question strong {
@@ -36,8 +36,8 @@
 }
 @media (max-width: 650px) {
   .interview-card .interview-question {
-    font-size: 19px;
-    line-height: 1.6;
+    font-size: 18px;
+    line-height: 1.65;
   }
 }
 .interview-card > p {
@@ -395,4 +395,28 @@
   border: 0;
   background: transparent;
   font: inherit;
+}
+.interview-source-fieldset {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+}
+
+.interview-source-fieldset label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.interview-source-fieldset input[type="radio"] {
+  width: auto;
+}
+
+.history-meta em {
+  color: var(--accent);
+  font-size: 12px;
+  font-style: normal;
 }

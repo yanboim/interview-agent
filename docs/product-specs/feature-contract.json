@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product": "interview-agent",
-  "updated_at": "2026-07-28",
+  "updated_at": "2026-07-31",
   "status_values": [
     "passing",
     "planned"
@@ -455,6 +455,212 @@
         "tests/test_migrations.py",
         "frontend/e2e/admin-releases.spec.ts",
         "scripts/record_release.py"
+      ]
+    },
+    {
+      "id": "resume-assessment-and-optimization",
+      "category": "functional",
+      "description": "A user can upload an owned resume, receive a job-aware and evidence-linked assessment, edit a fact-controlled optimized draft, and export the confirmed result as DOCX.",
+      "status": "passing",
+      "steps": [
+        "Upload a supported PDF or DOCX resume and select or inherit a target job description.",
+        "Wait for durable parsing and analysis, then inspect scores, evidence, issues, and rewrite suggestions.",
+        "Edit the optimized draft with optimistic concurrency and resolve every unsupported-fact warning.",
+        "Export the confirmed structured draft as DOCX.",
+        "Verify another user cannot read, edit, export, process, or delete the resume."
+      ],
+      "verification": [
+        "tests/test_resume_service.py",
+        "tests/test_resume_api.py",
+        "tests/test_worker.py",
+        "tests/test_backup_restore.py",
+        "tests/test_evaluate_resumes.py",
+        "tests/test_migrations.py",
+        "frontend/src/api/resumes.test.ts",
+        "frontend/e2e/resume.spec.ts",
+        "eval/reports/resume-analysis-baseline.json"
+      ]
+    },
+    {
+      "id": "resume-grounded-mock-interview",
+      "category": "functional",
+      "description": "A user can start the existing text interview flow from an owned ready resume analysis and receive questions grounded in resume claims and target-job gaps without changing general interview behavior.",
+      "status": "passing",
+      "steps": [
+        "Select an owned ready resume analysis while configuring a mock interview.",
+        "Persist a minimized resume interview context snapshot and generate a grounded first question.",
+        "Continue the existing idempotent answer, scoring, retry, resume, and report lifecycle.",
+        "Distinguish general and resume-grounded interviews in history and reports.",
+        "Verify deleting the resume blocks new grounded interviews without deleting existing interview history."
+      ],
+      "verification": [
+        "tests/test_resume_grounded_interview.py",
+        "tests/test_evaluate_resume_interviews.py",
+        "tests/test_interview_idempotency.py",
+        "tests/test_migrations.py",
+        "frontend/e2e/resume-interview.spec.ts",
+        "eval/reports/resume-interview-baseline.json"
+      ]
+    },
+    {
+      "id": "real-interview-transcription-review",
+      "category": "functional",
+      "description": "A user can submit an audio or text record of a real interview, confirm the transcript and speaker roles, and receive a source-labeled review that contributes to learning insights.",
+      "status": "passing",
+      "steps": [
+        "Upload a supported audio file with explicit external-processing consent or submit a text transcript.",
+        "Persist a speaker-segmented transcript and delete the source audio only after transcription succeeds.",
+        "Edit and confirm the latest transcript revision and speaker roles before analysis.",
+        "Generate an atomic per-question and overall review that scores candidate answers only.",
+        "Include completed real-interview weaknesses in the capability and learning views while preserving the source label.",
+        "Verify cross-user access, stale transcript confirmation, duplicate analysis, and delayed worker completion are rejected."
+      ],
+      "verification": [
+        "tests/test_interview_review_engine.py",
+        "tests/test_interview_review_service.py",
+        "tests/test_interview_review_api.py",
+        "tests/test_transcription.py",
+        "tests/test_evaluate_interview_reviews.py",
+        "tests/test_worker.py",
+        "tests/test_migrations.py",
+        "frontend/src/api/reviews.test.ts",
+        "frontend/e2e/review.spec.ts",
+        "eval/reports/interview-review-baseline.json"
+      ]
+    },
+    {
+      "id": "agent-tool-safety-boundary",
+      "category": "security",
+      "description": "Agent tools keep private content out of generic audits, reject sensitive public-search queries, require owner-bound confirmation for ambiguous outbound queries, treat retrieved text as untrusted evidence, and require owner-bound confirmation before creating learning tasks.",
+      "status": "passing",
+      "steps": [
+        "Run an authenticated tool with content-shaped input and output, then verify its audit contains only hashes, lengths, status, timing, and safe error classes.",
+        "Reject public-search queries containing credentials, high-entropy tokens, personal information, resume text, or transcript text before network I/O.",
+        "Preview an ambiguous public-search query without network I/O, reject cross-user confirmation, execute it once for the owner, and replay the stored result without another request.",
+        "Wrap private and public retrieval text in an explicit untrusted-evidence boundary that prevents embedded text from becoming instructions.",
+        "Preview a learning plan without creating tasks, reject cross-user confirmation, and apply the owner-bound confirmation at most once."
+      ],
+      "verification": [
+        "tests/test_agent_tools.py",
+        "tests/test_learning.py",
+        "tests/test_migrations.py",
+        "tests/test_architecture.py"
+      ]
+    },
+    {
+      "id": "agent-grounded-structured-output",
+      "category": "ai-quality",
+      "description": "Generated agent artifacts use versioned schemas, bounded repair, stable evidence identifiers, claim-level citation metadata, and persisted prompt/schema/model provenance.",
+      "status": "passing",
+      "steps": [
+        "Validate delegation, specialist, scoring, training-preview, and citation payloads against versioned schemas and reject unknown citation evidence.",
+        "Reject truncated or multi-object model output, allow at most one bounded repair when native structured output is unavailable, and fail safely after that repair.",
+        "Use the strict structured boundary for interview scoring, resume analysis, and interview review without changing their public response shapes.",
+        "Expose stable private chunk and public URL evidence identifiers, then map explicit answer claims to supported, unsupported, or conflicting evidence states.",
+        "Persist prompt, schema, and model versions with generated artifacts and execution traces, and replay versioned citation metadata with historical chat messages."
+      ],
+      "verification": [
+        "tests/test_agent_contracts.py",
+        "tests/test_agent_io.py",
+        "tests/test_interview_engine.py",
+        "tests/test_resume_engine.py",
+        "tests/test_interview_review_engine.py",
+        "tests/test_interview_idempotency.py",
+        "tests/test_migrations.py",
+        "tests/test_storage.py",
+        "tests/test_multi_agent.py",
+        "frontend/src/api/chat.test.ts",
+        "frontend/src/stores/chat.test.ts"
+      ]
+    },
+    {
+      "id": "agent-personalized-context-memory",
+      "category": "ai-quality",
+      "description": "Every agent turn uses one immutable, budgeted, server-owned context snapshot; delegation uses a versioned envelope; and only owner-confirmed coaching memory can persist across sessions.",
+      "status": "passing",
+      "steps": [
+        "Build one immutable snapshot from server-resolved identity, profile, confirmed memory, compacted conversation context, capability weaknesses, and due learning tasks within the reserved token budget.",
+        "Delegate through one versioned envelope carrying the bounded goal, request, prior turns, constraints, expected schema, context snapshot, and correlation identifiers rather than duplicating the full transcript.",
+        "Keep proposed or rejected memories out of agent context, and exclude source-linked observations when the source artifact is missing or stale.",
+        "Allow only the owner to inspect, confirm, reject, correct, or delete coaching memory; corrections return to proposed state and deletion affects subsequent snapshots immediately.",
+        "Persist a corrected and reconfirmed memory across product sessions and include the corrected value, never the superseded value, in subsequent specialist delegation."
+      ],
+      "verification": [
+        "tests/test_agent_context_service.py",
+        "tests/test_migrations.py",
+        "tests/test_multi_agent.py",
+        "tests/test_chat_lifecycle.py",
+        "frontend/e2e/profile-settings.spec.ts"
+      ]
+    },
+    {
+      "id": "durable-personalized-training-workflow",
+      "category": "functional",
+      "description": "A personalized training program is an owner-scoped, inspectable, idempotent Agent run whose command steps require confirmation, replay stored results, and recover safely after interruption.",
+      "status": "passing",
+      "steps": [
+        "Persist application-owned agent run and step records with explicit lifecycle states, stable idempotency keys, input digests, claim owners, attempts, safe errors, and replay results.",
+        "Build a target-role-aware training proposal from profile and capability state without creating tasks, starting an interview, or modifying a resume before confirmation.",
+        "Confirm the owner-scoped run once, atomically create deduplicated learning tasks with the command-step result, and return the existing interview creation link.",
+        "Inspect, cancel, retry, and replay run state through product APIs; expose lifecycle-only SSE events without hidden reasoning and a content-minimized administrator view.",
+        "Reject cross-user access and changed idempotent input, serialize concurrent confirmation, persist partial failure, and recover stale claims for safe retry after worker restart."
+      ],
+      "verification": [
+        "tests/test_agent_run_service.py",
+        "tests/test_agent_run_api.py",
+        "tests/test_migrations.py",
+        "tests/test_learning.py",
+        "frontend/src/api/learning.test.ts",
+        "frontend/e2e/learning-workflow.spec.ts"
+      ]
+    },
+    {
+      "id": "agent-quality-feedback-learning-loop",
+      "category": "ai-quality",
+      "description": "Agent quality is gated by a versioned deterministic application-stack corpus, durable privacy-reviewed user feedback, calibrated capability confidence, and outcome-aware review scheduling.",
+      "status": "passing",
+      "steps": [
+        "Expand and execute the frozen versioned corpus with at least 100 routing, 50 grounded-answer, 30 multi-turn delegation, 30 safety, and 20 confirmation/workflow cases through deterministic mocked providers and application-owned workflow boundaries.",
+        "Enforce per-group pass thresholds and zero tolerated privacy, unauthorized mutation, fabricated source, and cross-user failures; keep live-model reports separate and explicitly approved.",
+        "Persist owner-scoped thumbs-up/down against a completed durable chat turn with prompt, schema, model, and evidence versions; expose negative feedback to administrators without user content until an explicit privacy review provides a sanitized payload.",
+        "Aggregate capability with versioned human-labelled calibration, sample confidence, deterministic recency weighting, and comparable topic, difficulty, and model-version cohorts.",
+        "Record recall outcome, difficulty, lapses, and confidence for every learning-task review and compute a deterministic next interval bounded to 1–60 days.",
+        "Expose product metrics for feedback, grounded claims, confirmation/workflow completion, score confidence, and review recall outcomes."
+      ],
+      "verification": [
+        "tests/test_agent_quality_evaluation.py",
+        "tests/test_assistant_feedback.py",
+        "tests/test_capability.py",
+        "tests/test_learning.py",
+        "tests/test_storage.py",
+        "tests/test_operations.py",
+        "tests/test_migrations.py",
+        "frontend/src/api/chat.test.ts",
+        "frontend/src/stores/chat.test.ts",
+        "eval/agent_quality_suite.v1.json",
+        "eval/capability_calibration.v1.json",
+        "eval/reports/agent-stack-ci.json"
+      ]
+    },
+    {
+      "id": "agent-model-cost-resilience-routing",
+      "category": "reliability",
+      "description": "Agent model calls use evaluated per-purpose routing, request-scoped call/token/cost budgets, recoverable same-provider fallback policy, and staged rollout with an immediate tested rollback.",
+      "status": "passing",
+      "steps": [
+        "Resolve independent supervisor, knowledge, interviewer, evaluator, planner, summarization, and schema-repair model settings while preserving the configured default model for empty overrides.",
+        "Bypass the Supervisor only for a high-confidence deterministic single intent admitted by the internal, canary, or production rollout; route ambiguous and multi-intent requests through the Supervisor and restore it immediately when the stage is off.",
+        "Record request-class model call count, input/output tokens, wall and first-token time, price version, and estimated cost; reject an additional call before call, token, or cost limits are exceeded.",
+        "Use an optional same-provider fallback only for purposes listed in an evaluation-approved configuration; prohibit uncalibrated fallback for evaluator, resume analysis, and interview review and return a recoverable unavailable state.",
+        "Approve canary progression only when grouped Agent gates have no zero-tolerance failures and routed quality, completion, p95 latency, and cost per completed training action do not regress against the retained baseline."
+      ],
+      "verification": [
+        "tests/test_model_routing_policy.py",
+        "tests/test_model_gateway.py",
+        "tests/test_multi_agent.py",
+        "tests/test_operations.py",
+        "tests/test_chat_lifecycle.py",
+        "eval/reports/model-routing-canary-approved.json"
       ]
     }
   ]

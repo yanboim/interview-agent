@@ -1,3 +1,5 @@
+"""以供应商无关的保守预算裁剪聊天历史，并维护可持久化的早期对话摘要。"""
+
 from dataclasses import dataclass
 import hashlib
 import re
@@ -28,7 +30,7 @@ class ChatContextPlan:
 
 
 def estimate_text_tokens(text: str) -> int:
-    """Return a conservative, provider-independent token upper bound."""
+    """用 UTF-8 字节数估算 token 上界，宁可少带历史也不突破模型窗口。"""
     return max(1, len(text.encode("utf-8")))
 
 
@@ -183,6 +185,7 @@ def plan_chat_context(
         0,
         token_budget - current_tokens - reserved_summary_tokens,
     )
+    # 从最近消息向前装箱，优先保留当前对话连续性。
     retained_reversed: list[ContextMessage] = []
     retained_tokens = 0
     for message in reversed(candidates):
@@ -196,6 +199,7 @@ def plan_chat_context(
         retained_tokens += message_tokens
     retained = tuple(reversed(retained_reversed))
     folded_count = len(candidates) - len(retained)
+    # 不让窗口从孤立的 assistant 回答开始，避免模型缺少对应用户问题。
     if retained and retained[0].role == "assistant":
         retained = retained[1:]
         folded_count += 1

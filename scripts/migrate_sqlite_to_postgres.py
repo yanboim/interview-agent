@@ -1,3 +1,5 @@
+"""把本地 SQLite 数据按依赖顺序迁移到 PostgreSQL，并保留主键关系。"""
+
 import argparse
 from pathlib import Path
 

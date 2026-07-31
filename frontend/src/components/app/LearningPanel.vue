@@ -24,10 +24,28 @@ const summary = computed(() => `${store.totalCount} 项任务 · ${store.dueCoun
 
 async function generate() {
   try {
-    await store.generate(generationTopic.value.trim() || null);
-    toast.show(`已生成 ${store.tasks.length} 项学习任务`, "success");
+    await store.proposeProgram(generationTopic.value.trim() || null);
+    toast.show("训练方案已生成，请确认后创建任务", "success");
   } catch (error) {
     toast.show(error instanceof Error ? error.message : "任务生成失败", "error");
+  }
+}
+
+async function confirmProgram() {
+  try {
+    await store.confirmProgram();
+    toast.show(`已创建 ${store.activeRun?.result?.task_count || 0} 项训练任务`, "success");
+  } catch (error) {
+    toast.show(error instanceof Error ? error.message : "方案执行失败", "error");
+  }
+}
+
+async function cancelProgram() {
+  try {
+    await store.cancelProgram();
+    toast.show("训练方案已取消", "success");
+  } catch (error) {
+    toast.show(error instanceof Error ? error.message : "取消失败", "error");
   }
 }
 
@@ -61,9 +79,13 @@ async function changeDue(task: LearningTask, event: Event) {
   }
 }
 
-async function review(task: LearningTask) {
+async function review(
+  task: LearningTask,
+  outcome: "remembered" | "partial" | "forgotten",
+) {
   try {
-    await store.review(task.task_id);
+    const difficulty = outcome === "remembered" ? 2 : outcome === "partial" ? 3 : 5;
+    await store.review(task.task_id, outcome, difficulty);
     toast.show("已记录一次复习", "success", 2000);
   } catch (error) {
     toast.show(error instanceof Error ? error.message : "复习记录失败", "error");
@@ -104,8 +126,34 @@ onMounted(() => store.load());
           :disabled="store.generating"
           @click="generate"
         >
-          {{ store.generating ? "生成中…" : "从画像生成任务" }}
+          {{ store.generating ? "生成中…" : "生成个性化训练方案" }}
         </button>
+      </div>
+
+      <section
+        v-if="store.activeRun && store.activeRun.status === 'awaiting_confirmation'"
+        class="training-program-preview"
+        aria-labelledby="training-program-title"
+      >
+        <div>
+          <span class="eyebrow">待确认方案</span>
+          <h3 id="training-program-title">面向 {{ store.activeRun.proposal.target_role }} 的训练安排</h3>
+          <p>确认后才会创建任务；不会自动开始面试或修改简历。</p>
+        </div>
+        <ol>
+          <li v-for="candidate in store.activeRun.proposal.candidates" :key="`${candidate.dimension}:${candidate.weakness}`">
+            <strong>{{ candidate.dimension }} · {{ candidate.weakness }}</strong>
+            <span>{{ candidate.action }}</span>
+          </li>
+        </ol>
+        <div class="settings-actions">
+          <button class="text-action" type="button" @click="cancelProgram">取消方案</button>
+          <button class="primary-action" type="button" :disabled="store.generating" @click="confirmProgram">确认并创建任务</button>
+        </div>
+      </section>
+
+      <div v-else-if="store.activeRun?.status === 'failed'" class="list-state error">
+        工作流执行失败，可从运行记录重试（{{ store.activeRun.error_code || "unknown" }}）。
       </div>
 
       <div class="learning-toolbar">
@@ -178,7 +226,9 @@ onMounted(() => store.load());
               <option value="in_progress">进行中</option>
               <option value="completed">已完成</option>
             </select>
-            <button type="button" @click="review(task)">完成复习</button>
+            <button type="button" @click="review(task, 'remembered')">记得</button>
+            <button type="button" @click="review(task, 'partial')">模糊</button>
+            <button type="button" @click="review(task, 'forgotten')">忘记</button>
             <button type="button" @click="startPractice(task)">开始专项练习</button>
             <button class="danger-action" type="button" @click="remove(task)">删除</button>
           </div>

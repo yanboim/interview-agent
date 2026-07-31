@@ -2,7 +2,7 @@
 import { onMounted, onUnmounted, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
-import type { InterviewGoal } from "@/types";
+import type { CoachingMemory, InterviewGoal } from "@/types";
 import { handleDialogKeydown } from "@/lib/focusTrap";
 import {
   changePassword,
@@ -10,6 +10,10 @@ import {
   regenerateRecoveryCode,
   saveReminderPreferences,
   updateProfileAvatar,
+  deleteCoachingMemory,
+  fetchCoachingMemories,
+  proposeCoachingMemory,
+  updateCoachingMemory,
 } from "@/api/client";
 
 const emit = defineEmits<{ (e: "close"): void }>();
@@ -30,6 +34,12 @@ const recoveryCodeLoading = ref(false);
 const avatarInput = ref<HTMLInputElement | null>(null);
 const avatarPreview = ref(auth.avatarDataUrl);
 const avatarDirty = ref(false);
+const memories = ref<CoachingMemory[]>([]);
+const memoryKind = ref<CoachingMemory["kind"]>("preference");
+const memoryContent = ref("");
+const memoryLoading = ref(false);
+const editingMemoryId = ref("");
+const editingMemoryContent = ref("");
 const goal = ref<InterviewGoal>({
   targetRole: auth.interviewGoal?.targetRole || "",
   experienceLevel: auth.interviewGoal?.experienceLevel || "高级",
@@ -170,6 +180,54 @@ async function createRecoveryCode() {
   }
 }
 
+async function reloadMemories() {
+  if (!auth.isAuthenticated) return;
+  memories.value = await fetchCoachingMemories(auth.userId);
+}
+
+async function addMemory() {
+  if (!memoryContent.value.trim()) return;
+  memoryLoading.value = true;
+  try {
+    await proposeCoachingMemory(
+      auth.userId,
+      memoryKind.value,
+      memoryContent.value.trim(),
+    );
+    memoryContent.value = "";
+    await reloadMemories();
+  } catch (error) {
+    toast.show(error instanceof Error ? error.message : "记忆保存失败", "error");
+  } finally {
+    memoryLoading.value = false;
+  }
+}
+
+async function actOnMemory(
+  memory: CoachingMemory,
+  action: "confirm" | "reject" | "correct" | "delete",
+) {
+  memoryLoading.value = true;
+  try {
+    if (action === "delete") {
+      await deleteCoachingMemory(auth.userId, memory.memory_id);
+    } else {
+      await updateCoachingMemory(
+        auth.userId,
+        memory.memory_id,
+        action,
+        action === "correct" ? editingMemoryContent.value.trim() : undefined,
+      );
+    }
+    editingMemoryId.value = "";
+    await reloadMemories();
+  } catch (error) {
+    toast.show(error instanceof Error ? error.message : "记忆更新失败", "error");
+  } finally {
+    memoryLoading.value = false;
+  }
+}
+
 function onKeydown(event: KeyboardEvent) {
   handleDialogKeydown(event, dialogRef.value, () => emit("close"));
 }
@@ -186,6 +244,9 @@ onMounted(() => {
     .catch(() => {
       // 使用浏览器时区默认值。
     });
+  void reloadMemories().catch(() => {
+    // 记忆区域保持为空，不阻塞其他设置。
+  });
 });
 onUnmounted(() => window.removeEventListener("keydown", onKeydown));
 </script>
@@ -286,6 +347,47 @@ onUnmounted(() => window.removeEventListener("keydown", onKeydown));
             <input v-model="reminderTime" type="time" />
           </label>
           <small>按 {{ reminderTimezone }} 时区计算；提醒数据会跟随账号同步。</small>
+        </fieldset>
+        <fieldset v-if="auth.isAuthenticated" class="settings-section">
+          <legend>教练记忆</legend>
+          <small>只有你明确确认的内容会进入后续 Agent 上下文；可随时纠正、拒绝或删除。</small>
+          <label>
+            记忆类型
+            <select v-model="memoryKind">
+              <option value="fact">个人事实</option>
+              <option value="preference">回答偏好</option>
+              <option value="goal">长期目标</option>
+              <option value="observation">训练观察</option>
+            </select>
+          </label>
+          <label>
+            新记忆
+            <textarea v-model="memoryContent" maxlength="2000" rows="2"></textarea>
+          </label>
+          <button
+            class="text-action"
+            type="button"
+            :disabled="memoryLoading || !memoryContent.trim()"
+            @click="addMemory"
+          >添加待确认记忆</button>
+          <ul v-if="memories.length" class="memory-settings-list">
+            <li v-for="memory in memories" :key="memory.memory_id">
+              <template v-if="editingMemoryId === memory.memory_id">
+                <textarea v-model="editingMemoryContent" maxlength="2000" rows="2"></textarea>
+                <button class="text-action" type="button" @click="actOnMemory(memory, 'correct')">保存纠正</button>
+              </template>
+              <template v-else>
+                <span>{{ memory.content }}</span>
+                <small>{{ memory.status === "confirmed" ? "已确认" : memory.status === "rejected" ? "已拒绝" : "待确认" }}</small>
+                <div class="avatar-settings-actions">
+                  <button v-if="memory.status === 'proposed'" class="text-action" type="button" @click="actOnMemory(memory, 'confirm')">确认</button>
+                  <button v-if="memory.status === 'proposed'" class="text-action" type="button" @click="actOnMemory(memory, 'reject')">拒绝</button>
+                  <button class="text-action" type="button" @click="editingMemoryId = memory.memory_id; editingMemoryContent = memory.content">纠正</button>
+                  <button class="text-action avatar-remove" type="button" @click="actOnMemory(memory, 'delete')">删除</button>
+                </div>
+              </template>
+            </li>
+          </ul>
         </fieldset>
         <details v-if="auth.isAuthenticated" class="advanced-settings">
           <summary>账号安全</summary>

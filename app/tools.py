@@ -1,7 +1,8 @@
+"""提供给 Agent 的受控工具：执行鉴权、审计、安全检索和变更确认协议。"""
+
 import json
 import hashlib
 import logging
-import re
 import time
 from datetime import UTC, datetime
 from functools import lru_cache
@@ -10,7 +11,15 @@ from urllib.parse import urlparse
 import httpx
 from langchain.tools import tool
 
+from app.agent_safety import (
+    classify_public_search_query,
+    content_fingerprint,
+    safe_audit_summary,
+    wrap_untrusted_evidence,
+)
+from app.agent_contracts import TrainingPlanPreviewV1
 from app.capability import build_capability_profile
+from app.chunks import stable_chunk_id
 from app.config import get_settings
 from app.learning import build_learning_candidates
 from app.lexical_reranker import lexical_rerank_documents
@@ -43,17 +52,22 @@ def _get_redis_runtime() -> RedisRuntime:
     return RedisRuntime(settings.redis_url, settings.redis_queue_name)
 
 
-def _run_audited(tool_name: str, input_summary: str, callback) -> str:
+def _run_audited(
+    tool_name: str,
+    input_metadata: dict[str, object],
+    callback,
+) -> str:
     identity = get_tool_identity()
     started = time.monotonic()
     status = "success"
-    result = ""
+    result_summary = safe_audit_summary({"outcome": "returned"})
     try:
-        result = str(callback())
-        return result
+        return str(callback())
     except Exception as exc:
         status = "error"
-        result = f"{type(exc).__name__}: {exc}"
+        result_summary = safe_audit_summary(
+            {"outcome": "error", "error_type": type(exc).__name__}
+        )
         raise
     finally:
         if identity.user_id != "anonymous":
@@ -62,12 +76,12 @@ def _run_audited(tool_name: str, input_summary: str, callback) -> str:
                     user_id=identity.user_id,
                     role=identity.role,
                     tool_name=tool_name,
-                    input_summary=input_summary,
+                    input_summary=safe_audit_summary(input_metadata),
                     status=status,
                     duration_ms=int(
                         (time.monotonic() - started) * 1000
                     ),
-                    result_summary=result,
+                    result_summary=result_summary,
                     request_id=identity.request_id or None,
                     interaction_type=identity.interaction_type or None,
                     interaction_id=identity.interaction_id or None,
@@ -191,6 +205,10 @@ def _search_interview_knowledge(
         start=1,
     ):
         source = document.metadata.get("source", "未知来源")
+        evidence_id = str(
+            document.metadata.get("chunk_id")
+            or stable_chunk_id(str(source), document.page_content)
+        )
         score_lines = f"RRF 分数：{retrieval_score:.4f}\n"
         if score_type == "cross_encoder":
             score_lines += f"重排分数：{reranker_score:.4f}\n"
@@ -198,11 +216,19 @@ def _search_interview_knowledge(
             score_lines += f"GLM 重排分数：{reranker_score:.4f}\n"
         elif score_type == "lexical":
             score_lines += f"轻量重排分数：{reranker_score:.4f}\n"
-        results.append(
+        evidence = (
             f"[资料 {index}]\n"
+            f"证据ID：{evidence_id}\n"
             f"来源：{source}\n"
             f"{score_lines}"
             f"内容：{document.page_content.strip()}"
+        )
+        results.append(
+            wrap_untrusted_evidence(
+                evidence,
+                evidence_type="private_knowledge",
+                evidence_id=evidence_id,
+            )
         )
     return "\n\n".join(results)
 
@@ -245,7 +271,11 @@ def search_interview_knowledge(query: str) -> str:
 
     return _run_audited(
         "search_interview_knowledge",
-        query[:500],
+        {
+            "query_sha256": content_fingerprint(query),
+            "query_length": len(query),
+            "knowledge_version": str(knowledge_version)[:128],
+        },
         execute,
     )
 
@@ -274,12 +304,19 @@ def get_learning_progress(topic: str = "") -> str:
             ensure_ascii=False,
         )
 
-    return _run_audited("get_learning_progress", topic[:200], execute)
+    return _run_audited(
+        "get_learning_progress",
+        {
+            "topic_sha256": content_fingerprint(topic),
+            "topic_length": len(topic),
+        },
+        execute,
+    )
 
 
 @tool
 def create_personal_learning_plan(topic: str = "") -> str:
-    """根据当前用户的能力画像生成去重后的私人学习任务。"""
+    """预览私人学习计划；只返回待确认内容，不创建任务。"""
     identity = get_tool_identity()
 
     def execute() -> str:
@@ -289,94 +326,194 @@ def create_personal_learning_plan(topic: str = "") -> str:
         candidates = build_learning_candidates(profile)
         if not candidates:
             return "暂无足够的面试评分，无法生成学习计划。"
-        tasks = store.create_learning_tasks(
+        preview = store.create_learning_plan_preview(
             user_id=identity.user_id,
+            topic=topic,
             candidates=candidates,
         )
+        validated = TrainingPlanPreviewV1.model_validate(preview)
         return json.dumps(
             {
-                "task_count": len(tasks),
-                "tasks": [
-                    {
-                        "dimension": item["dimension"],
-                        "weakness": item["weakness"],
-                        "status": item["status"],
-                        "due_at": item["due_at"],
-                    }
-                    for item in tasks
-                ],
+                **validated.model_dump(),
+                "instruction": (
+                    "尚未创建任务。仅当用户明确确认这份预览时，调用 "
+                    "confirm_personal_learning_plan。"
+                ),
             },
             ensure_ascii=False,
         )
 
     return _run_audited(
         "create_personal_learning_plan",
-        topic[:200],
+        {
+            "topic_sha256": content_fingerprint(topic),
+            "topic_length": len(topic),
+        },
         execute,
     )
 
 
-def _safe_web_query(query: str) -> str:
-    clean_query = " ".join(query.split())
-    if not clean_query:
-        raise ValueError("联网搜索内容不能为空")
-    if len(clean_query) > 500:
-        raise ValueError("联网搜索内容过长")
-    secret_patterns = (
-        r"\bsk-[A-Za-z0-9_-]{12,}\b",
-        r"\bBearer\s+[A-Za-z0-9._-]{12,}\b",
-        r"\b[A-Fa-f0-9]{32,}\b",
+@tool
+def confirm_personal_learning_plan(confirmation_id: str) -> str:
+    """用户明确确认预览后，单次应用对应学习计划。"""
+    identity = get_tool_identity()
+
+    def execute() -> str:
+        result = _get_tool_store().confirm_learning_plan(
+            user_id=identity.user_id,
+            confirmation_id=confirmation_id.strip(),
+        )
+        if result is None:
+            return "未找到当前用户可确认的学习计划。"
+        return json.dumps(result, ensure_ascii=False)
+
+    return _run_audited(
+        "confirm_personal_learning_plan",
+        {
+            "confirmation_sha256": content_fingerprint(confirmation_id),
+            "confirmation_length": len(confirmation_id),
+        },
+        execute,
     )
-    if any(re.search(pattern, clean_query) for pattern in secret_patterns):
-        raise ValueError("查询疑似包含密钥或令牌，已阻止外发")
-    return clean_query
+
+
+def _execute_public_web_search(clean_query: str, settings: object) -> str:
+    response = httpx.post(
+        settings.web_search_api_url,
+        json={
+            "api_key": settings.web_search_api_key,
+            "query": clean_query,
+            "max_results": settings.web_search_max_results,
+            "search_depth": "advanced",
+            "include_answer": False,
+            "include_raw_content": False,
+        },
+        timeout=settings.web_search_timeout_seconds,
+    )
+    response.raise_for_status()
+    fetched_at = datetime.now(UTC).isoformat()
+    results = []
+    for item in response.json().get("results", []):
+        url = str(item.get("url", "")).strip()
+        if urlparse(url).scheme not in {"http", "https"}:
+            continue
+        results.append(
+            {
+                "title": str(item.get("title", "")).strip(),
+                "url": url,
+                "snippet": str(item.get("content", "")).strip()[:1200],
+                "fetched_at": fetched_at,
+            }
+        )
+    if not results:
+        return "公开网络未返回可引用结果。"
+    return "\n\n".join(
+        wrap_untrusted_evidence(
+            f"[网络来源 {index}]\n"
+            f"证据ID：web-{content_fingerprint(item['url'])[:24]}\n"
+            f"标题：{item['title']}\n"
+            f"链接：{item['url']}\n抓取时间：{item['fetched_at']}\n"
+            f"摘要：{item['snippet']}",
+            evidence_type="public_web",
+            evidence_id=f"web-{content_fingerprint(item['url'])[:24]}",
+        )
+        for index, item in enumerate(results, start=1)
+    )
 
 
 @tool
 def search_public_web(query: str) -> str:
-    """搜索公开互联网资料。仅用于需要最新信息且私人知识库不足的情况。"""
+    """搜索公开互联网；含私人上下文的查询只生成待确认预览。"""
     settings = get_settings()
+    identity = get_tool_identity()
 
     def execute() -> str:
         if not settings.web_search_enabled:
             return "联网搜索未启用。"
         if not settings.web_search_api_key:
             return "联网搜索已启用，但未配置 WEB_SEARCH_API_KEY。"
-        clean_query = _safe_web_query(query)
-        response = httpx.post(
-            settings.web_search_api_url,
-            json={
-                "api_key": settings.web_search_api_key,
-                "query": clean_query,
-                "max_results": settings.web_search_max_results,
-                "search_depth": "advanced",
-                "include_answer": False,
-                "include_raw_content": False,
-            },
-            timeout=settings.web_search_timeout_seconds,
-        )
-        response.raise_for_status()
-        fetched_at = datetime.now(UTC).isoformat()
-        results = []
-        for item in response.json().get("results", []):
-            url = str(item.get("url", "")).strip()
-            if urlparse(url).scheme not in {"http", "https"}:
-                continue
-            results.append(
-                {
-                    "title": str(item.get("title", "")).strip(),
-                    "url": url,
-                    "snippet": str(item.get("content", "")).strip()[:1200],
-                    "fetched_at": fetched_at,
-                }
+        clean_query, decision = classify_public_search_query(query)
+        if decision == "confirmation":
+            if identity.user_id == "anonymous":
+                return "该联网查询可能包含私人上下文，请登录后预览并明确确认。"
+            preview = _get_tool_store().create_public_search_preview(
+                user_id=identity.user_id,
+                query=clean_query,
             )
-        if not results:
-            return "公开网络未返回可引用结果。"
-        return "\n\n".join(
-            f"[网络来源 {index}]\n标题：{item['title']}\n"
-            f"链接：{item['url']}\n抓取时间：{item['fetched_at']}\n"
-            f"摘要：{item['snippet']}"
-            for index, item in enumerate(results, start=1)
-        )
+            return json.dumps(
+                {
+                    **preview,
+                    "instruction": (
+                        "尚未联网。请向用户展示完整查询；仅当用户在后续消息中"
+                        "明确确认时，调用 confirm_public_web_search。"
+                    ),
+                },
+                ensure_ascii=False,
+            )
+        return _execute_public_web_search(clean_query, settings)
 
-    return _run_audited("search_public_web", query[:500], execute)
+    return _run_audited(
+        "search_public_web",
+        {
+            "query_sha256": content_fingerprint(query),
+            "query_length": len(query),
+        },
+        execute,
+    )
+
+
+@tool
+def confirm_public_web_search(confirmation_id: str) -> str:
+    """用户明确确认预览后，单次执行该用户对应的公开网络查询。"""
+    settings = get_settings()
+    identity = get_tool_identity()
+
+    def execute() -> str:
+        if not settings.web_search_enabled:
+            return "联网搜索未启用。"
+        if not settings.web_search_api_key:
+            return "联网搜索已启用，但未配置 WEB_SEARCH_API_KEY。"
+        if identity.user_id == "anonymous":
+            return "请登录后确认联网查询。"
+        clean_id = confirmation_id.strip()
+        store = _get_tool_store()
+        claim = store.claim_public_search_confirmation(
+            user_id=identity.user_id,
+            confirmation_id=clean_id,
+        )
+        if claim is None:
+            return "未找到当前用户可确认的联网查询。"
+        status = str(claim["status"])
+        if status == "replay":
+            return str(claim["result"])
+        if status == "in_progress":
+            return "该联网查询已确认并正在执行，请勿重复提交。"
+        if status == "expired":
+            return "该联网查询预览已过期，请重新生成预览。"
+        if status == "cancelled":
+            return "该联网查询上次执行失败或已取消，请重新生成预览。"
+        if status != "claimed":
+            return f"该联网查询当前状态为 {status}。"
+        try:
+            result = _execute_public_web_search(str(claim["query"]), settings)
+        except Exception:
+            store.cancel_public_search_confirmation(
+                user_id=identity.user_id,
+                confirmation_id=clean_id,
+            )
+            raise
+        store.complete_public_search_confirmation(
+            user_id=identity.user_id,
+            confirmation_id=clean_id,
+            result=result,
+        )
+        return result
+
+    return _run_audited(
+        "confirm_public_web_search",
+        {
+            "confirmation_sha256": content_fingerprint(confirmation_id),
+            "confirmation_length": len(confirmation_id),
+        },
+        execute,
+    )

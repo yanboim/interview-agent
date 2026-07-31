@@ -69,6 +69,14 @@ Alembic revisions remain authoritative for production schema history.
 | `level` | `String(30)` | not null |  |
 | `total_questions` | `Integer` | not null |  |
 | `status` | `String(30)` | not null |  |
+| `source_type` | `String(20)` | not null |  |
+| `source_resume_id` | `String(128)` |  |  |
+| `source_analysis_id` | `String(128)` |  |  |
+| `source_display_name` | `String(255)` |  |  |
+| `resume_context_json` | `Text` |  |  |
+| `question_prompt_version` | `String(80)` |  |  |
+| `question_schema_version` | `String(80)` |  |  |
+| `question_model_version` | `String(100)` |  |  |
 | `archived_at` | `String(40)` |  |  |
 | `created_at` | `String(40)` | not null |  |
 | `updated_at` | `String(40)` | not null |  |
@@ -89,6 +97,101 @@ Alembic revisions remain authoritative for production schema history.
 | `avatar_data_url` | `Text` |  |  |
 | `created_at` | `String(40)` | not null |  |
 | `updated_at` | `String(40)` | not null |  |
+
+## `resume_documents`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `resume_id` | `String(128)` | PK |  |
+| `user_id` | `String(128)` | not null |  |
+| `original_filename` | `String(255)` | not null |  |
+| `content_type` | `String(120)` | not null |  |
+| `size_bytes` | `Integer` | not null |  |
+| `sha256` | `String(64)` | not null |  |
+| `storage_key` | `String(500)` | not null |  |
+| `idempotency_key` | `String(128)` | not null |  |
+| `request_digest` | `String(64)` | not null |  |
+| `status` | `String(20)` | not null |  |
+| `error` | `Text` |  |  |
+| `created_at` | `String(40)` | not null |  |
+| `updated_at` | `String(40)` | not null |  |
+
+## `resume_analyses`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `analysis_id` | `String(128)` | PK |  |
+| `user_id` | `String(128)` | not null |  |
+| `resume_id` | `String(128)` | not null |  |
+| `idempotency_key` | `String(128)` | not null |  |
+| `request_digest` | `String(64)` | not null |  |
+| `status` | `String(20)` | not null |  |
+| `claim_token` | `String(128)` |  |  |
+| `job_description` | `Text` | not null |  |
+| `target_role` | `String(100)` | not null |  |
+| `experience_level` | `String(30)` | not null |  |
+| `parsed_text` | `Text` |  |  |
+| `report_json` | `Text` |  |  |
+| `draft_json` | `Text` |  |  |
+| `warnings_json` | `Text` | not null |  |
+| `revision` | `Integer` | not null |  |
+| `prompt_version` | `String(80)` | not null |  |
+| `schema_version` | `String(80)` | not null |  |
+| `model_version` | `String(100)` | not null |  |
+| `error` | `Text` |  |  |
+| `created_at` | `String(40)` | not null |  |
+| `updated_at` | `String(40)` | not null |  |
+
+## `interview_reviews`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `review_id` | `String(128)` | PK |  |
+| `user_id` | `String(128)` | not null |  |
+| `input_type` | `String(20)` | not null |  |
+| `original_filename` | `String(255)` |  |  |
+| `content_type` | `String(120)` |  |  |
+| `size_bytes` | `Integer` |  |  |
+| `sha256` | `String(64)` |  |  |
+| `storage_key` | `String(500)` |  |  |
+| `external_processing_consent` | `Boolean` | not null |  |
+| `consent_at` | `String(40)` |  |  |
+| `status` | `String(40)` | not null |  |
+| `transcript_json` | `Text` |  |  |
+| `transcript_revision` | `Integer` | not null |  |
+| `confirmed_revision` | `Integer` |  |  |
+| `create_idempotency_key` | `String(128)` | not null |  |
+| `create_request_digest` | `String(64)` | not null |  |
+| `analysis_idempotency_key` | `String(128)` |  |  |
+| `analysis_request_digest` | `String(64)` |  |  |
+| `claim_token` | `String(128)` |  |  |
+| `report_json` | `Text` |  |  |
+| `prompt_version` | `String(80)` |  |  |
+| `schema_version` | `String(80)` |  |  |
+| `model_version` | `String(100)` |  |  |
+| `error_category` | `String(80)` |  |  |
+| `error` | `Text` |  |  |
+| `processing_started_at` | `String(40)` |  |  |
+| `created_at` | `String(40)` | not null |  |
+| `updated_at` | `String(40)` | not null |  |
+
+## `interview_review_turns`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `id` | `Integer` | PK |  |
+| `user_id` | `String(128)` | not null |  |
+| `review_id` | `String(128)` | not null |  |
+| `turn_index` | `Integer` | not null |  |
+| `question` | `Text` | not null |  |
+| `answer` | `Text` | not null |  |
+| `score` | `Float` |  |  |
+| `dimensions_json` | `Text` |  |  |
+| `strengths_json` | `Text` |  |  |
+| `weaknesses_json` | `Text` |  |  |
+| `feedback` | `Text` |  |  |
+| `improved_answer` | `Text` |  |  |
+| `created_at` | `String(40)` | not null |  |
 
 ## `chat_turns`
 
@@ -125,6 +228,9 @@ Alembic revisions remain authoritative for production schema history.
 | `strengths_json` | `Text` |  |  |
 | `weaknesses_json` | `Text` |  |  |
 | `reference_answer` | `Text` |  |  |
+| `assessment_prompt_version` | `String(80)` |  |  |
+| `assessment_schema_version` | `String(80)` |  |  |
+| `assessment_model_version` | `String(100)` |  |  |
 | `submission_status` | `String(20)` | not null |  |
 | `idempotency_key` | `String(128)` |  |  |
 | `answer_digest` | `String(64)` |  |  |
@@ -151,6 +257,9 @@ Alembic revisions remain authoritative for production schema history.
 | `strengths_json` | `Text` | not null |  |
 | `weaknesses_json` | `Text` | not null |  |
 | `reference_answer` | `Text` |  |  |
+| `prompt_version` | `String(80)` |  |  |
+| `schema_version` | `String(80)` |  |  |
+| `model_version` | `String(100)` |  |  |
 | `created_at` | `String(40)` | not null |  |
 
 ## `learning_tasks`
@@ -168,6 +277,109 @@ Alembic revisions remain authoritative for production schema history.
 | `review_count` | `Integer` | not null |  |
 | `last_reviewed_at` | `String(40)` |  |  |
 | `next_review_at` | `String(40)` |  |  |
+| `recall_outcome` | `String(20)` |  |  |
+| `difficulty_rating` | `Integer` |  |  |
+| `lapse_count` | `Integer` | not null |  |
+| `review_confidence` | `Float` | not null |  |
+| `created_at` | `String(40)` | not null |  |
+| `updated_at` | `String(40)` | not null |  |
+
+## `agent_action_confirmations`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `confirmation_id` | `String(128)` | PK |  |
+| `user_id` | `String(128)` | not null |  |
+| `action_type` | `String(80)` | not null |  |
+| `payload_json` | `Text` | not null |  |
+| `payload_digest` | `String(64)` | not null |  |
+| `status` | `String(20)` | not null |  |
+| `result_json` | `Text` |  |  |
+| `expires_at` | `String(40)` | not null |  |
+| `consumed_at` | `String(40)` |  |  |
+| `created_at` | `String(40)` | not null |  |
+
+## `agent_runs`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `run_id` | `String(128)` | PK |  |
+| `user_id` | `String(128)` | not null |  |
+| `run_type` | `String(80)` | not null |  |
+| `status` | `String(30)` | not null |  |
+| `idempotency_key` | `String(128)` | not null |  |
+| `input_digest` | `String(64)` | not null |  |
+| `input_json` | `Text` | not null |  |
+| `proposal_json` | `Text` |  |  |
+| `result_json` | `Text` |  |  |
+| `error_code` | `String(80)` |  |  |
+| `created_at` | `String(40)` | not null |  |
+| `updated_at` | `String(40)` | not null |  |
+
+## `agent_steps`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `step_id` | `String(128)` | PK |  |
+| `run_id` | `String(128)` | not null |  |
+| `user_id` | `String(128)` | not null |  |
+| `step_key` | `String(80)` | not null |  |
+| `step_type` | `String(30)` | not null |  |
+| `status` | `String(30)` | not null |  |
+| `idempotency_key` | `String(160)` | not null |  |
+| `input_digest` | `String(64)` | not null |  |
+| `claim_owner` | `String(128)` |  |  |
+| `claimed_at` | `String(40)` |  |  |
+| `attempt_count` | `Integer` | not null |  |
+| `result_json` | `Text` |  |  |
+| `error_code` | `String(80)` |  |  |
+| `created_at` | `String(40)` | not null |  |
+| `updated_at` | `String(40)` | not null |  |
+
+## `assistant_feedback`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `feedback_id` | `String(128)` | PK |  |
+| `user_id` | `String(128)` | not null |  |
+| `turn_id` | `String(128)` | not null |  |
+| `rating` | `String(10)` | not null |  |
+| `reason_code` | `String(40)` |  |  |
+| `comment` | `Text` |  |  |
+| `prompt_version` | `String(80)` |  |  |
+| `schema_version` | `String(80)` |  |  |
+| `model_version` | `String(100)` |  |  |
+| `source_ids_json` | `Text` | not null |  |
+| `created_at` | `String(40)` | not null |  |
+| `updated_at` | `String(40)` | not null |  |
+
+## `evaluation_candidates`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `candidate_id` | `String(128)` | PK |  |
+| `feedback_id` | `String(128)` | unique, not null |  |
+| `user_id` | `String(128)` | not null |  |
+| `status` | `String(30)` | not null |  |
+| `reviewed_by` | `String(128)` |  |  |
+| `reviewed_at` | `String(40)` |  |  |
+| `approved_payload_json` | `Text` |  |  |
+| `created_at` | `String(40)` | not null |  |
+
+## `coaching_memories`
+
+| Column | Type | Constraints | Reference |
+|---|---|---|---|
+| `memory_id` | `String(128)` | PK |  |
+| `user_id` | `String(128)` | not null |  |
+| `kind` | `String(30)` | not null |  |
+| `content` | `Text` | not null |  |
+| `status` | `String(20)` | not null |  |
+| `source_type` | `String(40)` | not null |  |
+| `source_id` | `String(128)` |  |  |
+| `source_revision` | `Integer` |  |  |
+| `expires_at` | `String(40)` |  |  |
+| `confirmed_at` | `String(40)` |  |  |
 | `created_at` | `String(40)` | not null |  |
 | `updated_at` | `String(40)` | not null |  |
 
@@ -221,6 +433,9 @@ Alembic revisions remain authoritative for production schema history.
 | `status` | `String(30)` | not null |  |
 | `duration_ms` | `Integer` |  |  |
 | `detail_json` | `Text` | not null |  |
+| `prompt_version` | `String(80)` |  |  |
+| `schema_version` | `String(80)` |  |  |
+| `model_version` | `String(100)` |  |  |
 | `created_at` | `String(40)` | not null |  |
 
 ## `product_events`

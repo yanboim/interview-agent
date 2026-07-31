@@ -3,7 +3,15 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { handleDialogKeydown } from "@/lib/focusTrap";
 
-type Mode = "today" | "chat" | "interview" | "report" | "learning" | "history";
+type Mode =
+  | "today"
+  | "chat"
+  | "interview"
+  | "report"
+  | "learning"
+  | "history"
+  | "resume"
+  | "review";
 
 const props = defineProps<{
   mode: Mode;
@@ -107,6 +115,26 @@ watch(
 
     <nav class="sidebar-nav" aria-label="训练工具">
       <p class="nav-label">训练空间</p>
+      <button
+        v-if="auth.resumeFeatureEnabled"
+        class="nav-item"
+        :class="{ active: mode === 'resume' }"
+        type="button"
+        @click="selectMode('resume')"
+      >
+        <i class="ph ph-file-text nav-icon" aria-hidden="true"></i>
+        简历中心
+      </button>
+      <button
+        v-if="auth.reviewFeatureEnabled"
+        class="nav-item"
+        :class="{ active: mode === 'review' }"
+        type="button"
+        @click="selectMode('review')"
+      >
+        <i class="ph ph-waveform nav-icon" aria-hidden="true"></i>
+        面试复盘
+      </button>
       <button
         class="nav-item"
         :class="{ active: mode === 'today' }"

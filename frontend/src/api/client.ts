@@ -9,3 +9,5 @@ export * from "@/api/admin";
 export * from "@/api/profile";
 export * from "@/api/analytics";
 export * from "@/api/today";
+export * from "@/api/resumes";
+export * from "@/api/reviews";

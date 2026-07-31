@@ -1,0 +1,40 @@
+{
+  "summary": {
+    "cases": 3,
+    "schema_success_rate": 1.0,
+    "keyword_gap_recall": 1.0,
+    "issue_category_recall": 1.0,
+    "fact_guard_success_rate": 1.0
+  },
+  "details": [
+    {
+      "case_id": "backend-impact",
+      "schema_valid": true,
+      "keyword_gap_recall": 1.0,
+      "issue_category_recall": 1.0,
+      "fact_guard_passed": true,
+      "fact_warnings": []
+    },
+    {
+      "case_id": "frontend-missing-result",
+      "schema_valid": true,
+      "keyword_gap_recall": 1.0,
+      "issue_category_recall": 1.0,
+      "fact_guard_passed": true,
+      "fact_warnings": []
+    },
+    {
+      "case_id": "unsupported-number",
+      "schema_valid": true,
+      "keyword_gap_recall": 1.0,
+      "issue_category_recall": 1.0,
+      "fact_guard_passed": true,
+      "fact_warnings": [
+        {
+          "code": "unsupported_number",
+          "message": "优化稿中的数字“50%”没有原文证据"
+        }
+      ]
+    }
+  ]
+}

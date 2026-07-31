@@ -17,6 +17,8 @@ const InterviewPanel = defineAsyncComponent(
 const ProfilePanel = defineAsyncComponent(() => import("@/components/app/ProfilePanel.vue"));
 const LearningPanel = defineAsyncComponent(() => import("@/components/app/LearningPanel.vue"));
 const HistoryPanel = defineAsyncComponent(() => import("@/components/app/HistoryPanel.vue"));
+const ResumePanel = defineAsyncComponent(() => import("@/components/app/ResumePanel.vue"));
+const ReviewPanel = defineAsyncComponent(() => import("@/components/app/ReviewPanel.vue"));
 const AuthOverlay = defineAsyncComponent(() => import("@/components/app/AuthOverlay.vue"));
 const AppSettingsDialog = defineAsyncComponent(
   () => import("@/components/app/AppSettingsDialog.vue"),
@@ -28,7 +30,15 @@ const RecoveryCodeDialog = defineAsyncComponent(
   () => import("@/components/app/RecoveryCodeDialog.vue"),
 );
 
-type Mode = "today" | "chat" | "interview" | "report" | "learning" | "history";
+type Mode =
+  | "today"
+  | "chat"
+  | "interview"
+  | "report"
+  | "learning"
+  | "history"
+  | "resume"
+  | "review";
 
 const auth = useAuthStore();
 const chat = useChatStore();
@@ -66,6 +76,8 @@ const modePath: Record<Mode, string> = {
   report: "/profile",
   learning: "/learning",
   history: "/history",
+  resume: "/resumes",
+  review: "/reviews",
 };
 
 async function setMode(next: Mode) {
@@ -143,7 +155,11 @@ const topicTitle = computed(() =>
         ? "能力画像"
         : mode.value === "learning"
           ? "学习计划"
-          : "历史记录",
+          : mode.value === "resume"
+            ? "简历中心"
+            : mode.value === "review"
+              ? "面试复盘"
+            : "历史记录",
 );
 </script>
 
@@ -186,6 +202,14 @@ const topicTitle = computed(() =>
         />
         <ProfilePanel v-else-if="mode === 'report'" />
         <LearningPanel v-else-if="mode === 'learning'" />
+        <ResumePanel v-else-if="mode === 'resume' && auth.resumeFeatureEnabled" />
+        <ReviewPanel v-else-if="mode === 'review' && auth.reviewFeatureEnabled" />
+        <div v-else-if="mode === 'resume'" class="app-initializing" role="status">
+          简历功能尚未启用
+        </div>
+        <div v-else-if="mode === 'review'" class="app-initializing" role="status">
+          面试复盘尚未启用
+        </div>
         <HistoryPanel v-else-if="mode === 'history'" />
       </template>
       <div v-else class="app-initializing" aria-live="polite">正在准备训练空间…</div>

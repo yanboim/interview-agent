@@ -17,11 +17,13 @@ Browser
   |
   v
 FastAPI API / static frontend
-  |---- PostgreSQL or SQLite: users, sessions, interviews, learning, audits
+  |---- PostgreSQL or SQLite: users, sessions, resumes, reviews, learning, audits
   |---- Redis: shared rate limits, RAG cache, background jobs
   |---- Qdrant: versioned private knowledge index
+  |---- User file volume: avatars, resumes, temporary review audio
   |---- GLM API: chat, interview questions, scoring, optional reranking
-  `---- Worker: long-running knowledge ingestion
+  |---- Transcription API: optional consent-gated audio transcription
+  `---- Worker: knowledge, resume, transcription, and review jobs
 ```
 
 Prometheus, Grafana, and OpenTelemetry observe the application but are not part
@@ -78,6 +80,8 @@ Current application services:
 ```text
 app/application/chat_service.py
 app/application/interview_service.py
+app/application/resume_service.py
+app/application/interview_review_service.py
 ```
 
 New complex behavior should continue moving toward this boundary rather than
@@ -183,6 +187,21 @@ switches the serving alias atomically, versions cache keys by physical target,
 and retains the previous version for rollback. Deleting the serving collection
 before validation remains prohibited.
 
+### User-sensitive files and long-running analysis
+
+Avatars, resumes, and temporary interview audio use server-generated storage
+keys and authenticated download paths; user files are never served as static
+assets or placed in Qdrant. The API and Worker share the configured persistent
+user-file volume. Database rows are authoritative for ownership and lifecycle,
+while file cleanup is idempotent.
+
+Resume analysis and interview review use explicit durable resource states,
+owner-fenced background jobs, bounded model/transcription calls, and
+optimistic revisions for editable drafts and transcripts. Audio leaves the
+system only when transcription is enabled and the user explicitly confirms
+external processing. Successfully persisted transcripts trigger audio
+deletion.
+
 ### Model calls
 
 Provider calls require bounded timeout/retry behavior, metrics, safe error
@@ -201,6 +220,27 @@ window containing a durable summary, recent completed messages, and the current
 request. The conversation summary marker advances in the same transaction that
 claims the chat turn, so failed/retried calls cannot duplicate compaction.
 
+`app/agent_context_service.py` owns the separate immutable per-turn agent
+context snapshot. It combines server-resolved identity and profile data with
+only confirmed, owner-scoped coaching memory, current capability weaknesses,
+due learning tasks, and the bounded conversation view. Proposed/rejected or
+stale source-derived memories never enter the snapshot. Specialist calls
+receive one versioned `DelegationEnvelope` with this compact snapshot and
+correlation identifiers; the full chat transcript is not copied into every
+delegation. Memory lifecycle operations remain explicit product/API commands,
+and a correction returns the memory to `proposed` until the owner confirms it
+again.
+
+Durable multi-step Agent actions use `app/application/agent_run_service.py`
+and the application-owned `agent_runs`/`agent_steps` records as their business
+source of truth. Stable input digests and step idempotency keys bind retries to
+the original command. Step claims are conditional and owner-fenced; command
+effects, replay results, and terminal step/run state commit atomically, while
+any future model or tool calls remain outside database transactions. SSE
+exposes lifecycle events only, and administrator inspection omits user-owned
+input, proposal, and result bodies. LangGraph remains an in-process
+orchestration detail rather than durable product state.
+
 ## Deployment and lifecycle
 
 - Alembic owns production schema evolution; runtime `create_all` is for local
@@ -212,6 +252,9 @@ claims the chat turn, so failed/retried calls cannot duplicate compaction.
   An independent process heartbeat with a bounded Redis TTL remains active
   while the Worker is idle or processing and supplies the administrator
   resource center's live Worker signal.
+- API and Worker deployments that enable resume or review processing mount the
+  same persistent user-file volume. Backup and restore treat relational rows
+  and that volume as one recovery set.
 - Verified Canary and production outcomes are written to an idempotent
   deployment-release ledger by the operator-side deployment process. Git
   history is not treated as proof that a version reached an environment, and

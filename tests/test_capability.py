@@ -1,6 +1,6 @@
 import json
 
-from app.capability import build_capability_profile
+from app.capability import build_capability_profile, score_calibration_report
 
 
 def scored_row(
@@ -88,6 +88,9 @@ def test_build_capability_profile_aggregates_across_interviews():
     }
     assert profile["dimension_scores"]["技术准确性"] == 8.33
     assert profile["dimension_scores"]["原理深度"] == 7.0
+    assert profile["calibration"]["sample_count"] == 3
+    assert profile["calibration"]["confidence"] > 0
+    assert len(profile["calibration"]["cohorts"]["topic"]) == 2
     assert [item["average_score"] for item in profile["trend"]] == [7.0, 9.0]
     assert profile["weaknesses"][0] == {
         "label": "缺少忠实度",
@@ -146,3 +149,17 @@ def test_empty_capability_profile_has_stable_shape():
         "工程实践": 0.0,
     }
     assert profile["trend"] == []
+    assert profile["calibration"]["confidence"] == 0.0
+
+
+def test_human_labelled_calibration_report_has_stable_error_metrics():
+    report = score_calibration_report([
+        {"model_version": "v1", "model_score": 8, "human_score": 7},
+        {"model_version": "v1", "model_score": 6, "human_score": 6},
+        {"model_version": "v2", "model_score": 5, "human_score": 6},
+    ])
+
+    assert report["sample_count"] == 3
+    assert report["mean_bias"] == 0.0
+    assert report["mean_absolute_error"] == 0.67
+    assert report["model_cohorts"]["v1"]["sample_count"] == 2

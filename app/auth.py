@@ -1,3 +1,5 @@
+"""认证服务：管理密码校验、短期访问令牌与可轮换/撤销的刷新令牌生命周期。"""
+
 import hashlib
 import secrets
 from dataclasses import dataclass

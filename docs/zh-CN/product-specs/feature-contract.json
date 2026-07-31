@@ -1,0 +1,706 @@
+{
+  "schema_version": 1,
+  "product": "interview-agent",
+  "updated_at": "2026-07-31",
+  "status_values": [
+    "passing",
+    "planned"
+  ],
+  "features": [
+    {
+      "id": "auth-token-lifecycle",
+      "category": "security",
+      "description": "用户可以注册、登录、轮换刷新Token和撤销会话，系统不保存明文Token。",
+      "status": "passing",
+      "steps": [
+        "使用有效凭据注册用户。",
+        "登录并解析Access Token。",
+        "刷新一次并确认旧Refresh Token被拒绝。",
+        "撤销会话并确认访问被拒绝。"
+      ],
+      "verification": [
+        "tests/test_auth.py"
+      ],
+      "category_zh_CN": "安全"
+    },
+    {
+      "id": "tenant-data-isolation",
+      "category": "security",
+      "description": "认证用户不能冒领、读取、修改或删除其他用户的资源。",
+      "status": "passing",
+      "steps": [
+        "为两个用户创建资源。",
+        "使用第二个身份访问第一个用户的资源。",
+        "确认请求被拒绝且资源未变化。"
+      ],
+      "verification": [
+        "tests/test_authorization.py",
+        "tests/test_storage.py"
+      ],
+      "category_zh_CN": "安全"
+    },
+    {
+      "id": "conversation-persistence",
+      "category": "functional",
+      "description": "会话消息在Store重建后仍存在，并始终限定在所属用户和会话内。",
+      "status": "passing",
+      "steps": [
+        "向会话追加用户和助手消息。",
+        "对同一数据库创建新的Store实例。",
+        "读取会话并确认消息顺序和所有权。"
+      ],
+      "verification": [
+        "tests/test_storage.py"
+      ],
+      "category_zh_CN": "功能"
+    },
+    {
+      "id": "interview-lifecycle",
+      "category": "functional",
+      "description": "面试会持久化问题、回答、评分、安全渲染的参考答案、历史、归档状态和报告输入。",
+      "status": "passing",
+      "steps": [
+        "创建面试和首个问题。",
+        "保存已评分回答和后续问题。",
+        "把紧凑参考答案Markdown安全渲染为可读编号、列表、强调和代码。",
+        "重新加载、归档、恢复并删除面试。",
+        "从活动问题返回已有内容的面试历史。",
+        "确认报告聚合使用已持久化评分回合。"
+      ],
+      "verification": [
+        "tests/test_storage.py",
+        "tests/test_interview_engine.py",
+        "frontend/e2e/interview-question.spec.ts",
+        "frontend/src/components/MarkdownContent.test.ts"
+      ],
+      "category_zh_CN": "功能"
+    },
+    {
+      "id": "learning-review-cycle",
+      "category": "functional",
+      "description": "薄弱维度会生成按用户隔离、可去重且复习间隔递增的学习任务。",
+      "status": "passing",
+      "steps": [
+        "从已评分能力数据生成学习候选。",
+        "创建两次并确认不会产生重复活动任务。",
+        "复习任务并确认次数和下次复习时间推进。"
+      ],
+      "verification": [
+        "tests/test_learning.py",
+        "tests/test_storage.py"
+      ],
+      "category_zh_CN": "功能"
+    },
+    {
+      "id": "rag-relevance-and-traceability",
+      "category": "ai-quality",
+      "description": "私人检索拒绝低相关结果，并为接受的分块返回可追踪来源元数据。",
+      "status": "passing",
+      "steps": [
+        "对查询运行Dense相关性门禁。",
+        "拒绝低于配置阈值的结果。",
+        "对接受的Hybrid结果保留来源和得分元数据。"
+      ],
+      "verification": [
+        "tests/test_rag.py",
+        "tests/test_ingest.py",
+        "tests/test_chunk_evaluation.py"
+      ],
+      "category_zh_CN": "AI质量"
+    },
+    {
+      "id": "agent-routing-contract",
+      "category": "ai-quality",
+      "description": "Supervisor暴露专业Agent工具，路由评估报告各Agent准确率。",
+      "status": "passing",
+      "steps": [
+        "构建配置的Supervisor。",
+        "确认知识、面试官、评估和规划工具可用。",
+        "评估记录的路由样本并报告各Agent准确率。"
+      ],
+      "verification": [
+        "tests/test_multi_agent.py",
+        "tests/test_multi_agent_evaluation.py"
+      ],
+      "category_zh_CN": "AI质量"
+    },
+    {
+      "id": "admin-knowledge-files",
+      "category": "operations",
+      "description": "只有管理员可以对安全知识文件名执行列出、保存、删除和导入入队。",
+      "status": "passing",
+      "steps": [
+        "以非管理员身份认证并确认操作被拒绝。",
+        "以管理员身份保存支持的文件名。",
+        "列出和删除文件，同时拒绝不安全路径。"
+      ],
+      "verification": [
+        "tests/test_admin_backend.py",
+        "tests/test_authorization.py"
+      ],
+      "category_zh_CN": "运维"
+    },
+    {
+      "id": "responsive-accessible-shell",
+      "category": "user-experience",
+      "description": "主工作区在支持的桌面和移动视口没有严重无障碍问题或横向溢出。",
+      "status": "passing",
+      "steps": [
+        "构建并启动生产前端Shell。",
+        "在桌面和移动Chromium打开今日工作区。",
+        "运行无障碍和溢出断言。"
+      ],
+      "verification": [
+        "frontend/e2e/product.spec.ts",
+        "frontend/e2e/goal-dialog.spec.ts",
+        "frontend/e2e/interview-question.spec.ts"
+      ],
+      "category_zh_CN": "用户体验"
+    },
+    {
+      "id": "account-avatar-and-reminder-preferences",
+      "category": "user-experience",
+      "description": "产品用户可以上传或删除账号头像；头像和提醒控件在支持视口保持紧凑、无障碍和稳定。",
+      "status": "passing",
+      "steps": [
+        "从侧栏头像打开设置。",
+        "上传支持的图片并保存为账号偏好。",
+        "重新加载并确认头像可见且不裁切。",
+        "使用键盘可访问开关切换每日提醒。",
+        "确认不支持或过大的头像载荷被拒绝。"
+      ],
+      "verification": [
+        "frontend/e2e/profile-settings.spec.ts",
+        "tests/test_profile_preferences.py",
+        "tests/test_storage.py",
+        "tests/test_migrations.py"
+      ],
+      "category_zh_CN": "用户体验"
+    },
+    {
+      "id": "conversation-history-workspace",
+      "category": "user-experience",
+      "description": "会话历史在可搜索的独立工作区管理，而不是放在受限侧栏列表中。",
+      "status": "passing",
+      "steps": [
+        "确认产品侧栏包含历史导航但不内嵌会话搜索。",
+        "导航到 /history。",
+        "搜索、打开、重命名、归档、恢复和删除所属会话。"
+      ],
+      "verification": [
+        "frontend/e2e/product.spec.ts",
+        "frontend/src/components/app/HistoryPanel.vue",
+        "tests/test_storage.py"
+      ],
+      "category_zh_CN": "用户体验"
+    },
+    {
+      "id": "separate-product-admin-surfaces",
+      "category": "security",
+      "description": "产品和管理员账号使用独立创建路径、浏览器会话、登录端点和界面，服务端角色始终权威。",
+      "status": "passing",
+      "steps": [
+        "通过注册创建产品账号，通过运维脚本创建管理员。",
+        "确认两种凭据都会被另一登录面拒绝。",
+        "确认产品Shell不暴露后台导航或服务API Key设置。",
+        "确认管理员端点继续要求管理员角色。"
+      ],
+      "verification": [
+        "tests/test_auth.py",
+        "tests/test_authorization.py",
+        "frontend/e2e/product.spec.ts"
+      ],
+      "category_zh_CN": "安全"
+    },
+    {
+      "id": "atomic-knowledge-publication",
+      "category": "reliability",
+      "description": "知识更新只有在替代集合通过验证后才可见，并可回滚。",
+      "status": "passing",
+      "steps": [
+        "构建新版本化集合且不改变服务别名。",
+        "运行结构和检索回归门禁。",
+        "原子切换别名并保留上一版本。",
+        "确认构建失败不会改变服务集合。"
+      ],
+      "verification": [
+        "tests/test_knowledge_publication.py",
+        "tests/test_rag.py",
+        "tests/test_operations.py",
+        "tests/test_authorization.py"
+      ],
+      "category_zh_CN": "可靠性"
+    },
+    {
+      "id": "idempotent-interview-answer",
+      "category": "reliability",
+      "description": "重试或并发提交同一面试答案最多计费并推进一次。",
+      "status": "passing",
+      "steps": [
+        "并发提交同一幂等键。",
+        "通过条件状态转换领取pending回合。",
+        "确认只持久化一个评分和一个后续回合。",
+        "对安全重试返回原结果。"
+      ],
+      "verification": [
+        "tests/test_interview_idempotency.py",
+        "tests/test_migrations.py",
+        "tests/test_main.py",
+        "frontend/src/api/interviews.test.ts"
+      ],
+      "category_zh_CN": "可靠性"
+    },
+    {
+      "id": "durable-chat-turn-lifecycle",
+      "category": "reliability",
+      "description": "聊天生成具有持久生命周期、确定性会话顺序、安全重放和显式失败/断连恢复。",
+      "status": "passing",
+      "steps": [
+        "调用模型前为会话领取一个活动回合。",
+        "在一个事务中持久化完成的用户和助手消息。",
+        "重放已完成幂等键且不再次调用模型。",
+        "确认提供方失败和流取消会释放会话供重试。"
+      ],
+      "verification": [
+        "tests/test_chat_lifecycle.py",
+        "tests/test_migrations.py",
+        "tests/test_data_migration.py",
+        "tests/test_main.py",
+        "frontend/src/api/chat.test.ts"
+      ],
+      "category_zh_CN": "可靠性"
+    },
+    {
+      "id": "modular-api-composition",
+      "category": "architecture",
+      "description": "FastAPI组合根装配中间件和领域路由，DTO和路由行为位于明确API模块。",
+      "status": "passing",
+      "steps": [
+        "在组合根中只构建一次应用依赖。",
+        "注册不导入app.main的领域APIRouter。",
+        "确认现有公共路径保留在OpenAPI中。",
+        "机械约束组合根大小和路由所有权。"
+      ],
+      "verification": [
+        "tests/test_architecture.py",
+        "tests/test_main.py",
+        "tests/test_authorization.py",
+        "tests/test_admin_backend.py",
+        "tests/test_chat_lifecycle.py"
+      ],
+      "category_zh_CN": "架构"
+    },
+    {
+      "id": "persistence-execution-boundary",
+      "category": "architecture",
+      "description": "同步SQLAlchemy事务脚本通过统一异步边界执行，并依赖数据库并发控制而非进程锁。",
+      "status": "passing",
+      "steps": [
+        "通过统一执行器分派阻塞应用和持久化调用。",
+        "每个Store变更位于一个显式Engine事务内。",
+        "外部模型调用保持在数据库事务外。",
+        "不使用Store业务锁验证并发聊天和面试领取。"
+      ],
+      "verification": [
+        "tests/test_architecture.py",
+        "tests/test_execution.py",
+        "tests/test_chat_lifecycle.py",
+        "tests/test_interview_idempotency.py"
+      ],
+      "category_zh_CN": "架构"
+    },
+    {
+      "id": "durable-background-jobs",
+      "category": "reliability",
+      "description": "Redis任务支持原子幂等入队、所有者围栏租约、确认、重试调度、崩溃恢复和死信。",
+      "status": "passing",
+      "steps": [
+        "使用Idempotency-Key入队知识导入。",
+        "使用所有者Token和可续租租约领取。",
+        "确认成功或安排指数退避重试。",
+        "恢复过期领取并把耗尽尝试的任务放入死信。"
+      ],
+      "verification": [
+        "tests/test_operations.py",
+        "tests/test_worker.py",
+        "tests/test_redis_jobs_integration.py"
+      ],
+      "category_zh_CN": "可靠性"
+    },
+    {
+      "id": "model-policy-gateway",
+      "category": "reliability",
+      "description": "所有外部聊天和Embedding调用统一使用超时、重试、并发、预算、指标、Token和安全错误策略。",
+      "status": "passing",
+      "steps": [
+        "通过网关构建每个外部模型。",
+        "拒绝超出配置预算的输入和输出。",
+        "限制同步和异步提供方并发。",
+        "记录延迟、错误和提供方Token用量。"
+      ],
+      "verification": [
+        "tests/test_model_gateway.py",
+        "tests/test_architecture.py",
+        "tests/test_interview_engine.py",
+        "tests/test_llm_reranker.py",
+        "tests/test_rag.py"
+      ],
+      "category_zh_CN": "可靠性"
+    },
+    {
+      "id": "token-budgeted-chat-context",
+      "category": "reliability",
+      "description": "聊天模型输入保留有界近期历史和旧完成消息的增量持久摘要。",
+      "status": "passing",
+      "steps": [
+        "领取回合前拒绝无法放入预算的当前请求。",
+        "在Token预算内保留最新完成消息。",
+        "持久化有界摘要和最大覆盖消息ID。",
+        "重试时复用持久摘要且不重复消息。"
+      ],
+      "verification": [
+        "tests/test_chat_context.py",
+        "tests/test_chat_lifecycle.py",
+        "tests/test_migrations.py",
+        "tests/test_architecture.py",
+        "tests/test_data_migration.py"
+      ],
+      "category_zh_CN": "可靠性"
+    },
+    {
+      "id": "worktree-stack-isolation",
+      "category": "operations",
+      "description": "每个Worktree派生独立Compose项目、资源命名空间、宿主端口块和Playwright端口。",
+      "status": "passing",
+      "steps": [
+        "从解析后的Worktree路径生成稳定安全后缀。",
+        "按项目隔离Compose容器、网络和卷。",
+        "参数化每个发布宿主端口。",
+        "确认两个Worktree路径生成不同且可运行的配置。"
+      ],
+      "verification": [
+        "tests/test_worktree_env.py",
+        "tests/test_harness_contract.py"
+      ],
+      "category_zh_CN": "运维"
+    },
+    {
+      "id": "reproducible-build-inputs",
+      "category": "operations",
+      "description": "生产Python依赖和容器镜像不可变、可评审并可机械检查漂移。",
+      "status": "passing",
+      "steps": [
+        "把直接Python需求解析为精确且哈希校验的Lock。",
+        "CI和镜像安装时不重新解析依赖。",
+        "用版本和Manifest Digest固定每个外部镜像。",
+        "Harness拒绝Lock漂移和可变镜像引用。"
+      ],
+      "verification": [
+        "tests/test_reproducibility.py",
+        "tests/test_harness_contract.py",
+        ".github/workflows/ci.yml"
+      ],
+      "category_zh_CN": "运维"
+    },
+    {
+      "id": "admin-system-resource-center",
+      "category": "operations",
+      "description": "管理员可以检查应用、数据、任务、网关和观测资源的脱敏清单及有界实时健康摘要，不暴露基础设施凭据或管理端口。",
+      "status": "passing",
+      "steps": [
+        "通过独立管理员界面认证并打开系统资源中心。",
+        "检查实时、不可用和禁用状态及网络暴露标签，包括Redis心跳提供的Worker新鲜度。",
+        "停止或过期Worker心跳并确认资源不可用；发布重启心跳并确认恢复健康。",
+        "确认探测失败只返回通用详情，不含连接串、凭据、内部URL或原始异常。",
+        "确认非管理员被拒绝，未配置经批准的无凭据HTTP(S)链接时基础设施控制台保持私有。"
+      ],
+      "verification": [
+        "tests/test_system_resources.py",
+        "tests/test_operations.py",
+        "tests/test_worker.py",
+        "tests/test_architecture.py",
+        "frontend/src/lib/adminResources.test.ts",
+        "frontend/src/components/admin/AdminResourcesSection.vue"
+      ],
+      "category_zh_CN": "运维"
+    },
+    {
+      "id": "frontend-toolchain-audit",
+      "category": "security",
+      "description": "升级后的前端构建工具链由Lockfile约束，npm审计无moderate或更高问题。",
+      "status": "passing",
+      "steps": [
+        "解析并锁定经评审的Vite、plugin-vue、vue-tsc和Vitest主版本。",
+        "通过离线检查拒绝工具链Lockfile回归。",
+        "以moderate级别审计生产和开发依赖。",
+        "通过类型、单测、生产构建、Bundle和浏览器门禁。"
+      ],
+      "verification": [
+        "frontend/scripts/check-toolchain.mjs",
+        "frontend/package-lock.json",
+        ".github/workflows/ci.yml",
+        "frontend/e2e/product.spec.ts"
+      ],
+      "category_zh_CN": "安全"
+    },
+    {
+      "id": "admin-observability-and-audit",
+      "category": "operations",
+      "description": "管理员可以关联权威用户活动、标准用户输入/系统输出交互和脱敏执行追踪，且不把交互正文复制到通用日志。",
+      "status": "passing",
+      "steps": [
+        "执行认证API动作并确认服务端记录主体、动作、请求ID、目标、结果、状态和耗时。",
+        "在管理员审计中心按用户、动作、结果、目标或请求ID筛选活动。",
+        "检查权威聊天和面试记录，确认展示精确持久用户输入和系统输出。",
+        "打开交互时间线，按交互和请求ID关联Agent/评估执行及工具调用。",
+        "确认管理员内容读取被审计，审计/追踪详情会脱敏凭据和正文类字段。"
+      ],
+      "verification": [
+        "tests/test_admin_observability.py",
+        "tests/test_migrations.py",
+        "tests/test_architecture.py",
+        "frontend/src/components/admin/AdminAuditsSection.vue"
+      ],
+      "category_zh_CN": "运维"
+    },
+    {
+      "id": "admin-deployment-release-ledger",
+      "category": "operations",
+      "description": "管理员可以查看由部署流程写入、按时间倒序排列的Canary和生产发布台账，不把未交付Git提交视为发布。",
+      "status": "passing",
+      "steps": [
+        "部署开始时记录稳定发布ID，并在到达终态时复用。",
+        "部署检查后附加脱敏变更、镜像、迁移、恢复点和验证摘要。",
+        "通过管理员界面认证并打开发布时间线。",
+        "在桌面和移动端筛选发布并检查无障碍详情抽屉。",
+        "确认产品用户不能访问管理员发布API。"
+      ],
+      "verification": [
+        "tests/test_deployment_releases.py",
+        "tests/test_migrations.py",
+        "frontend/e2e/admin-releases.spec.ts",
+        "scripts/record_release.py"
+      ],
+      "category_zh_CN": "运维"
+    },
+    {
+      "id": "resume-assessment-and-optimization",
+      "category": "functional",
+      "description": "用户可以上传自己的简历，获得结合目标岗位和证据的评估，编辑事实受控优化稿并导出确认结果为DOCX。",
+      "status": "passing",
+      "steps": [
+        "上传支持的PDF或DOCX并选择或继承目标JD。",
+        "等待持久解析和分析，检查评分、证据、问题和改写建议。",
+        "使用乐观并发编辑优化稿并解决全部不受支持事实警告。",
+        "把确认后的结构化稿导出为DOCX。",
+        "确认其他用户不能读取、编辑、导出、处理或删除该简历。"
+      ],
+      "verification": [
+        "tests/test_resume_service.py",
+        "tests/test_resume_api.py",
+        "tests/test_worker.py",
+        "tests/test_backup_restore.py",
+        "tests/test_evaluate_resumes.py",
+        "tests/test_migrations.py",
+        "frontend/src/api/resumes.test.ts",
+        "frontend/e2e/resume.spec.ts",
+        "eval/reports/resume-analysis-baseline.json"
+      ],
+      "category_zh_CN": "功能"
+    },
+    {
+      "id": "resume-grounded-mock-interview",
+      "category": "functional",
+      "description": "用户可以从已就绪且属于自己的简历分析启动现有文本面试，并获得基于简历主张和岗位差距的问题，同时保持通用面试行为不变。",
+      "status": "passing",
+      "steps": [
+        "配置模拟面试时选择自己的已就绪简历分析。",
+        "持久化最小化简历面试上下文快照并生成定向首题。",
+        "继续现有幂等回答、评分、重试、恢复和报告生命周期。",
+        "在历史和报告中区分通用与简历定向面试。",
+        "确认删除简历会阻止新定向面试，但不删除已有面试历史。"
+      ],
+      "verification": [
+        "tests/test_resume_grounded_interview.py",
+        "tests/test_evaluate_resume_interviews.py",
+        "tests/test_interview_idempotency.py",
+        "tests/test_migrations.py",
+        "frontend/e2e/resume-interview.spec.ts",
+        "eval/reports/resume-interview-baseline.json"
+      ],
+      "category_zh_CN": "功能"
+    },
+    {
+      "id": "real-interview-transcription-review",
+      "category": "functional",
+      "description": "用户可以提交真实面试音频或文本记录，确认逐字稿和说话人，并获得带来源标识且进入学习洞察的复盘。",
+      "status": "passing",
+      "steps": [
+        "在明确同意外部处理后上传支持的音频，或提交文本逐字稿。",
+        "持久化说话人分段逐字稿，并只在转写成功后删除源音频。",
+        "分析前编辑并确认最新逐字稿版本和说话人角色。",
+        "原子生成逐题和整体复盘，只评价候选人回答。",
+        "把完成复盘的薄弱点纳入能力和学习视图并保留来源标识。",
+        "确认跨用户访问、旧版本确认、重复分析和迟到Worker完成均被拒绝。"
+      ],
+      "verification": [
+        "tests/test_interview_review_engine.py",
+        "tests/test_interview_review_service.py",
+        "tests/test_interview_review_api.py",
+        "tests/test_transcription.py",
+        "tests/test_evaluate_interview_reviews.py",
+        "tests/test_worker.py",
+        "tests/test_migrations.py",
+        "frontend/src/api/reviews.test.ts",
+        "frontend/e2e/review.spec.ts",
+        "eval/reports/interview-review-baseline.json"
+      ],
+      "category_zh_CN": "功能"
+    },
+    {
+      "id": "agent-tool-safety-boundary",
+      "category": "security",
+      "description": "Agent工具不会把私人正文写入通用审计，会拒绝敏感的公开搜索查询，对模糊的外发查询要求绑定所有者的确认，把检索文本视为不可信证据，并在创建学习任务前要求绑定所有者的确认。",
+      "status": "passing",
+      "steps": [
+        "使用内容型输入和输出运行已认证工具，确认审计只包含哈希、长度、状态、耗时和安全错误类别。",
+        "在网络请求前拒绝包含凭据、高熵Token、个人信息、简历正文或逐字稿正文的公开搜索查询。",
+        "预览模糊的公开搜索查询且不联网，拒绝跨用户确认，为所有者单次执行，并在不再次请求网络的情况下重放已存结果。",
+        "把私人和公开检索文本封装在明确的不可信证据边界中，阻止嵌入文本成为指令。",
+        "预览学习计划但不创建任务，拒绝跨用户确认，并确保绑定所有者的确认最多应用一次。"
+      ],
+      "verification": [
+        "tests/test_agent_tools.py",
+        "tests/test_learning.py",
+        "tests/test_migrations.py",
+        "tests/test_architecture.py"
+      ],
+      "category_zh_CN": "安全"
+    },
+    {
+      "id": "agent-grounded-structured-output",
+      "category": "ai-quality",
+      "description": "Agent生成产物使用版本化Schema、有限修复、稳定证据标识、逐条引用元数据，并持久化Prompt、Schema和模型来源版本。",
+      "status": "passing",
+      "steps": [
+        "使用版本化Schema验证委派、专业Agent、评分、训练预览和引用载荷，并拒绝引用未知证据。",
+        "拒绝截断或多对象模型输出；原生结构化输出不可用时最多进行一次有限修复，修复后仍不合法则安全失败。",
+        "面试评分、简历分析和面试复盘统一使用严格结构化边界，同时保持公开响应形状不变。",
+        "为私人知识分块和公开网页URL提供稳定证据ID，并把显式回答主张映射为有支持、无支持或证据冲突状态。",
+        "为生成产物和执行轨迹持久化Prompt、Schema与模型版本，并随历史聊天消息重放版本化引用元数据。"
+      ],
+      "verification": [
+        "tests/test_agent_contracts.py",
+        "tests/test_agent_io.py",
+        "tests/test_interview_engine.py",
+        "tests/test_resume_engine.py",
+        "tests/test_interview_review_engine.py",
+        "tests/test_interview_idempotency.py",
+        "tests/test_migrations.py",
+        "tests/test_storage.py",
+        "tests/test_multi_agent.py",
+        "frontend/src/api/chat.test.ts",
+        "frontend/src/stores/chat.test.ts"
+      ],
+      "category_zh_CN": "AI质量"
+    },
+    {
+      "id": "agent-personalized-context-memory",
+      "category": "ai-quality",
+      "description": "每个Agent回合都使用一个不可变、有预算且由服务端拥有的上下文快照；委派使用版本化信封；只有所有者确认的教练记忆才能跨会话持久生效。",
+      "status": "passing",
+      "steps": [
+        "在预留Token预算内，使用服务端解析的身份、画像、已确认记忆、压缩会话上下文、能力弱项和到期学习任务构建唯一不可变快照。",
+        "通过单个版本化信封委派，携带有界目标、请求、先前回合、约束、预期Schema、上下文快照和关联ID，而不复制完整逐字稿。",
+        "禁止待确认或已拒绝记忆进入Agent上下文；来源产物缺失或过期时排除来源关联的观察。",
+        "只有所有者可以查看、确认、拒绝、纠正或删除教练记忆；纠正后恢复待确认状态，删除会立即影响后续快照。",
+        "让纠正并再次确认的记忆跨产品会话持久存在，并确保后续专业Agent委派只包含新值、不包含被替代值。"
+      ],
+      "verification": [
+        "tests/test_agent_context_service.py",
+        "tests/test_migrations.py",
+        "tests/test_multi_agent.py",
+        "tests/test_chat_lifecycle.py",
+        "frontend/e2e/profile-settings.spec.ts"
+      ],
+      "category_zh_CN": "AI质量"
+    },
+    {
+      "id": "durable-personalized-training-workflow",
+      "category": "functional",
+      "description": "个性化训练方案是限定所有者、可检查且幂等的Agent运行；其命令步骤需要确认、可重放已存结果，并能在中断后安全恢复。",
+      "status": "passing",
+      "steps": [
+        "持久化由应用拥有的Agent运行与步骤记录，包含显式生命周期状态、稳定幂等键、输入摘要、领取者、尝试次数、安全错误和重放结果。",
+        "根据画像和能力状态构建面向目标岗位的训练提案；确认前不创建任务、不启动面试，也不修改简历。",
+        "只允许所有者确认一次运行，在同一事务内创建去重学习任务并保存命令步骤结果，同时返回现有面试创建链接。",
+        "通过产品API检查、取消、重试和重放运行状态；提供不含隐藏推理的生命周期SSE事件，以及正文最小化的管理员视图。",
+        "拒绝跨用户访问和幂等键输入变更，串行化并发确认，持久化部分失败，并恢复过期领取以支持Worker重启后安全重试。"
+      ],
+      "verification": [
+        "tests/test_agent_run_service.py",
+        "tests/test_agent_run_api.py",
+        "tests/test_migrations.py",
+        "tests/test_learning.py",
+        "frontend/src/api/learning.test.ts",
+        "frontend/e2e/learning-workflow.spec.ts"
+      ],
+      "category_zh_CN": "功能"
+    },
+    {
+      "id": "agent-quality-feedback-learning-loop",
+      "category": "ai-quality",
+      "description": "Agent质量由版本化确定性应用栈语料门禁、持久且经过隐私审核的用户反馈、校准后的能力置信度以及感知结果的复习调度共同保障。",
+      "status": "passing",
+      "steps": [
+        "通过确定性模拟提供方和应用自有工作流边界，扩展并执行冻结版本语料：至少100个路由、50个有依据回答、30个多轮委派、30个安全和20个确认/工作流案例。",
+        "执行分组通过阈值，并对隐私泄露、未授权变更、伪造来源和跨用户失败实行零容忍；实时模型报告必须单独存放并经过明确批准。",
+        "把所有者的赞/踩持久化到已完成聊天回合，同时记录Prompt、Schema、模型和证据版本；在管理员明确提供脱敏载荷完成隐私审核前，不向评测候选暴露用户正文。",
+        "使用版本化人工标注校准、样本置信度、确定性时效权重，以及可比较的主题、难度和模型版本分群聚合能力。",
+        "为每次学习任务复习记录回忆结果、难度、遗忘次数和置信度，并在1到60天范围内确定性计算下次间隔。",
+        "暴露反馈、有依据声明、确认/工作流完成、评分置信度和复习回忆结果等产品指标。"
+      ],
+      "verification": [
+        "tests/test_agent_quality_evaluation.py",
+        "tests/test_assistant_feedback.py",
+        "tests/test_capability.py",
+        "tests/test_learning.py",
+        "tests/test_storage.py",
+        "tests/test_operations.py",
+        "tests/test_migrations.py",
+        "frontend/src/api/chat.test.ts",
+        "frontend/src/stores/chat.test.ts",
+        "eval/agent_quality_suite.v1.json",
+        "eval/capability_calibration.v1.json",
+        "eval/reports/agent-stack-ci.json"
+      ],
+      "category_zh_CN": "AI质量"
+    },
+    {
+      "id": "agent-model-cost-resilience-routing",
+      "category": "reliability",
+      "description": "Agent模型调用使用经过评测的按用途路由、请求级调用/Token/成本预算、可恢复的同供应商回退策略，以及具备即时测试回滚的分阶段发布。",
+      "status": "passing",
+      "steps": [
+        "分别解析Supervisor、Knowledge、Interviewer、Evaluator、Planner、摘要和Schema修复模型配置；覆盖为空时继续使用已配置默认模型。",
+        "只有高置信确定性单意图且内测、金丝雀或生产阶段允许时才跳过Supervisor；模糊和多意图请求经过Supervisor，阶段切到off时立即恢复Supervisor。",
+        "按请求类别记录模型调用次数、输入/输出Token、墙钟与首Token时间、价格版本和估算成本；新增调用会超过调用、Token或成本上限时在执行前拒绝。",
+        "只有用途已列入评测批准配置时才使用可选同供应商回退；Evaluator、简历分析和面试复盘禁止未校准回退，并返回可恢复的不可用状态。",
+        "仅当Agent分组门禁没有零容忍失败，且路由后的质量、完成率、p95延迟和单次完成训练成本相对保留基线均不退化时，才批准推进金丝雀。"
+      ],
+      "verification": [
+        "tests/test_model_routing_policy.py",
+        "tests/test_model_gateway.py",
+        "tests/test_multi_agent.py",
+        "tests/test_operations.py",
+        "tests/test_chat_lifecycle.py",
+        "eval/reports/model-routing-canary-approved.json"
+      ],
+      "category_zh_CN": "可靠性"
+    }
+  ],
+  "status_labels_zh_CN": {
+    "passing": "已通过",
+    "planned": "已规划"
+  }
+}

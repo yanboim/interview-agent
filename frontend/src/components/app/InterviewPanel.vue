@@ -3,6 +3,7 @@ import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { useInterviewsStore } from "@/stores/interviews";
+import { useResumesStore } from "@/stores/resumes";
 import { useToastStore } from "@/stores/toast";
 import { confirm } from "@/composables/confirm";
 import { formatProfileDate } from "@/lib/format";
@@ -20,6 +21,7 @@ const emit = defineEmits<{
 }>();
 
 const store = useInterviewsStore();
+const resumes = useResumesStore();
 const toast = useToastStore();
 const auth = useAuthStore();
 const route = useRoute();
@@ -32,6 +34,17 @@ const answer = ref("");
 const retryAnswer = ref("");
 const showRetryForm = ref(false);
 const view = ref<"setup" | "session">("setup");
+const interviewSource = ref<"general" | "resume">("general");
+const resumeAnalysisId = ref("");
+const readyResumeOptions = computed(() =>
+  resumes.items
+    .filter((item) => item.latest_analysis?.status === "ready")
+    .map((item) => ({
+      resumeId: item.resume_id,
+      analysisId: item.latest_analysis!.analysis_id,
+      label: `${item.original_filename} · ${item.latest_analysis!.target_role || "未指定岗位"}`,
+    })),
+);
 
 const showHistoryDetail = ref(false);
 const renderedQuestion = computed(() =>
@@ -49,7 +62,12 @@ const dimensionLabels: Record<string, string> = {
 
 async function start() {
   try {
-    await store.start(topic.value, level.value, count.value);
+    await store.start(
+      topic.value,
+      level.value,
+      count.value,
+      interviewSource.value === "resume" ? resumeAnalysisId.value : undefined,
+    );
     view.value = "session";
     await router.replace(`/interviews/${store.active?.interview_id}`);
     answer.value = "";
@@ -168,6 +186,12 @@ watch(
 
 onMounted(async () => {
   if (props.mode !== "interview") return;
+  if (auth.resumeFeatureEnabled) {
+    await resumes.load();
+    if (readyResumeOptions.value.length) {
+      resumeAnalysisId.value = readyResumeOptions.value[0].analysisId;
+    }
+  }
   await store.initForUser();
   const interviewId = route.params.interviewId;
   if (
@@ -190,6 +214,39 @@ onMounted(async () => {
       <h2>创建一场模拟面试</h2>
       <p>系统将逐题追问，并从准确性、深度、表达和工程实践四个维度评分。</p>
       <form class="interview-form" @submit.prevent="start">
+        <fieldset v-if="auth.resumeFeatureEnabled" class="interview-source-fieldset">
+          <legend>面试依据</legend>
+          <label>
+            <input v-model="interviewSource" type="radio" value="general" />
+            通用模拟面试
+          </label>
+          <label>
+            <input
+              v-model="interviewSource"
+              type="radio"
+              value="resume"
+              :disabled="!readyResumeOptions.length"
+            />
+            基于简历追问
+          </label>
+          <select
+            v-if="interviewSource === 'resume'"
+            v-model="resumeAnalysisId"
+            required
+            aria-label="选择简历评估版本"
+          >
+            <option
+              v-for="option in readyResumeOptions"
+              :key="option.analysisId"
+              :value="option.analysisId"
+            >
+              {{ option.label }}
+            </option>
+          </select>
+          <small v-if="!readyResumeOptions.length">
+            完成一份简历评估后即可开启定向面试。
+          </small>
+        </fieldset>
         <label>
           面试主题
           <input v-model="topic" maxlength="200" required :disabled="store.starting" />
@@ -254,6 +311,10 @@ onMounted(async () => {
             </div>
             <div class="history-meta">
               <strong>{{ item.topic }}</strong>
+              <em v-if="item.source_type === 'resume'">
+                基于简历 ·
+                {{ item.source_resume?.available ? item.source_resume.display_name : "来源简历已删除" }}
+              </em>
               <span>
                 {{ item.level }} · {{ item.answered_questions }}/{{ item.total_questions }} 题 ·
                 {{ formatProfileDate(item.updated_at) }}
@@ -285,6 +346,14 @@ onMounted(async () => {
               <div>
                 <strong>{{ store.detail.interview.topic }}</strong>
                 <span>{{ store.detail.interview.level }}</span>
+                <span v-if="store.detail.interview.source_type === 'resume'">
+                  基于简历 ·
+                  {{
+                    store.detail.interview.source_resume?.available
+                      ? store.detail.interview.source_resume.display_name
+                      : "来源简历已删除"
+                  }}
+                </span>
               </div>
               <button class="text-action" type="button" @click="showHistoryDetail = false">
                 关闭
@@ -313,6 +382,9 @@ onMounted(async () => {
       <div class="interview-session-heading">
         <div class="interview-progress">
           第 {{ store.active.turn_index }} / {{ store.active.question_count }} 题
+          <span v-if="store.active.source_type === 'resume'">
+            · 基于简历
+          </span>
         </div>
         <button class="text-action" type="button" @click="backToHistory">返回历史</button>
       </div>

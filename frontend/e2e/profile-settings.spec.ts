@@ -99,6 +99,38 @@ test("avatar and reminder controls stay compact and persist by account", async (
   );
   expect(savedProfile.ok()).toBe(true);
   expect((await savedProfile.json()).avatar_data_url).toMatch(/^data:image\/webp;base64,/);
+
+  await page.getByRole("button", { name: "设置头像" }).click();
+  const reopenedDialog = page.getByRole("dialog", { name: "训练目标与高级设置" });
+  await reopenedDialog.getByLabel("新记忆").fill("偏好先看详细原理");
+  await reopenedDialog.getByRole("button", { name: "添加待确认记忆" }).click();
+  let memoryItem = reopenedDialog.locator(".memory-settings-list li").filter({
+    hasText: "偏好先看详细原理",
+  });
+  await expect(memoryItem).toContainText("待确认");
+  await memoryItem.getByRole("button", { name: "确认", exact: true }).click();
+  await expect(memoryItem).toContainText("已确认");
+  await memoryItem.getByRole("button", { name: "纠正", exact: true }).click();
+  memoryItem = reopenedDialog.locator(".memory-settings-list li").last();
+  await memoryItem.getByRole("textbox").fill("偏好先看结论，再看详细原理");
+  await memoryItem.getByRole("button", { name: "保存纠正" }).click();
+  memoryItem = reopenedDialog.locator(".memory-settings-list li").filter({
+    hasText: "偏好先看结论，再看详细原理",
+  });
+  await expect(memoryItem).toContainText("待确认");
+  await memoryItem.getByRole("button", { name: "确认", exact: true }).click();
+  await expect(memoryItem).toContainText("已确认");
+  await reopenedDialog.getByRole("button", { name: "取消" }).click();
+
+  await page.getByRole("button", { name: "设置头像" }).click();
+  const persistedMemory = page
+    .getByRole("dialog", { name: "训练目标与高级设置" })
+    .locator(".memory-settings-list li")
+    .filter({ hasText: "偏好先看结论，再看详细原理" });
+  await expect(persistedMemory).toContainText("已确认");
+  await expect(persistedMemory.locator("span")).toHaveText("偏好先看结论，再看详细原理");
+  await page.getByRole("button", { name: "取消" }).click();
+
   const hasHorizontalOverflow = await page.evaluate(
     () => document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
   );

@@ -1,8 +1,8 @@
-import asyncio
+"""模拟面试 HTTP 适配器，将出题/评分委托给应用服务并记录执行轨迹。"""
+
 import json
 import logging
 import time
-from uuid import uuid4
 
 from fastapi import APIRouter, Header, HTTPException, Request
 
@@ -15,9 +15,12 @@ from app.api.schemas import (
     UserIdentityRequest,
 )
 from app.api.security import resolve_user_id
+from app.model_routing import model_for_purpose
 from app.application.interview_service import (
     InterviewAnswerConflict,
     InterviewAnswerNotFound,
+    InterviewSourceConflict,
+    InterviewSourceNotFound,
 )
 from app.interview_engine import build_report
 
@@ -35,6 +38,7 @@ async def _record_interview_trace(
     detail: dict[str, object],
 ) -> None:
     try:
+        settings = get_runtime().settings
         await run_sync(
             get_runtime().conversation_store.record_execution_trace,
             request_id=str(getattr(http_request.state, "request_id", "")),
@@ -45,6 +49,9 @@ async def _record_interview_trace(
             status=status,
             duration_ms=duration_ms,
             detail=detail,
+            prompt_version=settings.interview_assessment_prompt_version,
+            schema_version="assessment-v1",
+            model_version=model_for_purpose(settings, "evaluator"),
         )
     except Exception:
         logger.warning(
@@ -172,40 +179,25 @@ async def start_interview(
     request: InterviewStartRequest,
     http_request: Request,
 ) -> dict[str, object]:
-    runtime = get_runtime()
-    interview_id = str(uuid4())
     user_id = resolve_user_id(http_request, request.user_id)
     try:
-        question = await run_sync(
-            runtime.generate_question,
-            topic=request.topic,
-            level=request.level,
-            turn_index=1,
-            previous_turns=[],
-        )
-        await run_sync(
-            runtime.conversation_store.create_interview,
+        return await run_sync(
+            get_runtime().interview_start_service.start,
             user_id=user_id,
-            interview_id=interview_id,
             topic=request.topic,
             level=request.level,
-            total_questions=request.question_count,
-            first_question=question,
+            question_count=request.question_count,
+            resume_analysis_id=request.resume_analysis_id,
         )
+    except InterviewSourceNotFound as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    except InterviewSourceConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
-        logger.exception("Failed to start interview %s", interview_id)
+        logger.exception("Failed to start interview")
         raise HTTPException(
             status_code=500, detail=f"模拟面试启动失败：{exc}"
         ) from exc
-    return {
-        "interview_id": interview_id,
-        "topic": request.topic,
-        "level": request.level,
-        "question_count": request.question_count,
-        "turn_index": 1,
-        "question": question,
-        "status": "active",
-    }
 
 
 @router.post("/api/interviews/{interview_id}/answer")
@@ -315,6 +307,9 @@ async def retry_interview_answer(
             strengths_json=json.dumps(assessment["strengths"], ensure_ascii=False),
             weaknesses_json=json.dumps(assessment["weaknesses"], ensure_ascii=False),
             reference_answer=str(assessment["reference_answer"]),
+            prompt_version=runtime.settings.interview_assessment_prompt_version,
+            schema_version="assessment-v1",
+            model_version=model_for_purpose(runtime.settings, "evaluator"),
         )
     except (KeyError, ValueError) as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

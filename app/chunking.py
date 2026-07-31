@@ -1,3 +1,5 @@
+"""按 Markdown 标题语义切分知识文档，并为每块保留可检索的标题上下文。"""
+
 import re
 
 from langchain_core.documents import Document

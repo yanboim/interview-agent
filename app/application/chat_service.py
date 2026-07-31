@@ -1,8 +1,11 @@
+"""聊天回合应用服务：协调幂等领取、结果提交和失败释放，不直接执行模型调用。"""
+
 import hashlib
 from typing import Any, Protocol
 from uuid import uuid4
 
 from app.chat_context import validate_current_message
+from app.agent_context_service import AgentContextService
 
 
 class ChatTurnRepository(Protocol):
@@ -28,8 +31,10 @@ class ChatTurnService:
         self,
         repository: ChatTurnRepository,
         *,
-        context_token_budget: int = 12000,
-        summary_token_budget: int = 2000,
+        context_token_budget: int = 32000,
+        summary_token_budget: int = 4000,
+        context_service: AgentContextService | None = None,
+        agent_context_reserve_tokens: int = 4000,
     ) -> None:
         if summary_token_budget >= context_token_budget:
             raise ValueError(
@@ -38,6 +43,10 @@ class ChatTurnService:
         self.repository = repository
         self.context_token_budget = context_token_budget
         self.summary_token_budget = summary_token_budget
+        self.context_service = context_service
+        self.agent_context_reserve_tokens = agent_context_reserve_tokens
+        if context_service and agent_context_reserve_tokens >= context_token_budget:
+            raise ValueError("agent context reserve must be smaller than chat budget")
 
     def begin(
         self,
@@ -46,7 +55,9 @@ class ChatTurnService:
         session_id: str,
         content: str,
         idempotency_key: str,
+        role: str = "user",
     ) -> dict[str, object]:
+        # 先拒绝必然超预算的输入，避免创建一个注定无法完成的持久化回合。
         validate_current_message(content, self.context_token_budget)
         claim_token = str(uuid4())
         result = self.repository.begin_chat_turn(
@@ -57,9 +68,14 @@ class ChatTurnService:
             request_digest=hashlib.sha256(content.encode("utf-8")).hexdigest(),
             turn_id=str(uuid4()),
             claim_token=claim_token,
-            context_token_budget=self.context_token_budget,
+            context_token_budget=(
+                self.context_token_budget - self.agent_context_reserve_tokens
+                if self.context_service
+                else self.context_token_budget
+            ),
             summary_token_budget=self.summary_token_budget,
         )
+        # Repository 用结果枚举表达并发竞争，应用层再映射为稳定的领域错误。
         outcome = str(result["outcome"])
         if outcome == "completed":
             return result
@@ -84,7 +100,18 @@ class ChatTurnService:
             for item in result["history"]  # type: ignore[union-attr]
         ]
         history.append({"role": "user", "content": content})
-        return {**result, "messages": history}
+        snapshot = None
+        if self.context_service:
+            snapshot = self.context_service.build(
+                user_id=user_id,
+                role=role,
+                conversation_messages=history[:-1],
+            )
+            history.insert(
+                0,
+                {"role": "system", "content": snapshot.render_system_context()},
+            )
+        return {**result, "messages": history, "context_snapshot": snapshot}
 
     def complete(
         self,

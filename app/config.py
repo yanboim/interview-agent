@@ -1,3 +1,5 @@
+"""集中声明环境配置、默认值和跨字段安全校验。"""
+
 from functools import lru_cache
 from pathlib import Path
 
@@ -10,14 +12,50 @@ class Settings(BaseSettings):
     zhipu_api_key: str = ""
     zhipu_api_base: str = "https://open.bigmodel.cn/api/coding/paas/v4"
     zhipu_model: str = "glm-5.2"
+    llm_model_supervisor: str = ""
+    llm_model_knowledge: str = ""
+    llm_model_interviewer: str = ""
+    llm_model_evaluator: str = ""
+    llm_model_planner: str = ""
+    llm_model_summarization: str = ""
+    llm_model_schema_repair: str = ""
+    llm_fallback_enabled: bool = False
+    llm_fallback_model: str = ""
+    llm_fallback_approved_purposes: str = ""
+    llm_fallback_evaluation_approved: bool = False
+    llm_price_version: str = "zhipu-2026-07"
+    llm_input_usd_per_million: float = 0.0
+    llm_output_usd_per_million: float = 0.0
     llm_timeout_seconds: float = 45.0
     llm_max_retries: int = 2
     llm_max_concurrency: int = 8
     llm_input_char_budget: int = 60000
     llm_max_output_tokens: int = 2000
-    chat_context_token_budget: int = 12000
-    chat_summary_token_budget: int = 2000
+    # 上下文窗口预算。估算为 UTF-8 字节长度的保守上界(中文每字≈3 字节),
+    # 因此该值需显著小于模型真实 token 窗口。GLM-5.2 支持 128K token,
+    # 32000 字节预算在中文场景约等价于 ~10K 真实 token 的历史,留足响应与系统提示空间。
+    chat_context_token_budget: int = 32000
+    chat_summary_token_budget: int = 4000
+    # 单次 chat 请求的端到端墙钟上限(Supervisor 路由 + 子 Agent + 工具)。
+    # 超时后中止并返回降级错误,避免多 Agent 串行时无界等待。
+    chat_agent_timeout_seconds: float = 90.0
+    # LangGraph ReAct 递归步数上限(模型↔工具循环次数)。
+    # 多 Agent 嵌套时步数消耗翻倍,需高于单 Agent 默认值 25。
+    agent_recursion_limit: int = 40
     multi_agent_enabled: bool = True
+    agent_direct_route_enabled: bool = False
+    agent_routing_rollout_stage: str = "off"
+    agent_routing_canary_percent: int = 0
+    agent_direct_route_min_confidence: float = 0.9
+    agent_max_model_calls: int = 5
+    agent_max_total_tokens: int = 16000
+    agent_max_cost_usd: float = 1.0
+    agent_chat_max_model_calls: int = 5
+    agent_chat_max_total_tokens: int = 16000
+    agent_chat_max_cost_usd: float = 1.0
+    agent_evaluation_max_model_calls: int = 2
+    agent_evaluation_max_total_tokens: int = 8000
+    agent_evaluation_max_cost_usd: float = 0.5
     zhipu_embedding_api_key: str = ""
     zhipu_embedding_api_base: str = "https://open.bigmodel.cn/api/paas/v4"
     zhipu_embedding_model: str = "embedding-2"
@@ -61,6 +99,28 @@ class Settings(BaseSettings):
     job_poll_seconds: float = 1.0
     worker_heartbeat_interval_seconds: float = 5.0
     worker_heartbeat_ttl_seconds: int = 20
+    resume_feature_enabled: bool = False
+    user_files_dir: Path = Path("data/user-files")
+    resume_max_upload_bytes: int = 10 * 1024 * 1024
+    resume_prompt_version: str = "resume-analysis-v1"
+    resume_analysis_timeout_seconds: float = 180.0
+    resume_analysis_max_retries: int = 0
+    review_feature_enabled: bool = False
+    transcription_enabled: bool = False
+    transcription_api_url: str = ""
+    transcription_api_key: str = ""
+    transcription_api_key_file: str = ""
+    transcription_provider_name: str = "configured-provider"
+    transcription_timeout_seconds: float = 120.0
+    review_max_audio_bytes: int = 25 * 1024 * 1024
+    review_prompt_version: str = "interview-review-v1"
+    review_analysis_batch_size: int = 6
+    review_analysis_timeout_seconds: float = 180.0
+    review_analysis_max_retries: int = 0
+    agent_prompt_version: str = "agent-system-v1"
+    agent_context_reserve_tokens: int = 4000
+    interview_question_prompt_version: str = "interview-question-v1"
+    interview_assessment_prompt_version: str = "interview-assessment-v1"
     log_level: str = "INFO"
     json_logs: bool = True
     otel_enabled: bool = False
@@ -85,11 +145,20 @@ class Settings(BaseSettings):
     )
 
     def model_post_init(self, _context: object) -> None:
+        if self.agent_routing_rollout_stage not in {
+            "off", "internal", "canary", "production"
+        }:
+            raise ValueError("AGENT_ROUTING_ROLLOUT_STAGE is invalid")
+        if not 0 <= self.agent_routing_canary_percent <= 100:
+            raise ValueError("AGENT_ROUTING_CANARY_PERCENT must be between 0 and 100")
+        if self.agent_max_model_calls < 1 or self.agent_max_total_tokens < 1:
+            raise ValueError("Agent model budgets must be positive")
         secret_pairs = (
             ("zhipu_api_key", "zhipu_api_key_file"),
             ("zhipu_embedding_api_key", "zhipu_embedding_api_key_file"),
             ("web_search_api_key", "web_search_api_key_file"),
             ("app_api_key", "app_api_key_file"),
+            ("transcription_api_key", "transcription_api_key_file"),
         )
         for value_field, file_field in secret_pairs:
             if getattr(self, value_field) or not getattr(self, file_field):

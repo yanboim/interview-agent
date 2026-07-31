@@ -1,0 +1,16 @@
+{
+  "summary": {
+    "cases": 1,
+    "pairing_accuracy": 1.0,
+    "schema_success_rate": 1.0,
+    "candidate_only_rate": 1.0
+  },
+  "details": [
+    {
+      "case_id": "cache-consistency",
+      "pairing_correct": true,
+      "schema_valid": true,
+      "candidate_only": true
+    }
+  ]
+}

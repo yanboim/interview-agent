@@ -1,3 +1,5 @@
+"""会话历史 HTTP 适配器：所有查询和变更都限定为当前服务端用户。"""
+
 import asyncio
 
 from fastapi import APIRouter, HTTPException, Request

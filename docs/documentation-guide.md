@@ -94,3 +94,30 @@ python -m scripts.generate_docs --check
 ```
 
 Generated-reference drift fails the Harness static gate.
+
+## Simplified Chinese mirror
+
+Every current lifecycle document has a counterpart under `docs/zh-CN/`.
+Already-Chinese sources are mirrored mechanically. English narrative sources
+use reviewed translations under `docs/i18n/zh-CN/` and a source hash lock;
+source changes fail the documentation check until the translation is reviewed.
+API, configuration, relational metadata, and the localized product contract
+are generated from repository sources.
+
+```bash
+make docs-generate
+make docs-check
+```
+
+After reviewing a changed manual translation, refresh its source lock and
+regenerate:
+
+```bash
+python -m scripts.generate_chinese_docs --update-lock
+python -m scripts.generate_chinese_docs
+```
+
+`docs/zh-CN/mirror-manifest.json` provides the machine-readable source,
+destination, and generation mode for every localized document. Completed
+execution plans, archived reports, and `knowledge/` corpora remain historical
+records or runtime content and are intentionally outside the lifecycle mirror.

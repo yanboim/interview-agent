@@ -41,6 +41,8 @@ decision when the disagreement is architectural.
 2. State the intended behavior and the narrowest acceptance criteria.
 3. Make the smallest complete change. Do not mix unrelated cleanup.
 4. Add or update tests and repository documentation with the implementation.
+   Run `make docs-generate` when documentation changes so the Simplified
+   Chinese mirror stays synchronized.
 5. Run focused checks while iterating.
 6. Run `make harness-check` before declaring a repository-wide change complete.
 7. Update the execution plan and technical-debt tracker. Move completed plans
@@ -89,6 +91,7 @@ module boundaries.
 - Backend suite: `pytest -q`
 - Frontend unit/type/build: `make frontend-check`
 - Harness contracts and architecture: `make harness-static`
+- Generated references and Chinese mirror: `make docs-check`
 - Full local gate, including browser E2E: `make harness-check`
 - External-service PostgreSQL checks require `TEST_POSTGRES_URL`.
 - Live model and RAG evaluations are explicit cost-bearing operations; do not

@@ -1,3 +1,5 @@
+"""把能力薄弱项转换为可去重的学习候选，并计算确定性的复习时间。"""
+
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -16,8 +18,11 @@ def build_learning_candidates(
     profile: dict[str, Any],
 ) -> list[dict[str, str]]:
     candidates: list[dict[str, str]] = []
+    dimension_scores = profile.get("calibrated_dimension_scores") or profile[
+        "dimension_scores"
+    ]
     dimensions = sorted(
-        profile["dimension_scores"].items(),
+        dimension_scores.items(),
         key=lambda item: (float(item[1]), item[0]),
     )
     for dimension, score in dimensions[:2]:
@@ -62,10 +67,30 @@ def next_review_time(
     review_count: int,
     *,
     now: datetime | None = None,
+    outcome: str = "remembered",
+    difficulty: int = 3,
+    lapse_count: int = 0,
+    confidence: float = 0.5,
 ) -> datetime:
     current = now or datetime.now(UTC)
     interval_index = min(
         max(review_count - 1, 0),
         len(REVIEW_INTERVAL_DAYS) - 1,
     )
-    return current + timedelta(days=REVIEW_INTERVAL_DAYS[interval_index])
+    base_days = REVIEW_INTERVAL_DAYS[interval_index]
+    outcome_factor = {
+        "remembered": 1.0,
+        "partial": 0.45,
+        "forgotten": 0.15,
+    }.get(outcome, 0.45)
+    difficulty_factor = 1.3 - min(5, max(1, difficulty)) * 0.1
+    confidence_factor = 0.75 + min(1.0, max(0.0, confidence)) * 0.5
+    lapse_factor = max(0.35, 1.0 - max(0, lapse_count) * 0.12)
+    days = round(
+        base_days
+        * outcome_factor
+        * difficulty_factor
+        * confidence_factor
+        * lapse_factor
+    )
+    return current + timedelta(days=max(1, min(60, days)))

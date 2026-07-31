@@ -1,0 +1,19 @@
+{
+  "schema_version": "capability-calibration-dataset-v1",
+  "dataset_version": "2026-07-31.1",
+  "review_status": "privacy_reviewed",
+  "examples": [
+    {"id": "c01", "model_version": "interview-assessment-v1", "model_score": 8.0, "human_score": 7.5},
+    {"id": "c02", "model_version": "interview-assessment-v1", "model_score": 6.0, "human_score": 6.0},
+    {"id": "c03", "model_version": "interview-assessment-v1", "model_score": 5.5, "human_score": 5.0},
+    {"id": "c04", "model_version": "interview-assessment-v1", "model_score": 7.0, "human_score": 7.0},
+    {"id": "c05", "model_version": "interview-assessment-v1", "model_score": 9.0, "human_score": 8.5},
+    {"id": "c06", "model_version": "interview-assessment-v1", "model_score": 4.0, "human_score": 4.5},
+    {"id": "c07", "model_version": "interview-review-v1", "model_score": 8.0, "human_score": 8.0},
+    {"id": "c08", "model_version": "interview-review-v1", "model_score": 6.5, "human_score": 6.0},
+    {"id": "c09", "model_version": "interview-review-v1", "model_score": 5.0, "human_score": 5.5},
+    {"id": "c10", "model_version": "interview-review-v1", "model_score": 7.5, "human_score": 7.5},
+    {"id": "c11", "model_version": "interview-review-v1", "model_score": 3.5, "human_score": 4.0},
+    {"id": "c12", "model_version": "interview-review-v1", "model_score": 9.0, "human_score": 8.5}
+  ]
+}

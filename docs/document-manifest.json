@@ -2,6 +2,7 @@
   "schema_version": 1,
   "lifecycle": {
     "entrypoints": [
+      "AGENTS.md",
       "README.md",
       "CONTRIBUTING.md",
       "SECURITY.md",
@@ -20,6 +21,7 @@
       "docs/product/NON-FUNCTIONAL-REQUIREMENTS.md",
       "docs/product/METRICS.md",
       "docs/product/REQUIREMENTS-TRACEABILITY.md",
+      "docs/product/RESUME-INTERVIEW-REVIEW.md",
       "docs/product/GLOSSARY.md",
       "docs/product-specs/README.md",
       "docs/product-specs/feature-contract.json"
@@ -46,10 +48,24 @@
       "docs/architecture/RAG-ARCHITECTURE.md",
       "docs/architecture/API-DESIGN.md",
       "docs/architecture/STREAMING-PROTOCOL.md",
-      "docs/design-docs/README.md"
+      "docs/design-docs/README.md",
+      "docs/design-docs/chat-context-budget.md",
+      "docs/design-docs/durable-chat-turn-lifecycle.md",
+      "docs/design-docs/durable-redis-jobs.md",
+      "docs/design-docs/frontend-toolchain-audit.md",
+      "docs/design-docs/interview-answer-idempotency.md",
+      "docs/design-docs/model-policy-gateway.md",
+      "docs/design-docs/modular-api-composition.md",
+      "docs/design-docs/qdrant-versioned-publication.md",
+      "docs/design-docs/reproducible-builds.md",
+      "docs/design-docs/user-sensitive-file-processing.md",
+      "docs/design-docs/resume-interview-review-loop.md",
+      "docs/design-docs/synchronous-persistence-boundary.md",
+      "docs/design-docs/worktree-stack-isolation.md"
     ],
     "delivery": [
       "docs/development.md",
+      "docs/ENGINEERING-HANDOVER-MANUAL.md",
       "docs/sdlc/README.md",
       "docs/sdlc/DEVELOPMENT-LIFECYCLE.md",
       "docs/sdlc/DEFINITION-OF-READY.md",
@@ -89,6 +105,7 @@
     ],
     "operations": [
       "docs/reliability/README.md",
+      "docs/reliability/nginx-gateway.md",
       "docs/operations/README.md",
       "docs/operations/OPERATIONS-MANUAL.md",
       "docs/operations/INCIDENT-RESPONSE.md",

@@ -3,11 +3,14 @@ NPM ?= npm
 WORKTREE_ENV ?= .env.worktree
 E2E_PORT ?= $(shell $(PYTHON) -m scripts.worktree_env --root . --value E2E_PORT)
 
-.PHONY: help harness-static backend-check frontend-check e2e harness-check \
+.PHONY: help docs-generate docs-check eval-check harness-static backend-check frontend-check e2e harness-check \
 	worktree-env stack-config stack-up stack-down lock-python
 
 help:
 	@echo "make harness-static  Validate repository contracts and architecture"
+	@echo "make docs-generate   Regenerate English references and Chinese mirror"
+	@echo "make docs-check      Verify generated and Chinese documentation"
+	@echo "make eval-check      Run the frozen deterministic Agent quality gates"
 	@echo "make backend-check   Compile and run the backend test suite"
 	@echo "make frontend-check  Type-check, test, build, and enforce bundle budgets"
 	@echo "make e2e             Run Playwright browser acceptance tests"
@@ -18,8 +21,19 @@ help:
 	@echo "make stack-down      Stop this worktree's isolated Compose stack"
 	@echo "make lock-python     Regenerate the Python 3.12 hash lock"
 
-harness-static:
+harness-static: docs-check eval-check
 	$(PYTHON) -m pytest -q tests/test_architecture.py tests/test_harness_contract.py tests/test_reproducibility.py
+
+docs-generate:
+	$(PYTHON) -m scripts.generate_docs
+	$(PYTHON) -m scripts.generate_chinese_docs
+
+docs-check:
+	$(PYTHON) -m scripts.generate_docs --check
+	$(PYTHON) -m scripts.generate_chinese_docs --check
+
+eval-check:
+	$(PYTHON) -m scripts.evaluate_agent_stack
 
 backend-check:
 	$(PYTHON) -m compileall -q app scripts migrations

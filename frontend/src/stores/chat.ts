@@ -1,3 +1,4 @@
+// 聊天状态机：本地先显示占位消息，服务端以幂等键持久化，流式事件只写入发起它的会话。
 import { defineStore } from "pinia";
 import type { ChatMessage } from "@/types";
 import * as api from "@/api/client";
@@ -64,8 +65,11 @@ export const useChatStore = defineStore("chat", {
         this.messages = history.map((m) => ({
           role: (m.role === "assistant" ? "assistant" : "user") as ChatMessage["role"],
           content: m.content,
+          turnId: m.metadata?.turn_id,
           knowledgeUsed: m.metadata?.knowledge_used,
           sources: m.metadata?.sources,
+          citations: m.metadata?.citations,
+          unsupportedClaims: m.metadata?.unsupported_claims,
         }));
         saveCachedMessages(sessionId, this.messages);
       } catch {
@@ -116,6 +120,7 @@ export const useChatStore = defineStore("chat", {
       this.lastErrorDetail = "";
       this.sending = true;
       this.abortController = new AbortController();
+      // requestId 与 sessionId 双重固定本次请求，切换会话后的迟到 token 不得串写新页面。
       const requestId = ++this.streamRequestId;
       const requestSessionId = auth.sessionId;
       let streamedContent = "";
@@ -155,6 +160,15 @@ export const useChatStore = defineStore("chat", {
                 last.knowledgeUsed = event.knowledge_used;
                 last.sources = event.sources;
               }
+            } else if (event.type === "citations") {
+              const last = this.messages[this.messages.length - 1];
+              if (last?.role === "assistant") {
+                last.citations = event.citations;
+                last.unsupportedClaims = event.unsupported_claims;
+              }
+            } else if (event.type === "done") {
+              const last = this.messages[this.messages.length - 1];
+              if (last?.role === "assistant") last.turnId = event.turn_id;
             }
           },
           this.abortController.signal,

@@ -12,6 +12,7 @@ export async function startInterview(body: {
   topic: string;
   level: string;
   questionCount: number;
+  resumeAnalysisId?: string;
 }): Promise<ActiveInterview> {
   const response = await apiFetch("/api/interviews/start", {
     method: "POST",
@@ -21,6 +22,7 @@ export async function startInterview(body: {
       topic: body.topic,
       level: body.level,
       question_count: body.questionCount,
+      resume_analysis_id: body.resumeAnalysisId || null,
     }),
   });
   await expectOk(response);

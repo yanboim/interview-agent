@@ -2,10 +2,26 @@
 
 本目录覆盖从产品发现、原型、架构、开发、验证、发布到运行和复盘的完整生命周期。
 
+## 简体中文镜像
+
+当前生命周期清单中的每份文档都在 [`zh-CN/`](zh-CN/README.md) 中提供简体中文
+版本。已经以中文编写的权威源自动镜像；英文叙述文档使用带源版本锁的人工翻译；
+API、配置、数据字典和功能契约从实现生成中文参考。
+
+```bash
+make docs-generate
+make docs-check
+```
+
+历史执行记录和 `knowledge/` 面试语料不是当前生命周期规范，不进入中文镜像。
+
 ## 按角色进入
 
 | 角色/任务 | 建议入口 |
 |---|---|
+| 新接手工程师（循序渐进完整教程 + 速查参考 + cookbook） | [新工程师完整上手指南](ONBOARDING-GUIDE.md) |
+| 新接手工程师（精炼速查、14 节概览） | [开发、运维与使用接手手册](ENGINEERING-HANDOVER-MANUAL.md) |
+| 想系统性补 Agent 工程基础（12 周课程） | [从零到企业级 Agent 工程课程](enterprise-agent-engineering-course.md) |
 | 产品负责人 | [产品愿景与PRD](product/README.md) |
 | 产品/交互设计 | [信息架构、流程和原型](ux/README.md) |
 | 架构师/后端开发 | [系统架构](architecture/README.md) |
@@ -35,6 +51,8 @@ docs/
 ├── security/        信任边界、威胁、数据分级和隐私
 ├── project/         计划、风险、决策、责任和状态报告
 ├── generated/       只存放可复现生成的参考
+├── zh-CN/           完整简体中文生命周期文档镜像
+├── i18n/zh-CN/      需要人工维护的中文翻译源和版本锁
 └── tech-debt-tracker.md
 ```
 

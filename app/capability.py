@@ -1,8 +1,18 @@
+"""跨面试聚合能力画像；输出由持久评分确定性计算，不依赖外部服务。"""
+
 import json
+import math
 from collections import Counter
+from datetime import datetime
 from typing import Any
 
 from app.interview_engine import DIMENSIONS, DIMENSION_LABELS
+
+CALIBRATION_VERSION = "human-labelled-v1"
+MODEL_SCORE_OFFSETS = {
+    "interview-assessment-v1": -0.2,
+    "interview-review-v1": -0.1,
+}
 
 
 def _json_object(value: object) -> dict[str, float]:
@@ -43,6 +53,67 @@ def _rounded(value: float) -> float:
     return round(value, 2)
 
 
+def _confidence(sample_count: int) -> float:
+    return _rounded(min(0.95, sample_count / (sample_count + 5)))
+
+
+def _recency_weights(rows: list[dict[str, object]]) -> list[float]:
+    parsed = []
+    for row in rows:
+        try:
+            parsed.append(datetime.fromisoformat(str(row["updated_at"])))
+        except (KeyError, TypeError, ValueError):
+            parsed.append(None)
+    valid = [item for item in parsed if item is not None]
+    if not valid:
+        return [1.0] * len(rows)
+    latest = max(valid)
+    return [
+        math.exp(-max(0.0, (latest - item).total_seconds()) / (90 * 86400))
+        if item is not None else 0.5
+        for item in parsed
+    ]
+
+
+def score_calibration_report(examples: list[dict[str, object]]) -> dict[str, object]:
+    """Compare persisted model scores with privacy-reviewed human labels."""
+    rows = [
+        (
+            str(item.get("model_version") or "unknown"),
+            float(item["model_score"]),
+            float(item["human_score"]),
+        )
+        for item in examples
+    ]
+    errors = [predicted - human for _, predicted, human in rows]
+    cohorts: dict[str, list[float]] = {}
+    for model, predicted, human in rows:
+        cohorts.setdefault(model, []).append(predicted - human)
+    count = len(rows)
+    return {
+        "schema_version": "capability-calibration-report-v1",
+        "calibration_version": CALIBRATION_VERSION,
+        "sample_count": count,
+        "confidence": _confidence(count),
+        "mean_bias": _rounded(sum(errors) / count) if count else 0.0,
+        "mean_absolute_error": (
+            _rounded(sum(abs(error) for error in errors) / count) if count else 0.0
+        ),
+        "root_mean_squared_error": (
+            _rounded(math.sqrt(sum(error * error for error in errors) / count))
+            if count else 0.0
+        ),
+        "model_cohorts": {
+            model: {
+                "sample_count": len(values),
+                "confidence": _confidence(len(values)),
+                "mean_bias": _rounded(sum(values) / len(values)),
+            }
+            for model, values in sorted(cohorts.items())
+        },
+    }
+
+
 def build_capability_profile(
     rows: list[dict[str, object]],
     *,
@@ -67,18 +138,27 @@ def build_capability_profile(
     question_labels: dict[str, str] = {}
     dimension_totals = {name: 0.0 for name in DIMENSIONS}
     dimension_counts = {name: 0 for name in DIMENSIONS}
+    calibrated_dimension_totals = {name: 0.0 for name in DIMENSIONS}
+    calibrated_dimension_weights = {name: 0.0 for name in DIMENSIONS}
+    recency_weights = _recency_weights(filtered_rows)
 
-    for row in filtered_rows:
+    for row, recency_weight in zip(filtered_rows, recency_weights, strict=True):
         interview_id = str(row["interview_id"])
         row_topic = str(row["topic"]).strip()
         interview_groups.setdefault(interview_id, []).append(row)
         topic_groups.setdefault(row_topic, []).append(row)
 
         dimensions = _json_object(row.get("dimensions_json"))
+        model_version = str(row.get("assessment_model_version") or "unknown")
+        score_offset = MODEL_SCORE_OFFSETS.get(model_version, 0.0)
         for name in DIMENSIONS:
             if name in dimensions:
                 dimension_totals[name] += dimensions[name]
                 dimension_counts[name] += 1
+                calibrated_dimension_totals[name] += min(
+                    10.0, max(0.0, dimensions[name] + score_offset)
+                ) * recency_weight
+                calibrated_dimension_weights[name] += recency_weight
 
         weakness_counts.update(_json_list(row.get("weaknesses_json")))
         question = " ".join(str(row.get("question") or "").split())
@@ -97,6 +177,7 @@ def build_capability_profile(
                 "topic": str(first["topic"]),
                 "level": str(first["level"]),
                 "status": str(first["status"]),
+                "source_type": str(first.get("source_type") or "general"),
                 "answered_questions": len(scores),
                 "average_score": _rounded(sum(scores) / len(scores)),
                 "updated_at": max(str(row["updated_at"]) for row in interview_rows),
@@ -141,6 +222,29 @@ def build_capability_profile(
         )
     )
 
+    def cohort_rows(field: str) -> list[dict[str, object]]:
+        groups: dict[str, list[tuple[dict[str, object], float]]] = {}
+        for row, weight in zip(filtered_rows, recency_weights, strict=True):
+            label = str(row.get(field) or "unknown")
+            groups.setdefault(label, []).append((row, weight))
+        result = []
+        for label, members in sorted(groups.items()):
+            weighted = sum(float(row["score"]) * weight for row, weight in members)
+            total_weight = sum(weight for _, weight in members)
+            result.append({
+                "cohort": label,
+                "sample_count": len(members),
+                "confidence": _confidence(len(members)),
+                "recency_weighted_score": _rounded(weighted / total_weight),
+            })
+        return result
+
+    weighted_score_total = sum(
+        float(row["score"]) * weight
+        for row, weight in zip(filtered_rows, recency_weights, strict=True)
+    )
+    total_recency_weight = sum(recency_weights)
+
     return {
         "filter": {"topic": selected_topic},
         "available_topics": available_topics,
@@ -162,6 +266,31 @@ def build_capability_profile(
                 else 0.0
             )
             for name in DIMENSIONS
+        },
+        "calibrated_dimension_scores": {
+            DIMENSION_LABELS[name]: (
+                _rounded(
+                    calibrated_dimension_totals[name]
+                    / calibrated_dimension_weights[name]
+                )
+                if calibrated_dimension_weights[name]
+                else 0.0
+            )
+            for name in DIMENSIONS
+        },
+        "calibration": {
+            "version": CALIBRATION_VERSION,
+            "sample_count": len(filtered_rows),
+            "confidence": _confidence(len(filtered_rows)),
+            "recency_weighted_score": (
+                _rounded(weighted_score_total / total_recency_weight)
+                if total_recency_weight else 0.0
+            ),
+            "cohorts": {
+                "topic": cohort_rows("topic"),
+                "difficulty": cohort_rows("level"),
+                "model_version": cohort_rows("assessment_model_version"),
+            },
         },
         "trend": trend,
         "recent_training": list(reversed(trend[-5:])),

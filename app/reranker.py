@@ -1,3 +1,5 @@
+"""检索重排组合入口，用配置选择词法或模型重排实现。"""
+
 from functools import lru_cache
 from typing import Any
 

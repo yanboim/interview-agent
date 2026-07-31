@@ -64,6 +64,37 @@ def test_llm_token_metrics_are_grouped_by_agent():
     assert 'llm_output_tokens_total{agent="knowledge"} 50' in rendered
 
 
+def test_product_quality_metrics_cover_feedback_grounding_workflow_and_review():
+    metrics = RequestMetrics()
+    metrics.observe_product("feedback_submitted")
+    metrics.observe_product("grounded_claims_total", 3)
+    metrics.observe_product("workflow_completed")
+    metrics.observe_product("review_recall_forgotten")
+    metrics.set_product_gauge("score_confidence", 0.75)
+
+    rendered = metrics.render_prometheus()
+    assert 'product_events_total{metric="feedback_submitted"} 1.000000' in rendered
+    assert 'product_events_total{metric="grounded_claims_total"} 3.000000' in rendered
+    assert 'product_events_total{metric="workflow_completed"} 1.000000' in rendered
+    assert 'product_events_total{metric="review_recall_forgotten"} 1.000000' in rendered
+    assert 'product_quality{metric="score_confidence"} 0.750000' in rendered
+
+
+def test_model_run_metrics_include_request_class_and_price_version():
+    metrics = RequestMetrics()
+    metrics.observe_model_run({
+        "request_class": "chat", "price_version": "price-v1",
+        "call_count": 2, "input_tokens": 100, "output_tokens": 25,
+        "cost_usd": 0.001, "wall_time_ms": 120, "first_token_ms": 30,
+    })
+
+    rendered = metrics.render_prometheus()
+    labels = 'request_class="chat",price_version="price-v1"'
+    assert f"model_runs_total{{{labels}}} 1" in rendered
+    assert f"model_run_calls_total{{{labels}}} 2" in rendered
+    assert f"model_run_cost_usd_total{{{labels}}} 0.00100000" in rendered
+
+
 def test_shared_rate_limiter_uses_redis_when_available():
     runtime = RedisRuntime("", "jobs")
     runtime.client = MagicMock()

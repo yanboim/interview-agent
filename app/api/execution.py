@@ -1,3 +1,5 @@
+"""API 层的同步执行辅助函数，统一取得应用级 SyncExecutor。"""
+
 from collections.abc import Callable
 from typing import ParamSpec, TypeVar
 

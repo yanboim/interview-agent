@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { parseStreamLine, streamChat } from "@/api/chat";
+import {
+  deleteAssistantFeedback,
+  parseStreamLine,
+  saveAssistantFeedback,
+  streamChat,
+} from "@/api/chat";
 
 const storage = new Map<string, string>();
 
@@ -35,6 +40,22 @@ describe("parseStreamLine", () => {
       knowledge_used: true,
       sources: [{ label: "jvm.md", kind: "private" }],
     });
+    expect(
+      parseStreamLine(
+        '{"type":"citations","schema_version":1,"citations":[{"claim":"JDK 21 是 LTS","evidence_ids":["chunk-1"],"support":"supported"}],"unsupported_claims":[]}',
+      ),
+    ).toEqual({
+      type: "citations",
+      schema_version: 1,
+      citations: [
+        {
+          claim: "JDK 21 是 LTS",
+          evidence_ids: ["chunk-1"],
+          support: "supported",
+        },
+      ],
+      unsupported_claims: [],
+    });
   });
 
   it("拒绝损坏的 JSON", () => {
@@ -48,6 +69,7 @@ describe("streamChat", () => {
       '{"type":"token","content":"Hello "}',
       '{"type":"token","content":"world"}',
       '{"type":"sources","knowledge_used":true,"sources":[]}',
+      '{"type":"citations","schema_version":1,"citations":[],"unsupported_claims":[]}',
       '{"type":"done"}',
     ].join("\n");
     const fetchMock = vi.fn().mockResolvedValue(
@@ -67,7 +89,7 @@ describe("streamChat", () => {
     );
 
     expect(answer).toBe("Hello world");
-    expect(events).toEqual(["token", "token", "sources", "done"]);
+    expect(events).toEqual(["token", "token", "sources", "citations", "done"]);
     const [, options] = fetchMock.mock.calls[0];
     expect(options.headers["Idempotency-Key"]).toBe("chat-command-1");
   });
@@ -91,5 +113,24 @@ describe("streamChat", () => {
         () => undefined,
       ),
     ).rejects.toThrow("模型不可用");
+  });
+});
+
+describe("assistant feedback", () => {
+  it("persists and deletes feedback against a durable turn", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await saveAssistantFeedback("user-a", "turn-1", "down", "missing_evidence", "需补充依据");
+    await deleteAssistantFeedback("user-a", "turn-1");
+
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/chat/turns/turn-1/feedback");
+    expect(fetchMock.mock.calls[0][1].method).toBe("PUT");
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({
+      user_id: "user-a",
+      rating: "down",
+      reason_code: "missing_evidence",
+    });
+    expect(fetchMock.mock.calls[1][1].method).toBe("DELETE");
   });
 });

@@ -1,3 +1,5 @@
+"""构建并验证版本化知识集合，仅在全部门禁通过后切换服务别名。"""
+
 from pathlib import Path
 import json
 from uuid import uuid4
@@ -84,7 +86,7 @@ def ingest_knowledge(
         embeddings = get_embeddings()
         sparse_embeddings = get_sparse_embeddings()
 
-        # Validate credentials before allocating a candidate collection.
+        # 先验证凭据再分配候选集合，避免配置错误留下无用的远端资源。
         embeddings.embed_query("面试知识库连接测试")
         sparse_embeddings.embed_query("面试知识库连接测试")
         previous = resolve_serving_knowledge(current_client, settings)
@@ -133,6 +135,7 @@ def ingest_knowledge(
                         f"{settings.rag_regression_min_ndcg:.4f}"
                     )
 
+            # 这是候选首次对线上可见；此前任何失败都不会影响当前服务版本。
             switch_serving_alias(current_client, settings, candidate)
             clear_vector_store_caches()
         except Exception:

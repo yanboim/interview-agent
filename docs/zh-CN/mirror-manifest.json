@@ -1,0 +1,597 @@
+{
+  "schema_version": 1,
+  "locale": "zh-CN",
+  "source_manifest": "../document-manifest.json",
+  "documents": [
+    {
+      "source": "AGENTS.md",
+      "mirror": "docs/zh-CN/root/AGENTS.md",
+      "mode": "translated"
+    },
+    {
+      "source": "README.md",
+      "mirror": "docs/zh-CN/root/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "CONTRIBUTING.md",
+      "mirror": "docs/zh-CN/root/CONTRIBUTING.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "SECURITY.md",
+      "mirror": "docs/zh-CN/root/SECURITY.md",
+      "mode": "translated"
+    },
+    {
+      "source": "CHANGELOG.md",
+      "mirror": "docs/zh-CN/root/CHANGELOG.md",
+      "mode": "translated"
+    },
+    {
+      "source": "ARCHITECTURE.md",
+      "mirror": "docs/zh-CN/root/ARCHITECTURE.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/README.md",
+      "mirror": "docs/zh-CN/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/documentation-guide.md",
+      "mirror": "docs/zh-CN/documentation-guide.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/product/README.md",
+      "mirror": "docs/zh-CN/product/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/PRODUCT-VISION.md",
+      "mirror": "docs/zh-CN/product/PRODUCT-VISION.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/PRD.md",
+      "mirror": "docs/zh-CN/product/PRD.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/USER-PERSONAS.md",
+      "mirror": "docs/zh-CN/product/USER-PERSONAS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/USER-JOURNEYS.md",
+      "mirror": "docs/zh-CN/product/USER-JOURNEYS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/FEATURE-MAP.md",
+      "mirror": "docs/zh-CN/product/FEATURE-MAP.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/NON-FUNCTIONAL-REQUIREMENTS.md",
+      "mirror": "docs/zh-CN/product/NON-FUNCTIONAL-REQUIREMENTS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/METRICS.md",
+      "mirror": "docs/zh-CN/product/METRICS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/REQUIREMENTS-TRACEABILITY.md",
+      "mirror": "docs/zh-CN/product/REQUIREMENTS-TRACEABILITY.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/RESUME-INTERVIEW-REVIEW.md",
+      "mirror": "docs/zh-CN/product/RESUME-INTERVIEW-REVIEW.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product/GLOSSARY.md",
+      "mirror": "docs/zh-CN/product/GLOSSARY.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/product-specs/README.md",
+      "mirror": "docs/zh-CN/product-specs/README.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/product-specs/feature-contract.json",
+      "mirror": "docs/zh-CN/product-specs/feature-contract.json",
+      "mode": "generated"
+    },
+    {
+      "source": "docs/ux/README.md",
+      "mirror": "docs/zh-CN/ux/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ux/INFORMATION-ARCHITECTURE.md",
+      "mirror": "docs/zh-CN/ux/INFORMATION-ARCHITECTURE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ux/USER-FLOWS.md",
+      "mirror": "docs/zh-CN/ux/USER-FLOWS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ux/SCREEN-INVENTORY.md",
+      "mirror": "docs/zh-CN/ux/SCREEN-INVENTORY.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ux/PROTOTYPE-SPEC.md",
+      "mirror": "docs/zh-CN/ux/PROTOTYPE-SPEC.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ux/INTERACTION-STATES.md",
+      "mirror": "docs/zh-CN/ux/INTERACTION-STATES.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ux/DESIGN-SYSTEM.md",
+      "mirror": "docs/zh-CN/ux/DESIGN-SYSTEM.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ux/CONTENT-GUIDELINES.md",
+      "mirror": "docs/zh-CN/ux/CONTENT-GUIDELINES.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ux/ACCESSIBILITY.md",
+      "mirror": "docs/zh-CN/ux/ACCESSIBILITY.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/README.md",
+      "mirror": "docs/zh-CN/architecture/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/SYSTEM-CONTEXT.md",
+      "mirror": "docs/zh-CN/architecture/SYSTEM-CONTEXT.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/CONTAINER-ARCHITECTURE.md",
+      "mirror": "docs/zh-CN/architecture/CONTAINER-ARCHITECTURE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/COMPONENT-ARCHITECTURE.md",
+      "mirror": "docs/zh-CN/architecture/COMPONENT-ARCHITECTURE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/DOMAIN-MODEL.md",
+      "mirror": "docs/zh-CN/architecture/DOMAIN-MODEL.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/DATA-ARCHITECTURE.md",
+      "mirror": "docs/zh-CN/architecture/DATA-ARCHITECTURE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/AGENT-ARCHITECTURE.md",
+      "mirror": "docs/zh-CN/architecture/AGENT-ARCHITECTURE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/RAG-ARCHITECTURE.md",
+      "mirror": "docs/zh-CN/architecture/RAG-ARCHITECTURE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/API-DESIGN.md",
+      "mirror": "docs/zh-CN/architecture/API-DESIGN.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/architecture/STREAMING-PROTOCOL.md",
+      "mirror": "docs/zh-CN/architecture/STREAMING-PROTOCOL.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/design-docs/README.md",
+      "mirror": "docs/zh-CN/design-docs/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/design-docs/chat-context-budget.md",
+      "mirror": "docs/zh-CN/design-docs/chat-context-budget.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/durable-chat-turn-lifecycle.md",
+      "mirror": "docs/zh-CN/design-docs/durable-chat-turn-lifecycle.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/durable-redis-jobs.md",
+      "mirror": "docs/zh-CN/design-docs/durable-redis-jobs.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/frontend-toolchain-audit.md",
+      "mirror": "docs/zh-CN/design-docs/frontend-toolchain-audit.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/interview-answer-idempotency.md",
+      "mirror": "docs/zh-CN/design-docs/interview-answer-idempotency.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/model-policy-gateway.md",
+      "mirror": "docs/zh-CN/design-docs/model-policy-gateway.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/modular-api-composition.md",
+      "mirror": "docs/zh-CN/design-docs/modular-api-composition.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/qdrant-versioned-publication.md",
+      "mirror": "docs/zh-CN/design-docs/qdrant-versioned-publication.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/reproducible-builds.md",
+      "mirror": "docs/zh-CN/design-docs/reproducible-builds.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/user-sensitive-file-processing.md",
+      "mirror": "docs/zh-CN/design-docs/user-sensitive-file-processing.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/design-docs/resume-interview-review-loop.md",
+      "mirror": "docs/zh-CN/design-docs/resume-interview-review-loop.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/design-docs/synchronous-persistence-boundary.md",
+      "mirror": "docs/zh-CN/design-docs/synchronous-persistence-boundary.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/design-docs/worktree-stack-isolation.md",
+      "mirror": "docs/zh-CN/design-docs/worktree-stack-isolation.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/development.md",
+      "mirror": "docs/zh-CN/development.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/ENGINEERING-HANDOVER-MANUAL.md",
+      "mirror": "docs/zh-CN/ENGINEERING-HANDOVER-MANUAL.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/README.md",
+      "mirror": "docs/zh-CN/sdlc/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/DEVELOPMENT-LIFECYCLE.md",
+      "mirror": "docs/zh-CN/sdlc/DEVELOPMENT-LIFECYCLE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/DEFINITION-OF-READY.md",
+      "mirror": "docs/zh-CN/sdlc/DEFINITION-OF-READY.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/DEFINITION-OF-DONE.md",
+      "mirror": "docs/zh-CN/sdlc/DEFINITION-OF-DONE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/CODE-REVIEW.md",
+      "mirror": "docs/zh-CN/sdlc/CODE-REVIEW.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/BACKEND-STANDARDS.md",
+      "mirror": "docs/zh-CN/sdlc/BACKEND-STANDARDS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/FRONTEND-STANDARDS.md",
+      "mirror": "docs/zh-CN/sdlc/FRONTEND-STANDARDS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/DATABASE-CHANGES.md",
+      "mirror": "docs/zh-CN/sdlc/DATABASE-CHANGES.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/DEPENDENCY-MANAGEMENT.md",
+      "mirror": "docs/zh-CN/sdlc/DEPENDENCY-MANAGEMENT.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/sdlc/CONFIGURATION.md",
+      "mirror": "docs/zh-CN/sdlc/CONFIGURATION.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/exec-plans/README.md",
+      "mirror": "docs/zh-CN/exec-plans/README.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/exec-plans/active/README.md",
+      "mirror": "docs/zh-CN/exec-plans/active/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/tech-debt-tracker.md",
+      "mirror": "docs/zh-CN/tech-debt-tracker.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/testing.md",
+      "mirror": "docs/zh-CN/testing.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/quality/README.md",
+      "mirror": "docs/zh-CN/quality/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/TEST-STRATEGY.md",
+      "mirror": "docs/zh-CN/quality/TEST-STRATEGY.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/ACCEPTANCE-TESTS.md",
+      "mirror": "docs/zh-CN/quality/ACCEPTANCE-TESTS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/QUALITY-GATES.md",
+      "mirror": "docs/zh-CN/quality/QUALITY-GATES.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/PERFORMANCE-TESTING.md",
+      "mirror": "docs/zh-CN/quality/PERFORMANCE-TESTING.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/SECURITY-TESTING.md",
+      "mirror": "docs/zh-CN/quality/SECURITY-TESTING.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/AI-EVALUATION.md",
+      "mirror": "docs/zh-CN/quality/AI-EVALUATION.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/ACCESSIBILITY-TESTING.md",
+      "mirror": "docs/zh-CN/quality/ACCESSIBILITY-TESTING.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/COMPATIBILITY-MATRIX.md",
+      "mirror": "docs/zh-CN/quality/COMPATIBILITY-MATRIX.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/README.md",
+      "mirror": "docs/zh-CN/release/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/RELEASE-PROCESS.md",
+      "mirror": "docs/zh-CN/release/RELEASE-PROCESS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/DEPLOYMENT-RUNBOOK.md",
+      "mirror": "docs/zh-CN/release/DEPLOYMENT-RUNBOOK.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/ROLLBACK-RUNBOOK.md",
+      "mirror": "docs/zh-CN/release/ROLLBACK-RUNBOOK.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/ENVIRONMENTS.md",
+      "mirror": "docs/zh-CN/release/ENVIRONMENTS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/DATABASE-RELEASE.md",
+      "mirror": "docs/zh-CN/release/DATABASE-RELEASE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/KNOWLEDGE-RELEASE.md",
+      "mirror": "docs/zh-CN/release/KNOWLEDGE-RELEASE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/VERSIONING.md",
+      "mirror": "docs/zh-CN/release/VERSIONING.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/release/RELEASE-NOTES-TEMPLATE.md",
+      "mirror": "docs/zh-CN/release/RELEASE-NOTES-TEMPLATE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/reliability/README.md",
+      "mirror": "docs/zh-CN/reliability/README.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/reliability/nginx-gateway.md",
+      "mirror": "docs/zh-CN/reliability/nginx-gateway.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/operations/README.md",
+      "mirror": "docs/zh-CN/operations/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/OPERATIONS-MANUAL.md",
+      "mirror": "docs/zh-CN/operations/OPERATIONS-MANUAL.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/INCIDENT-RESPONSE.md",
+      "mirror": "docs/zh-CN/operations/INCIDENT-RESPONSE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/BACKUP-RESTORE.md",
+      "mirror": "docs/zh-CN/operations/BACKUP-RESTORE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/DISASTER-RECOVERY.md",
+      "mirror": "docs/zh-CN/operations/DISASTER-RECOVERY.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/SLO-SLI.md",
+      "mirror": "docs/zh-CN/operations/SLO-SLI.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/MONITORING-CATALOG.md",
+      "mirror": "docs/zh-CN/operations/MONITORING-CATALOG.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/TROUBLESHOOTING.md",
+      "mirror": "docs/zh-CN/operations/TROUBLESHOOTING.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/CAPACITY-PLANNING.md",
+      "mirror": "docs/zh-CN/operations/CAPACITY-PLANNING.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/MAINTENANCE.md",
+      "mirror": "docs/zh-CN/operations/MAINTENANCE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/operations/POSTMORTEM-TEMPLATE.md",
+      "mirror": "docs/zh-CN/operations/POSTMORTEM-TEMPLATE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/security/README.md",
+      "mirror": "docs/zh-CN/security/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/security/THREAT-MODEL.md",
+      "mirror": "docs/zh-CN/security/THREAT-MODEL.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/security/DATA-CLASSIFICATION.md",
+      "mirror": "docs/zh-CN/security/DATA-CLASSIFICATION.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/security/PRIVACY.md",
+      "mirror": "docs/zh-CN/security/PRIVACY.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/security/ACCESS-CONTROL.md",
+      "mirror": "docs/zh-CN/security/ACCESS-CONTROL.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/security/SECRET-MANAGEMENT.md",
+      "mirror": "docs/zh-CN/security/SECRET-MANAGEMENT.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/security/SECURITY-REVIEW.md",
+      "mirror": "docs/zh-CN/security/SECURITY-REVIEW.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/project/README.md",
+      "mirror": "docs/zh-CN/project/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/project/PROJECT-PLAN.md",
+      "mirror": "docs/zh-CN/project/PROJECT-PLAN.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/project/RISK-REGISTER.md",
+      "mirror": "docs/zh-CN/project/RISK-REGISTER.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/project/DECISION-LOG.md",
+      "mirror": "docs/zh-CN/project/DECISION-LOG.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/project/STAKEHOLDERS.md",
+      "mirror": "docs/zh-CN/project/STAKEHOLDERS.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/project/STATUS-REPORT-TEMPLATE.md",
+      "mirror": "docs/zh-CN/project/STATUS-REPORT-TEMPLATE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/generated/README.md",
+      "mirror": "docs/zh-CN/generated/README.md",
+      "mode": "translated"
+    },
+    {
+      "source": "docs/generated/api-routes.md",
+      "mirror": "docs/zh-CN/generated/api-routes.md",
+      "mode": "generated"
+    },
+    {
+      "source": "docs/generated/configuration.md",
+      "mirror": "docs/zh-CN/generated/configuration.md",
+      "mode": "generated"
+    },
+    {
+      "source": "docs/generated/data-dictionary.md",
+      "mirror": "docs/zh-CN/generated/data-dictionary.md",
+      "mode": "generated"
+    }
+  ]
+}

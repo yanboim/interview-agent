@@ -74,15 +74,17 @@ test("long interview questions use readable typography and inline Markdown", asy
     const fontSize = Number.parseFloat(style.fontSize);
     return {
       fontSize,
+      fontWeight: Number.parseInt(style.fontWeight, 10),
       lineHeightRatio: Number.parseFloat(style.lineHeight) / fontSize,
       hasHorizontalOverflow:
         document.documentElement.scrollWidth > document.documentElement.clientWidth + 1,
     };
   });
 
-  expect(typography.fontSize).toBeLessThanOrEqual(24);
-  expect(typography.fontSize).toBeGreaterThanOrEqual(19);
-  expect(typography.lineHeightRatio).toBeGreaterThanOrEqual(1.5);
+  expect(typography.fontSize).toBeLessThanOrEqual(20);
+  expect(typography.fontSize).toBeGreaterThanOrEqual(18);
+  expect(typography.fontWeight).toBeLessThanOrEqual(600);
+  expect(typography.lineHeightRatio).toBeGreaterThanOrEqual(1.6);
   expect(typography.hasHorizontalOverflow).toBe(false);
 
   await page.getByLabel("你的回答").fill("我的回答");

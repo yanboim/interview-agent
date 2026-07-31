@@ -9,11 +9,13 @@ Vue、PostgreSQL/SQLite、Redis、Qdrant 和可配置的大模型，把岗位目
 ## 核心能力
 
 - 账号注册、登录、刷新、退出、改密、恢复码和管理员独立登录；
-- 目标岗位、方向、JD、提醒偏好和今日训练建议；
+- 目标岗位、方向、JD、头像、提醒偏好和今日训练建议；
 - 流式AI问答、私人知识来源、可选公开搜索和会话历史；
-- 可恢复模拟面试、四维评分、重答、报告和安全幂等重试；
+- 可恢复通用/简历定向模拟面试、四维评分、重答、报告和安全幂等重试；
+- PDF/DOCX简历评估、事实受控优化稿编辑和DOCX导出；
+- 文本或经明确同意外发的音频面试记录、逐字稿确认和真实面试复盘；
 - 跨场次能力画像、趋势、薄弱点、学习任务和间隔复习；
-- 管理员用户/审计/知识管理、自动发版记录、版本化知识发布和回滚；
+- 管理员资源中心、用户/审计/交互追踪、自动发版记录和知识发布回滚；
 - Redis可恢复任务、模型策略网关、指标、日志、Trace和CI/CD门禁。
 
 已交付行为和验证证据以
@@ -31,6 +33,7 @@ Browser
        `-- optional public search
 
 Worker -> Redis jobs -> knowledge validation -> Qdrant alias publication
+       -> resume analysis / interview transcription and review
 ```
 
 详细设计见[架构总纲](ARCHITECTURE.md)和
@@ -77,6 +80,10 @@ docker compose up -d --build
 `http://localhost:8000/docs`。实际端口可能被Worktree环境覆盖。
 
 本地分别运行后端和前端见[开发指南](docs/development.md)。
+
+简历和面试复盘入口默认由独立功能开关控制。简历支持可提取文本的PDF/DOCX；
+扫描PDF不隐式OCR。文本复盘不要求转写服务；音频入口只有在转写开关、供应商配置
+和用户逐次明确同意同时满足时才可用。用户敏感文件不进入管理员知识库或Qdrant。
 
 ## 健康与验证
 
@@ -126,6 +133,8 @@ python -m scripts.ingest
 - 在应用接流量前运行 `alembic upgrade head`；
 - 使用不可变制品和已验证备份；
 - 对外部模型、Embedding、重排和搜索的数据流完成审批；
+- 将用户文件卷纳入加密、备份、恢复、容量和删除流程；
+- 启用音频转写前完成供应商地区、保留、删除和成本审批；
 - 按Canary、部署验证和回滚手册发布。
 
 发布与运维入口：
@@ -141,6 +150,7 @@ python -m scripts.ingest
 | 主题 | 入口 |
 |---|---|
 | 全部文档 | [文档中心](docs/README.md) |
+| 完整简体中文镜像 | [中文文档中心](docs/zh-CN/README.md) |
 | 产品愿景与PRD | [产品文档](docs/product/README.md) |
 | 原型与用户流程 | [UX文档](docs/ux/README.md) |
 | 系统架构 | [架构文档](docs/architecture/README.md) |
@@ -150,6 +160,9 @@ python -m scripts.ingest
 | 日常运维与恢复 | [运维文档](docs/operations/README.md) |
 | 安全、隐私和数据 | [安全模型](docs/security/README.md) |
 | 贡献流程 | [CONTRIBUTING.md](CONTRIBUTING.md) |
+
+文档变更后运行 `make docs-generate` 同步生成参考和中文镜像；CI通过
+`make docs-check` 检查缺失、链接、源版本锁和生成漂移。
 
 ## 安全提示
 

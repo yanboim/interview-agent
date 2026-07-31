@@ -1,3 +1,5 @@
+"""运行基础设施：指标、Redis 限流、版本化缓存、可恢复任务队列与 Worker 心跳。"""
+
 import threading
 import time
 import json
@@ -51,6 +53,9 @@ class RequestMetrics:
         self._lock = threading.Lock()
         self._dependencies: dict[str, list[float | int]] = {}
         self._token_usage: dict[str, list[int]] = {}
+        self._product_counters: dict[str, float] = {}
+        self._product_gauges: dict[str, float] = {}
+        self._model_runs: dict[tuple[str, str], list[float]] = {}
 
     def start(self) -> float:
         with self._lock:
@@ -108,6 +113,26 @@ class RequestMetrics:
                         f'interview_agent_llm_output_tokens_total{{agent="{name}"}} {output_tokens}',
                     ]
                 )
+            for name, value in sorted(self._product_counters.items()):
+                lines.append(
+                    f'interview_agent_product_events_total{{metric="{name}"}} {value:.6f}'
+                )
+            for name, value in sorted(self._product_gauges.items()):
+                lines.append(
+                    f'interview_agent_product_quality{{metric="{name}"}} {value:.6f}'
+                )
+            for (request_class, price_version), values in sorted(self._model_runs.items()):
+                runs, calls, input_tokens, output_tokens, cost, wall_ms, first_ms = values
+                labels = f'request_class="{request_class}",price_version="{price_version}"'
+                lines.extend([
+                    f"interview_agent_model_runs_total{{{labels}}} {runs:.0f}",
+                    f"interview_agent_model_run_calls_total{{{labels}}} {calls:.0f}",
+                    f"interview_agent_model_run_input_tokens_total{{{labels}}} {input_tokens:.0f}",
+                    f"interview_agent_model_run_output_tokens_total{{{labels}}} {output_tokens:.0f}",
+                    f"interview_agent_model_run_cost_usd_total{{{labels}}} {cost:.8f}",
+                    f"interview_agent_model_run_wall_time_ms_total{{{labels}}} {wall_ms:.0f}",
+                    f"interview_agent_model_run_first_token_ms_total{{{labels}}} {first_ms:.0f}",
+                ])
         return "\n".join([*lines, ""])
 
     @contextmanager
@@ -135,6 +160,28 @@ class RequestMetrics:
             values = self._token_usage.setdefault(agent_name, [0, 0])
             values[0] += max(0, int(input_tokens))
             values[1] += max(0, int(output_tokens))
+
+    def observe_product(self, name: str, value: float = 1.0) -> None:
+        with self._lock:
+            self._product_counters[name] = self._product_counters.get(name, 0.0) + max(
+                0.0, float(value)
+            )
+
+    def set_product_gauge(self, name: str, value: float) -> None:
+        with self._lock:
+            self._product_gauges[name] = float(value)
+
+    def observe_model_run(self, snapshot: dict[str, object]) -> None:
+        key = (str(snapshot["request_class"]), str(snapshot["price_version"]))
+        with self._lock:
+            values = self._model_runs.setdefault(key, [0.0] * 7)
+            values[0] += 1
+            values[1] += float(snapshot["call_count"])
+            values[2] += float(snapshot["input_tokens"])
+            values[3] += float(snapshot["output_tokens"])
+            values[4] += float(snapshot["cost_usd"])
+            values[5] += float(snapshot["wall_time_ms"])
+            values[6] += float(snapshot["first_token_ms"] or 0)
 
 
 request_metrics = RequestMetrics()
@@ -469,6 +516,7 @@ return promoted
     ) -> str:
         if not self.client:
             raise RedisError("Redis is not configured")
+        # Lua 脚本把幂等占位与入队合成一次原子操作，避免多副本重复任务。
         job_id = str(uuid4())
         idempotency_redis_key = ""
         if idempotency_key:
@@ -517,6 +565,7 @@ return promoted
         if not self.client:
             raise RedisError("Redis is not configured")
         now = int(time.time())
+        # 每次领取前先回收失联任务并提升到期重试，无需额外调度进程。
         self.recover_expired_jobs(now=now)
         self.promote_due_jobs(now=now)
         claim_token = str(uuid4())
@@ -558,6 +607,7 @@ return promoted
             if isinstance(result, str)
             else json.dumps(result, ensure_ascii=False)
         )
+        # ACK 脚本校验 claim_token，旧 Worker 的迟到结果会被拒绝。
         return bool(
             self.client.eval(
                 self._ACK_SCRIPT,

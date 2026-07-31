@@ -104,6 +104,37 @@ export async function fetchMessages(
   return response.json();
 }
 
+export async function saveAssistantFeedback(
+  userId: string,
+  turnId: string,
+  rating: "up" | "down",
+  reasonCode?: string,
+  comment?: string,
+): Promise<void> {
+  const response = await apiFetch(`/api/chat/turns/${encodeURIComponent(turnId)}/feedback`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      user_id: userId,
+      rating,
+      reason_code: reasonCode || null,
+      comment: comment || null,
+    }),
+  });
+  await expectOk(response);
+}
+
+export async function deleteAssistantFeedback(
+  userId: string,
+  turnId: string,
+): Promise<void> {
+  const response = await apiFetch(
+    `/api/chat/turns/${encodeURIComponent(turnId)}/feedback?user_id=${encodeURIComponent(userId)}`,
+    { method: "DELETE" },
+  );
+  await expectOk(response);
+}
+
 export async function deleteConversation(userId: string, sessionId: string): Promise<void> {
   const response = await apiFetch(
     `/api/conversations/${encodeURIComponent(sessionId)}?user_id=${encodeURIComponent(userId)}`,

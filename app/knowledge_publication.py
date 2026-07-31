@@ -1,3 +1,5 @@
+"""知识库版本发布原语：候选验证后原子切换服务别名，并保留可回滚版本。"""
+
 import logging
 import re
 import threading
@@ -71,6 +73,7 @@ def switch_serving_alias(
     settings: Settings,
     collection_name: str,
 ) -> str | None:
+    # Qdrant 在一次别名更新中删除旧指向并创建新指向，读请求不会看到中间态。
     previous = alias_target(client, settings.qdrant_collection_alias)
     operations: list[
         models.CreateAliasOperation | models.DeleteAliasOperation
@@ -140,6 +143,7 @@ def publication_lock(
     owner_token: str,
 ) -> Iterator[None]:
     key = f"interview-agent:knowledge-publish:{settings.qdrant_collection_alias}"
+    # 多实例用 Redis 所有者令牌；无 Redis 的本地开发才退化为进程锁。
     using_redis = bool(settings.redis_url)
     if using_redis:
         if not runtime.acquire_lock(

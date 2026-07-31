@@ -1,3 +1,5 @@
+"""从服务端会话解析身份和管理员角色，供所有 owner-scoped 路由复用。"""
+
 from fastapi import HTTPException, Request
 
 from app.api.runtime import get_runtime
@@ -27,6 +29,22 @@ def resolve_user_id(request: Request, claimed_user_id: str) -> str:
     current_user: AuthenticatedUser = request.state.current_user
     if claimed_user_id.strip() != current_user.user_id:
         raise HTTPException(status_code=403, detail="不能访问其他用户的数据")
+    return current_user.user_id
+
+
+def current_product_user_id(request: Request) -> str:
+    """Resolve ownership for new APIs that do not accept client user IDs."""
+    if not get_runtime().settings.auth_required:
+        return "anonymous"
+    current_user: AuthenticatedUser | None = getattr(
+        request.state,
+        "current_user",
+        None,
+    )
+    if not current_user:
+        raise HTTPException(status_code=401, detail="需要登录")
+    if current_user.role != "user":
+        raise HTTPException(status_code=403, detail="仅产品用户可使用该功能")
     return current_user.user_id
 
 

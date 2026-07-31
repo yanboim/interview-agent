@@ -1,3 +1,4 @@
+// 产品端与管理端使用独立入口和会话守卫，角色判断最终仍以服务端为准。
 import { createRouter, createWebHistory } from "vue-router";
 
 const legacyModePath: Record<string, string> = {
@@ -6,6 +7,8 @@ const legacyModePath: Record<string, string> = {
   report: "/profile",
   learning: "/learning",
   history: "/history",
+  resume: "/resumes",
+  review: "/reviews",
 };
 
 const router = createRouter({
@@ -50,6 +53,18 @@ const router = createRouter({
       name: "history",
       component: () => import("@/views/AppView.vue"),
       meta: { mode: "history" },
+    },
+    {
+      path: "/resumes/:resumeId?",
+      name: "resumes",
+      component: () => import("@/views/AppView.vue"),
+      meta: { mode: "resume" },
+    },
+    {
+      path: "/reviews/:reviewId?",
+      name: "reviews",
+      component: () => import("@/views/AppView.vue"),
+      meta: { mode: "review" },
     },
     {
       path: "/admin",

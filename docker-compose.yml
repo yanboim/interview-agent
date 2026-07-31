@@ -150,6 +150,7 @@ services:
       - /tmp
     volumes:
       - knowledge_data:/app/knowledge
+      - app_data:/app/data
 
   otel-collector:
     image: otel/opentelemetry-collector-contrib:0.130.0@sha256:c0629f14f72cb36f03d77169011201e9050c78adec4b9167a2252b6ec3e7a586

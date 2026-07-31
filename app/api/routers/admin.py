@@ -1,3 +1,5 @@
+"""管理员 HTTP 适配器：知识发布、资源、审计和发布记录。"""
+
 import asyncio
 import logging
 from datetime import datetime

@@ -47,6 +47,9 @@ def test_completed_retry_returns_stored_response_without_model_calls(
         store,
         assessor=assessor,
         question_generator=generator,
+        assessment_prompt_version="assessment-prompt-test",
+        assessment_schema_version="assessment-schema-test",
+        model_version="model-test",
     )
 
     first = service.submit(
@@ -77,6 +80,17 @@ def test_completed_retry_returns_stored_response_without_model_calls(
             interview_id="interview-1",
         )
     ) == 2
+    with store.engine.connect() as connection:
+        turn = connection.execute(
+            select(interview_turns).where(interview_turns.c.turn_index == 1)
+        ).mappings().one()
+        attempt = connection.execute(select(interview_answer_attempts)).mappings().one()
+    assert turn["assessment_prompt_version"] == "assessment-prompt-test"
+    assert turn["assessment_schema_version"] == "assessment-schema-test"
+    assert turn["assessment_model_version"] == "model-test"
+    assert attempt["prompt_version"] == "assessment-prompt-test"
+    assert attempt["schema_version"] == "assessment-schema-test"
+    assert attempt["model_version"] == "model-test"
 
 
 @pytest.mark.parametrize("second_key", ["answer-key-1", "answer-key-2"])

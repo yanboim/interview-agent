@@ -94,3 +94,63 @@ def test_worker_uses_exponential_retry_delay() -> None:
     )
 
     assert runtime.fail_job.call_args.kwargs["retry_delay_seconds"] == 20
+
+
+def test_worker_dispatches_resume_analysis_without_content_payload() -> None:
+    runtime = MagicMock()
+    runtime.claim_job.return_value = JobClaim(
+        job_id="job-resume",
+        job_type="resume_analysis",
+        payload={"analysis_id": "analysis-1"},
+        claim_token="owner-1",
+        attempt=1,
+        max_attempts=3,
+    )
+    runtime.acknowledge_job.return_value = True
+    handler = MagicMock(return_value={"outcome": "completed"})
+
+    assert process_one_job(
+        runtime,
+        lease_seconds=60,
+        retry_base_seconds=5,
+        resume_handler=handler,
+    )
+
+    handler.assert_called_once_with(analysis_id="analysis-1")
+    runtime.acknowledge_job.assert_called_once()
+
+
+def test_worker_dispatches_review_jobs_with_resource_id_only() -> None:
+    for job_type, argument, handler_name in (
+        (
+            "interview_transcription",
+            "review_transcription_handler",
+            "transcription",
+        ),
+        (
+            "interview_review_analysis",
+            "review_analysis_handler",
+            "analysis",
+        ),
+    ):
+        runtime = MagicMock()
+        runtime.claim_job.return_value = JobClaim(
+            job_id=f"job-{handler_name}",
+            job_type=job_type,
+            payload={"review_id": "review-1"},
+            claim_token="owner-1",
+            attempt=1,
+            max_attempts=3,
+        )
+        runtime.acknowledge_job.return_value = True
+        handler = MagicMock(return_value={"outcome": "completed"})
+
+        assert process_one_job(
+            runtime,
+            lease_seconds=60,
+            retry_base_seconds=5,
+            **{argument: handler},
+        )
+
+        handler.assert_called_once_with(review_id="review-1")
+        runtime.acknowledge_job.assert_called_once()

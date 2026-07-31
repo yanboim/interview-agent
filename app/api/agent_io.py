@@ -1,5 +1,9 @@
+"""把 Agent 输出转换为稳定的 API 文本、来源和可公开元数据。"""
+
 import re
 from typing import Any
+
+from app.agent_contracts import CITATION_SCHEMA_VERSION
 
 
 def extract_message_text(message: Any) -> str:
@@ -20,6 +24,7 @@ def extract_message_text(message: Any) -> str:
 def extract_sources(tool_name: str, content: str) -> list[dict[str, str]]:
     sources: list[dict[str, str]] = []
     web_pattern = re.compile(
+        r"证据ID：(?P<evidence_id>[^\n]+)\n"
         r"标题：(?P<label>[^\n]+)\n"
         r"链接：(?P<url>[^\n]+)\n"
         r"抓取时间：(?P<fetched_at>[^\n]+)\n"
@@ -30,6 +35,7 @@ def extract_sources(tool_name: str, content: str) -> list[dict[str, str]]:
         sources.append(
             {
                 "label": match.group("label").strip(),
+                "evidence_id": match.group("evidence_id").strip(),
                 "kind": "public",
                 "url": match.group("url").strip(),
                 "fetched_at": match.group("fetched_at").strip(),
@@ -37,24 +43,79 @@ def extract_sources(tool_name: str, content: str) -> list[dict[str, str]]:
             }
         )
     if tool_name == "search_interview_knowledge" or "来源：" in content:
-        for label in re.findall(r"^来源：(.+)$", content, re.MULTILINE):
+        private_pattern = re.compile(
+            r"证据ID：(?P<evidence_id>[^\n]+)\n"
+            r"来源：(?P<label>[^\n]+)\n"
+            r".*?^内容：(?P<snippet>.*?)(?=\n</untrusted_evidence>|\Z)",
+            re.MULTILINE | re.DOTALL,
+        )
+        for match in private_pattern.finditer(content):
+            label = match.group("label")
             clean_label = label.strip()
             if clean_label:
-                content_match = re.search(
-                    rf"^来源：{re.escape(clean_label)}$\n.*?^内容：(.*?)(?=\n\n\[资料|\Z)",
-                    content,
-                    re.MULTILINE | re.DOTALL,
-                )
-                source = {"label": clean_label, "kind": "private"}
-                if content_match:
-                    source["snippet"] = content_match.group(1).strip()[:300]
+                source = {
+                    "evidence_id": match.group("evidence_id").strip(),
+                    "label": clean_label,
+                    "kind": "private",
+                    "snippet": match.group("snippet").strip()[:300],
+                }
                 sources.append(source)
-    unique: dict[tuple[str, str, str], dict[str, str]] = {}
+    unique: dict[tuple[str, str, str, str], dict[str, str]] = {}
     for source in sources:
         key = (
             source["kind"],
+            source.get("evidence_id", ""),
             source["label"],
             source.get("url", ""),
         )
         unique[key] = source
     return list(unique.values())
+
+
+def build_citation_metadata(
+    answer: str,
+    sources: list[dict[str, str]],
+) -> dict[str, object]:
+    """Map explicit answer markers to stable evidence IDs."""
+    known = {
+        source.get("evidence_id", "")
+        for source in sources
+        if source.get("evidence_id")
+    }
+    citations: list[dict[str, object]] = []
+    unsupported_claims: list[str] = []
+    for claim in re.split(r"(?<=[。！？.!?])\s+|\n+", answer):
+        normalized = claim.strip()
+        if not normalized:
+            continue
+        referenced = sorted(
+            evidence_id
+            for evidence_id in known
+            if f"[{evidence_id}]" in normalized
+            or f"【{evidence_id}】" in normalized
+        )
+        conflict = "[conflicting]" in normalized or "[证据冲突]" in normalized
+        unsupported = "[unsupported]" in normalized or "[无证据]" in normalized
+        if referenced or conflict or unsupported:
+            support = (
+                "conflicting"
+                if conflict
+                else "unsupported"
+                if unsupported
+                else "supported"
+            )
+            clean_claim = re.sub(r"\[(?:[^\]]+)\]|【[^】]+】", "", normalized).strip()
+            citations.append(
+                {
+                    "claim": clean_claim or normalized,
+                    "evidence_ids": referenced,
+                    "support": support,
+                }
+            )
+            if unsupported:
+                unsupported_claims.append(clean_claim or normalized)
+    return {
+        "schema_version": CITATION_SCHEMA_VERSION,
+        "citations": citations,
+        "unsupported_claims": unsupported_claims,
+    }

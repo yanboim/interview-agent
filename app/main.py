@@ -24,14 +24,23 @@ from app.api.routers import auth as auth_routes
 from app.api.routers import chat as chat_routes
 from app.api.routers import conversations as conversation_routes
 from app.api.routers import interviews as interview_routes
+from app.api.routers import interview_reviews as interview_review_routes
 from app.api.routers import learning as learning_routes
 from app.api.routers import profile as profile_routes
+from app.api.routers import resumes as resume_routes
 from app.api.runtime import ApiRuntime, configure_runtime
 from app.api.schemas import *  # noqa: F403 - compatibility exports
 from app.api.security import require_role, resolve_user_id, token_pair_response
 from app.application.chat_service import ChatTurnService
+from app.application.agent_run_service import AgentRunService
+from app.agent_context_service import AgentContextService
 from app.application.execution import SyncExecutor
-from app.application.interview_service import InterviewAnswerService
+from app.application.interview_service import (
+    InterviewAnswerService,
+    InterviewStartService,
+)
+from app.application.interview_review_service import InterviewReviewService
+from app.application.resume_service import ResumeService
 from app.auth import AuthService, AuthSurfaceError
 from app.config import get_settings
 from app.knowledge_publication import (
@@ -42,11 +51,14 @@ from app.knowledge_publication import (
 )
 from app.logging_config import configure_logging, reset_request_id, set_request_id
 from app.multi_agent import assess_answer, generate_question
+from app.model_routing import model_for_purpose
 from app.operations import RedisRuntime, SharedRateLimiter, request_metrics
 from app.request_audit import audit_api_request
 from app.storage import ConversationStore
 from app.system_resources import create_system_resource_center
+from app.transcription import HttpTranscriptionProvider
 from app.telemetry import configure_telemetry
+from app.user_files import LocalUserFileStore
 from scripts.ingest import ingest_knowledge
 
 logger = logging.getLogger(__name__)
@@ -75,18 +87,51 @@ interview_answer_service = InterviewAnswerService(
     conversation_store,
     assessor=assess_answer,
     question_generator=generate_question,
+    assessment_prompt_version=settings.interview_assessment_prompt_version,
+    assessment_schema_version="assessment-v1",
+    model_version=model_for_purpose(settings, "evaluator"),
+)
+interview_start_service = InterviewStartService(
+    conversation_store,
+    question_generator=generate_question,
+    prompt_version=settings.interview_question_prompt_version,
+    schema_version="question-text-v1",
+    model_version=model_for_purpose(settings, "interviewer"),
 )
 chat_turn_service = ChatTurnService(
     conversation_store,
     context_token_budget=settings.chat_context_token_budget,
     summary_token_budget=settings.chat_summary_token_budget,
+    context_service=AgentContextService(
+        conversation_store,
+        token_budget=settings.agent_context_reserve_tokens,
+    ),
+    agent_context_reserve_tokens=settings.agent_context_reserve_tokens,
 )
+agent_run_service = AgentRunService(conversation_store)
 auth_service = AuthService(
     conversation_store.engine,
     access_token_minutes=settings.access_token_minutes,
     refresh_token_days=settings.refresh_token_days,
 )
 redis_runtime = RedisRuntime(settings.redis_url, settings.redis_queue_name)
+user_files = LocalUserFileStore(
+    settings.user_files_dir,
+    max_upload_bytes=settings.resume_max_upload_bytes,
+)
+resume_service = ResumeService(
+    conversation_store,
+    user_files,
+    settings,
+    enqueue=redis_runtime.enqueue,
+)
+interview_review_service = InterviewReviewService(
+    conversation_store,
+    user_files,
+    settings,
+    enqueue=redis_runtime.enqueue,
+    transcription_provider=HttpTranscriptionProvider(settings),
+)
 system_resource_center = create_system_resource_center(
     settings,
     database_check=conversation_store.check_connection,
@@ -107,7 +152,11 @@ runtime = ApiRuntime(
     redis_runtime=redis_runtime,
     rate_limiter=rate_limiter,
     chat_turn_service=chat_turn_service,
+    agent_run_service=agent_run_service,
     interview_answer_service=interview_answer_service,
+    interview_start_service=interview_start_service,
+    interview_review_service=interview_review_service,
+    resume_service=resume_service,
     sync_executor=SyncExecutor(),
     get_interview_agent=get_interview_agent,
     generate_question=generate_question,
@@ -127,7 +176,9 @@ for router in (
     chat_routes.router,
     conversation_routes.router,
     interview_routes.router,
+    interview_review_routes.router,
     learning_routes.router,
+    resume_routes.router,
 ):
     app.include_router(router)
 
@@ -270,9 +321,15 @@ async def admin_web_app() -> FileResponse:
 @app.get("/interviews/{interview_id}", include_in_schema=False)
 @app.get("/profile", include_in_schema=False)
 @app.get("/learning", include_in_schema=False)
+@app.get("/resumes", include_in_schema=False)
+@app.get("/resumes/{resume_id}", include_in_schema=False)
+@app.get("/reviews", include_in_schema=False)
+@app.get("/reviews/{review_id}", include_in_schema=False)
 async def main_web_app(
     session_id: str | None = None,
     interview_id: str | None = None,
+    resume_id: str | None = None,
+    review_id: str | None = None,
 ) -> FileResponse:
     return FileResponse(_resolve_index_html())
 

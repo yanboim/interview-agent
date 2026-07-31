@@ -1,3 +1,4 @@
+// 模拟面试状态：answerCommand 保留到成功返回，使网络重试复用同一幂等键。
 import { defineStore } from "pinia";
 import type {
   ActiveInterview,
@@ -51,7 +52,12 @@ export const useInterviewsStore = defineStore("interviews", {
       }
     },
 
-    async start(topic: string, level: string, questionCount: number) {
+    async start(
+      topic: string,
+      level: string,
+      questionCount: number,
+      resumeAnalysisId?: string,
+    ) {
       const auth = useAuthStore();
       this.starting = true;
       try {
@@ -60,6 +66,7 @@ export const useInterviewsStore = defineStore("interviews", {
           topic,
           level,
           questionCount,
+          resumeAnalysisId,
         });
         this.lastAnswer = null;
         this.answerCommand = null;
@@ -68,6 +75,7 @@ export const useInterviewsStore = defineStore("interviews", {
           topic,
           level,
           question_count: questionCount,
+          source_type: this.active.source_type,
         });
         return this.active;
       } finally {
@@ -86,6 +94,7 @@ export const useInterviewsStore = defineStore("interviews", {
       const auth = useAuthStore();
       if (!this.active) throw new Error("没有进行中的面试");
       this.answering = true;
+      // 只有回答正文变化才生成新命令；同一正文失败重试必须复用旧键。
       if (!this.answerCommand || this.answerCommand.answer !== answer) {
         this.answerCommand = {
           answer,

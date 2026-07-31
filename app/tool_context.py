@@ -1,3 +1,5 @@
+"""绑定工具执行所需的服务端用户身份与请求信息，避免信任模型提供的身份。"""
+
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
 

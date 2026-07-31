@@ -28,7 +28,18 @@ def test_message_source_metadata_persists(tmp_path):
     store = ConversationStore(tmp_path / "sources.db")
     metadata = {
         "knowledge_used": True,
-        "sources": [{"label": "jvm.md", "kind": "private"}],
+        "schema_version": 1,
+        "sources": [
+            {"evidence_id": "chunk-1", "label": "jvm.md", "kind": "private"}
+        ],
+        "citations": [
+            {
+                "claim": "JDK 21 是 LTS。",
+                "evidence_ids": ["chunk-1"],
+                "support": "supported",
+            }
+        ],
+        "unsupported_claims": [],
     }
     store.append_message(
         user_id="user-a",
@@ -354,10 +365,16 @@ def test_learning_tasks_are_deduplicated_reviewed_and_isolated(tmp_path):
     reviewed = store.review_learning_task(
         user_id="user-a",
         task_id=task_id,
+        outcome="forgotten",
+        difficulty=5,
     )
     assert reviewed["review_count"] == 1
     assert reviewed["last_reviewed_at"]
     assert reviewed["next_review_at"]
+    assert reviewed["recall_outcome"] == "forgotten"
+    assert reviewed["difficulty_rating"] == 5
+    assert reviewed["lapse_count"] == 1
+    assert float(reviewed["review_confidence"]) < 0.5
 
     assert store.delete_learning_task(
         user_id="user-a",

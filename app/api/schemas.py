@@ -1,3 +1,5 @@
+"""HTTP 请求/响应 DTO 与边界校验，不包含业务状态转换。"""
+
 import base64
 import binascii
 import re
@@ -27,6 +29,20 @@ class ChatResponse(BaseModel):
     session_id: str
     turn_id: str
     answer: str
+
+
+class AssistantFeedbackRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=128)
+    rating: Literal["up", "down"]
+    reason_code: Literal[
+        "incorrect", "unsupported", "irrelevant", "unclear", "other"
+    ] | None = None
+    comment: str | None = Field(default=None, max_length=2000)
+
+
+class EvaluationCandidateReviewRequest(BaseModel):
+    decision: Literal["approved", "rejected"]
+    approved_payload: dict[str, object] | None = None
 
 
 class HistoryMessage(BaseModel):
@@ -59,6 +75,31 @@ class UserProfileRequest(BaseModel):
         except ValueError as exc:
             raise ValueError("interview_date 必须是 ISO 日期") from exc
         return value
+
+
+class CoachingMemoryCreateRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=128)
+    kind: Literal["fact", "preference", "goal", "observation"]
+    content: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("user_id", "content")
+    @classmethod
+    def clean_memory_text(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("不能只包含空白字符")
+        return value
+
+
+class CoachingMemoryUpdateRequest(BaseModel):
+    user_id: str = Field(min_length=1, max_length=128)
+    action: Literal["confirm", "reject", "correct"]
+    content: str | None = Field(default=None, max_length=2000)
+
+    @field_validator("content")
+    @classmethod
+    def clean_optional_memory_text(cls, value: str | None) -> str | None:
+        return value.strip() if value is not None else None
 
 
 class ProductEventRequest(BaseModel):
@@ -97,6 +138,11 @@ class InterviewStartRequest(BaseModel):
     topic: str = Field(min_length=1, max_length=200)
     level: str = Field(default="高级", min_length=1, max_length=30)
     question_count: int = Field(default=5, ge=1, le=20)
+    resume_analysis_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+    )
 
     @field_validator("user_id", "topic", "level")
     @classmethod
@@ -132,12 +178,47 @@ class UserIdentityRequest(BaseModel):
         return value
 
 
+class ResumeAnalysisRequest(BaseModel):
+    job_description: str = Field(default="", max_length=20_000)
+
+    @field_validator("job_description")
+    @classmethod
+    def clean_job_description(cls, value: str) -> str:
+        return value.strip()
+
+
+class ResumeDraftUpdateRequest(BaseModel):
+    expected_revision: int = Field(ge=1)
+    draft: dict[str, object]
+
+
+class InterviewReviewTextRequest(BaseModel):
+    transcript: str = Field(min_length=1, max_length=200_000)
+
+
+class InterviewReviewTranscriptUpdateRequest(BaseModel):
+    expected_revision: int = Field(ge=1)
+    segments: list[dict[str, object]] = Field(min_length=1, max_length=2000)
+
+
+class InterviewReviewConfirmRequest(BaseModel):
+    expected_revision: int = Field(ge=1)
+
+
 class InterviewArchiveRequest(UserIdentityRequest):
     archived: bool = True
 
 
 class LearningTaskGenerateRequest(UserIdentityRequest):
     topic: str | None = Field(default=None, max_length=200)
+
+
+class AgentRunCreateRequest(UserIdentityRequest):
+    topic: str | None = Field(default=None, max_length=200)
+
+
+class AgentRunRecoveryRequest(BaseModel):
+    stale_seconds: int = Field(default=300, ge=30, le=86400)
 
 
 class LearningTaskUpdateRequest(UserIdentityRequest):
@@ -150,6 +231,11 @@ class LearningTaskUpdateRequest(UserIdentityRequest):
         if value is not None and value.tzinfo is None:
             raise ValueError("due_at 必须包含时区")
         return value
+
+
+class LearningTaskReviewRequest(UserIdentityRequest):
+    outcome: Literal["remembered", "partial", "forgotten"]
+    difficulty: int = Field(ge=1, le=5)
 
 
 class ConversationRenameRequest(UserIdentityRequest):

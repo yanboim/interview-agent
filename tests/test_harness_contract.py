@@ -81,6 +81,27 @@ def test_generated_documentation_is_current() -> None:
     assert stale == []
 
 
+def test_chinese_documentation_mirror_is_current_and_complete() -> None:
+    from scripts.generate_chinese_docs import (
+        check_translation_lock,
+        expected_outputs,
+        mirror_path,
+        source_paths,
+    )
+
+    assert check_translation_lock() == []
+    sources = source_paths()
+    outputs = expected_outputs()
+    stale = [
+        path.relative_to(ROOT).as_posix()
+        for path, expected in outputs.items()
+        if not path.is_file() or path.read_text(encoding="utf-8") != expected
+    ]
+    assert stale == []
+    assert len(sources) == len(set(sources))
+    assert all(mirror_path(source).is_file() for source in sources)
+
+
 def test_repository_markdown_links_resolve() -> None:
     markdown_link = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
     broken: list[str] = []
@@ -90,6 +111,8 @@ def test_repository_markdown_links_resolve() -> None:
         *sorted((ROOT / "docs").rglob("*.md")),
     ]
     for document in documents:
+        if ROOT / "docs" / "i18n" in document.parents:
+            continue
         for raw_target in markdown_link.findall(
             document.read_text(encoding="utf-8")
         ):

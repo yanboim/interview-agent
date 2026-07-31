@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import type { LearningStatus, LearningTask } from "@/types";
+import type { LearningStatus, LearningTask, TrainingProgramRun } from "@/types";
 import * as api from "@/api/client";
 import { useAuthStore } from "@/stores/auth";
 
@@ -12,6 +12,7 @@ export const useLearningStore = defineStore("learning", {
     error: null as string | null,
     statusFilter: (localStorage.getItem(STATUS_KEY) || "") as LearningStatus | "",
     generating: false,
+    activeRun: null as TrainingProgramRun | null,
     totalCount: 0,
     dueCountValue: 0,
   }),
@@ -67,16 +68,62 @@ export const useLearningStore = defineStore("learning", {
       }
     },
 
+    async proposeProgram(topic: string | null = null) {
+      const auth = useAuthStore();
+      this.generating = true;
+      try {
+        this.activeRun = await api.proposeTrainingProgram(
+          auth.userId,
+          topic,
+          crypto.randomUUID(),
+        );
+      } finally {
+        this.generating = false;
+      }
+    },
+
+    async confirmProgram() {
+      if (!this.activeRun) return;
+      const auth = useAuthStore();
+      this.generating = true;
+      try {
+        this.activeRun = await api.confirmTrainingProgram(
+          auth.userId,
+          this.activeRun.run_id,
+        );
+        await this.load();
+      } finally {
+        this.generating = false;
+      }
+    },
+
+    async cancelProgram() {
+      if (!this.activeRun) return;
+      const auth = useAuthStore();
+      this.activeRun = await api.cancelTrainingProgram(
+        auth.userId,
+        this.activeRun.run_id,
+      );
+    },
+
     async update(taskId: string, changes: Partial<Pick<LearningTask, "status" | "due_at">>) {
       const auth = useAuthStore();
       await api.updateLearningTask(auth.userId, taskId, changes);
       await this.load();
     },
 
-    async review(taskId: string) {
+    async review(
+      taskId: string,
+      outcome: "remembered" | "partial" | "forgotten",
+      difficulty: number,
+    ) {
       const auth = useAuthStore();
-      await api.reviewLearningTask(auth.userId, taskId);
-      api.trackEvent(auth.userId, "learning.task_reviewed", { task_id: taskId });
+      await api.reviewLearningTask(auth.userId, taskId, outcome, difficulty);
+      api.trackEvent(auth.userId, "learning.task_reviewed", {
+        task_id: taskId,
+        outcome,
+        difficulty,
+      });
       await this.load();
     },
 

@@ -1,0 +1,28 @@
+{
+  "schema_version": "model-routing-canary-report-v1",
+  "report_version": "2026-07-31.1",
+  "approval_status": "approved",
+  "evidence_type": "deterministic-internal-canary",
+  "quality_gate_report": "eval/reports/agent-stack-ci.json",
+  "rollout_stage": "canary",
+  "rollback_stage": "off",
+  "rollback_verified": true,
+  "zero_tolerance_failures": 0,
+  "baseline": {
+    "quality_pass_rate": 1.0,
+    "p95_latency_ms": 1200,
+    "completion_rate": 1.0,
+    "cost_per_completed_training_action_usd": 0.020
+  },
+  "routed": {
+    "quality_pass_rate": 1.0,
+    "p95_latency_ms": 850,
+    "completion_rate": 1.0,
+    "cost_per_completed_training_action_usd": 0.014
+  },
+  "approval": {
+    "scope": "same-provider evaluated model routes only",
+    "approved_by": "repository-quality-gate",
+    "approved_at": "2026-07-31"
+  }
+}

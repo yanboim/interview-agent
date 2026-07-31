@@ -1,14 +1,19 @@
+"""模拟面试的提示词与结果整形；模型传输策略由 model_gateway 统一负责。"""
+
 import json
-import re
 from functools import lru_cache
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
+from app.agent_contracts import (
+    AssessmentV1,
+    invoke_structured,
+    validate_structured_text,
+)
 from app.config import get_settings
 from app.model_gateway import PolicyChatOpenAI, create_chat_model
 
 
-_JSON_OBJECT = re.compile(r"\{.*\}", re.DOTALL)
 DIMENSIONS = ("accuracy", "depth", "communication", "practicality")
 DIMENSION_LABELS = {
     "accuracy": "技术准确性",
@@ -25,15 +30,25 @@ STUDY_ACTIONS = {
 
 
 @lru_cache
-def get_interview_model() -> PolicyChatOpenAI:
+def get_interviewer_model() -> PolicyChatOpenAI:
     settings = get_settings()
     if not settings.zhipu_api_key:
         raise RuntimeError("未配置 ZHIPU_API_KEY，无法进行模拟面试。")
     return create_chat_model(
-        "interview_engine",
+        "interviewer",
         temperature=0.3,
         max_tokens=1200,
         settings=settings,
+    )
+
+
+@lru_cache
+def get_evaluator_model() -> PolicyChatOpenAI:
+    settings = get_settings()
+    if not settings.zhipu_api_key:
+        raise RuntimeError("未配置 ZHIPU_API_KEY，无法进行模拟面试。")
+    return create_chat_model(
+        "evaluator", temperature=0.2, max_tokens=1200, settings=settings
     )
 
 
@@ -49,6 +64,7 @@ def generate_question(
     level: str,
     turn_index: int,
     previous_turns: list[dict[str, object]],
+    resume_context: dict[str, object] | None = None,
 ) -> str:
     history = "\n".join(
         (
@@ -57,12 +73,21 @@ def generate_question(
         )
         for turn in previous_turns[-3:]
     )
-    response = get_interview_model().invoke(
+    resume_instruction = ""
+    if resume_context:
+        resume_instruction = (
+            "\n这是基于简历的定向面试。优先轮换考察项目证据、技术决策、本人职责、"
+            "量化成果、失败复盘和岗位差距。只能使用下方最小化上下文，不要询问"
+            "姓名、联系方式、年龄、性别、婚育、住址等无关个人信息。\n"
+            f"简历上下文：{json.dumps(resume_context, ensure_ascii=False)}\n"
+        )
+    response = get_interviewer_model().invoke(
         [
             SystemMessage(
                 content=(
                     "你是一名高级软件工程师面试官。一次只提出一个清晰、可评分的"
                     "中文技术问题，不要给答案、提示或评分标准。避免与历史问题重复。"
+                    "如有简历上下文，问题必须关联其中的项目证据或岗位差距。"
                 )
             ),
             HumanMessage(
@@ -70,6 +95,7 @@ def generate_question(
                     f"面试主题：{topic}\n难度：{level}\n"
                     f"当前第 {turn_index} 题\n"
                     f"已有问答：\n{history or '无'}\n"
+                    f"{resume_instruction}"
                     "请直接输出下一道面试题。"
                 )
             ),
@@ -79,11 +105,9 @@ def generate_question(
 
 
 def parse_assessment(content: str) -> dict[str, Any]:
-    match = _JSON_OBJECT.search(content)
-    if not match:
-        raise ValueError("评分模型未返回 JSON 对象")
-    data = json.loads(match.group(0))
-    dimensions = data.get("dimensions", {})
+    parsed = validate_structured_text(content, AssessmentV1)
+    data = parsed.model_dump()
+    dimensions = data["dimensions"]
     normalized_dimensions = {
         name: max(0.0, min(10.0, float(dimensions.get(name, 0))))
         for name in DIMENSIONS
@@ -94,10 +118,10 @@ def parse_assessment(content: str) -> dict[str, Any]:
     return {
         "overall": max(0.0, min(10.0, float(overall))),
         "dimensions": normalized_dimensions,
-        "strengths": [str(item) for item in data.get("strengths", [])][:5],
-        "weaknesses": [str(item) for item in data.get("weaknesses", [])][:5],
-        "feedback": str(data.get("feedback", "")).strip(),
-        "reference_answer": str(data.get("reference_answer", "")).strip(),
+        "strengths": [str(item) for item in data["strengths"]][:5],
+        "weaknesses": [str(item) for item in data["weaknesses"]][:5],
+        "feedback": str(data["feedback"]).strip(),
+        "reference_answer": str(data["reference_answer"]).strip(),
     }
 
 
@@ -108,7 +132,8 @@ def assess_answer(
     question: str,
     answer: str,
 ) -> dict[str, Any]:
-    response = get_interview_model().invoke(
+    assessment = invoke_structured(
+        get_evaluator_model(),
         [
             SystemMessage(
                 content=(
@@ -130,9 +155,10 @@ def assess_answer(
                     "请基于技术正确性、原理深度、表达结构和工程实践评分。"
                 )
             ),
-        ]
+        ],
+        AssessmentV1,
     )
-    return parse_assessment(_message_text(response))
+    return parse_assessment(assessment.model_dump_json())
 
 
 def build_report(turns: list[dict[str, object]]) -> dict[str, Any]:

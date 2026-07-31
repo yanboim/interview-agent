@@ -1,3 +1,5 @@
+"""从工作树路径稳定派生隔离的 Compose 项目名、端口和资源后缀。"""
+
 import argparse
 from dataclasses import dataclass
 import hashlib

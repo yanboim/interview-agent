@@ -1,3 +1,5 @@
+"""受统一模型网关保护的 LLM 重排器；解析失败时安全回退原始顺序。"""
+
 import json
 import re
 from functools import lru_cache

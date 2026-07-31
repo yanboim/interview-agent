@@ -1,3 +1,5 @@
+"""应用与 Worker 共用的结构化日志配置，避免记录请求正文和敏感值。"""
+
 import json
 import logging
 from contextvars import ContextVar, Token

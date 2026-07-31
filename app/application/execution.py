@@ -1,3 +1,5 @@
+"""同步用例执行边界：统一把阻塞型数据库工作移出事件循环。"""
+
 import asyncio
 from collections.abc import Callable
 from functools import partial

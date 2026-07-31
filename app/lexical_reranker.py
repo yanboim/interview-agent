@@ -1,3 +1,5 @@
+"""不访问外部服务的词法重排器，用查询词覆盖度修正向量召回顺序。"""
+
 import re
 from collections.abc import Sequence
 

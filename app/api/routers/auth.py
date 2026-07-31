@@ -1,3 +1,5 @@
+"""认证 HTTP 适配器：注册、登录、刷新、撤销与密码恢复。"""
+
 import asyncio
 
 from fastapi import APIRouter, HTTPException, Request
@@ -24,8 +26,15 @@ async def get_agent_topology() -> dict[str, object]:
 
 
 @router.get("/api/config")
-async def public_config() -> dict[str, bool]:
-    return {"auth_required": get_runtime().settings.auth_required}
+async def public_config() -> dict[str, object]:
+    settings = get_runtime().settings
+    return {
+        "auth_required": settings.auth_required,
+        "resume_feature_enabled": settings.resume_feature_enabled,
+        "review_feature_enabled": settings.review_feature_enabled,
+        "transcription_enabled": settings.transcription_enabled,
+        "transcription_provider_name": settings.transcription_provider_name,
+    }
 
 
 @router.post("/api/auth/register")

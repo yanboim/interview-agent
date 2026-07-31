@@ -1,3 +1,5 @@
+"""OpenTelemetry 可选初始化；观测后端不可用时不影响请求正确性。"""
+
 import logging
 
 from opentelemetry import trace

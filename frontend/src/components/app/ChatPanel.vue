@@ -3,6 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useChatStore } from "@/stores/chat";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
+import * as api from "@/api/client";
 import MarkdownContent from "@/components/MarkdownContent.vue";
 
 const chat = useChatStore();
@@ -183,12 +184,26 @@ async function copyMessage(content: string) {
   }
 }
 
-function rateMessage(index: number, value: "up" | "down") {
+async function rateMessage(index: number, value: "up" | "down") {
   const message = chat.messages[index];
-  if (!message) return;
-  message.feedback = message.feedback === value ? undefined : value;
-  chat.persist(auth.sessionId);
-  toast.show(value === "up" ? "感谢反馈" : "已记录，我们会继续改进", "success", 1600);
+  if (!message?.turnId) {
+    toast.show("该历史回答暂时无法关联反馈，请刷新后重试", "error");
+    return;
+  }
+  try {
+    if (message.feedback === value) {
+      await api.deleteAssistantFeedback(auth.userId, message.turnId);
+      message.feedback = undefined;
+      toast.show("反馈已撤销", "success", 1600);
+    } else {
+      await api.saveAssistantFeedback(auth.userId, message.turnId, value);
+      message.feedback = value;
+      toast.show(value === "up" ? "感谢反馈" : "已记录，我们会继续改进", "success", 1600);
+    }
+    chat.persist(auth.sessionId);
+  } catch {
+    toast.show("反馈保存失败，请稍后重试", "error");
+  }
 }
 
 async function retryLast() {
@@ -268,7 +283,7 @@ async function retryLast() {
               <ul v-if="msg.sources?.length">
                 <li
                   v-for="source in msg.sources"
-                  :key="`${source.kind}:${source.label}:${source.url || ''}`"
+                  :key="`${source.kind}:${source.evidence_id || source.label}:${source.url || ''}`"
                 >
                   <a
                     v-if="source.url"
@@ -277,10 +292,26 @@ async function retryLast() {
                     rel="noopener noreferrer"
                   >{{ source.label }}</a>
                   <span v-else>{{ source.label }}</span>
+                  <small v-if="source.evidence_id">证据 {{ source.evidence_id }}</small>
                   <small v-if="source.fetched_at">抓取于 {{ source.fetched_at }}</small>
                 </li>
               </ul>
               <span v-else>本次检索未返回可展示的来源文件。</span>
+            </aside>
+            <aside
+              v-if="msg.citations?.length || msg.unsupportedClaims?.length"
+              class="answer-sources"
+              aria-label="逐条引用与证据状态"
+            >
+              <strong>逐条引用</strong>
+              <ul>
+                <li v-for="citation in msg.citations" :key="`${citation.support}:${citation.claim}`">
+                  <span>{{ citation.claim }}</span>
+                  <small>
+                    {{ citation.support === "supported" ? `证据 ${citation.evidence_ids.join(", ")}` : citation.support === "conflicting" ? "证据冲突" : "暂无证据支持" }}
+                  </small>
+                </li>
+              </ul>
             </aside>
           </div>
           <template v-else>{{ msg.content }}</template>

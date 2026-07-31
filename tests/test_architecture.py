@@ -23,6 +23,7 @@ def matches_prefix(module: str, prefixes: set[str]) -> bool:
 
 def test_domain_calculation_modules_remain_infrastructure_free() -> None:
     pure_modules = {
+        "agent_safety.py",
         "chat_context.py",
         "chunks.py",
         "evaluation.py",

@@ -11,6 +11,7 @@ from app.application.chat_service import ChatTurnConflict, ChatTurnService
 from app.chat_context import estimate_message_tokens
 from app.database import chat_turns, conversations
 from app.storage import ConversationStore
+from app.model_routing import ModelUnavailable
 
 
 def begin(
@@ -324,6 +325,41 @@ def test_normal_chat_failure_is_durable_and_retryable(
         user_id="user-1",
         session_id="session-1",
     ) == []
+
+
+def test_recoverable_model_unavailable_returns_503_and_safe_retry_state(
+    tmp_path, monkeypatch,
+) -> None:
+    store = ConversationStore(tmp_path / "unavailable-route-chat.db")
+    service = ChatTurnService(store)
+    agent = SimpleNamespace(
+        ainvoke=AsyncMock(side_effect=ModelUnavailable("internal provider detail"))
+    )
+
+    async def run_inline(function, *args, **kwargs):
+        return function(*args, **kwargs)
+
+    monkeypatch.setattr(main_module, "chat_turn_service", service)
+    monkeypatch.setattr(main_module, "get_interview_agent", lambda: agent)
+    monkeypatch.setattr(main_module.asyncio, "to_thread", run_inline)
+    monkeypatch.setattr(main_module.settings, "auth_required", False)
+    request = SimpleNamespace(state=SimpleNamespace())
+    payload = main_module.ChatRequest(
+        user_id="user-1", session_id="session-1", message="模型暂不可用"
+    )
+
+    with pytest.raises(main_module.HTTPException) as captured:
+        asyncio.run(main_module.chat(
+            payload, request, idempotency_key="chat-unavailable-1"
+        ))
+
+    assert captured.value.status_code == 503
+    assert "internal provider detail" not in captured.value.detail
+    with store.engine.connect() as connection:
+        failed = dict(connection.execute(select(chat_turns)).mappings().one())
+    assert failed["status"] == "failed"
+    assert "internal provider detail" not in failed["error"]
+    assert begin(service, key="chat-unavailable-1", content="模型暂不可用")["outcome"] == "claimed"
 
 
 def test_closing_stream_marks_turn_cancelled(

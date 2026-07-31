@@ -1,3 +1,5 @@
+"""用户目标、头像、提醒偏好和今日训练建议的 HTTP 适配器。"""
+
 import asyncio
 import json
 from datetime import UTC, datetime
@@ -8,6 +10,8 @@ from fastapi import APIRouter, HTTPException, Request
 from app.api.execution import run_sync
 from app.api.runtime import get_runtime
 from app.api.schemas import (
+    CoachingMemoryCreateRequest,
+    CoachingMemoryUpdateRequest,
     ProfileAvatarRequest,
     ProductEventRequest,
     ReminderPreferencesRequest,
@@ -16,6 +20,70 @@ from app.api.schemas import (
 from app.api.security import resolve_user_id
 
 router = APIRouter()
+
+
+@router.get("/api/coaching-memories")
+async def coaching_memories(
+    request: Request,
+    user_id: str,
+) -> list[dict[str, object]]:
+    user_id = resolve_user_id(request, user_id)
+    return await run_sync(
+        get_runtime().conversation_store.list_coaching_memories,
+        user_id=user_id,
+    )
+
+
+@router.post("/api/coaching-memories", status_code=201)
+async def propose_coaching_memory(
+    payload: CoachingMemoryCreateRequest,
+    request: Request,
+) -> dict[str, object]:
+    user_id = resolve_user_id(request, payload.user_id)
+    return await run_sync(
+        get_runtime().conversation_store.create_coaching_memory,
+        user_id=user_id,
+        kind=payload.kind,
+        content=payload.content,
+    )
+
+
+@router.patch("/api/coaching-memories/{memory_id}")
+async def update_coaching_memory(
+    memory_id: str,
+    payload: CoachingMemoryUpdateRequest,
+    request: Request,
+) -> dict[str, object]:
+    user_id = resolve_user_id(request, payload.user_id)
+    try:
+        memory = await run_sync(
+            get_runtime().conversation_store.update_coaching_memory,
+            user_id=user_id,
+            memory_id=memory_id,
+            action=payload.action,
+            content=payload.content,
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if memory is None:
+        raise HTTPException(status_code=404, detail="记忆不存在")
+    return memory
+
+
+@router.delete("/api/coaching-memories/{memory_id}", status_code=204)
+async def delete_coaching_memory(
+    memory_id: str,
+    request: Request,
+    user_id: str,
+) -> None:
+    user_id = resolve_user_id(request, user_id)
+    deleted = await run_sync(
+        get_runtime().conversation_store.delete_coaching_memory,
+        user_id=user_id,
+        memory_id=memory_id,
+    )
+    if not deleted:
+        raise HTTPException(status_code=404, detail="记忆不存在")
 
 
 @router.get("/api/profile")

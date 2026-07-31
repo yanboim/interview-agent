@@ -1,3 +1,4 @@
+// 浏览器认证状态：访问令牌只驻留内存，刷新凭据由服务端 HttpOnly Cookie 管理。
 import { defineStore } from "pinia";
 import type { AuthPayload, AuthUser, InterviewGoal } from "@/types";
 import * as api from "@/api/client";
@@ -51,6 +52,10 @@ export const useAuthStore = defineStore("auth", {
     const persisted = loadPersisted();
     return {
       authRequired: false,
+      resumeFeatureEnabled: false,
+      reviewFeatureEnabled: false,
+      transcriptionEnabled: false,
+      transcriptionProviderName: "",
       accessToken: persisted.accessToken || undefined,
       refreshToken: persisted.refreshToken || undefined,
       userId: persisted.userId || api.makeId("user"),
@@ -142,6 +147,10 @@ export const useAuthStore = defineStore("auth", {
       try {
         const config = await api.fetchPublicConfig();
         this.authRequired = config.auth_required;
+        this.resumeFeatureEnabled = Boolean(config.resume_feature_enabled);
+        this.reviewFeatureEnabled = Boolean(config.review_feature_enabled);
+        this.transcriptionEnabled = Boolean(config.transcription_enabled);
+        this.transcriptionProviderName = config.transcription_provider_name || "";
         if (!config.auth_required) {
           this.initializing = false;
           return;

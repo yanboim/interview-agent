@@ -1,3 +1,5 @@
+"""私人知识检索适配器：组合稠密/稀疏检索、重排、相关性门槛和版本化缓存。"""
+
 from functools import lru_cache
 from typing import Any
 
