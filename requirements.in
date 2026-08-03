@@ -1,6 +1,6 @@
 # Direct runtime and test requirements.
 # Regenerate requirements.txt with `make lock-python` under CPython 3.12.
-fastapi>=0.115
+fastapi>=0.141.1
 uvicorn[standard]>=0.30
 langchain>=1.0
 langgraph>=1.0
