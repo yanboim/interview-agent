@@ -1,3 +1,5 @@
+"""检索/引用/忠实度评估指标的纯函数测试。"""
+
 from app.evaluation import (
     citation_scores,
     claim_support_rate,

@@ -1,4 +1,4 @@
-"""Add account profile avatar.
+"""新增账号档案头像。
 
 Revision ID: 20260728_0011
 Revises: 20260726_0010

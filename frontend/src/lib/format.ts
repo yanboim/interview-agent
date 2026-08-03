@@ -1,3 +1,4 @@
+// 通用格式化工具：日期、时长、文件大小等纯函数，均带中文 JSDoc。
 /** 格式化日期为简短中文(M月D日)。解析失败时返回显式占位,避免露出原始 ISO 字符串。 */
 export function formatProfileDate(value: string | null | undefined): string {
   if (!value) return "—";

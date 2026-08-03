@@ -28,6 +28,7 @@ router = APIRouter()
 
 
 def _run_or_404(run: dict[str, object] | None) -> dict[str, object]:
+    """把 ``None`` 结果统一转为 404，否则原样返回工作流。"""
     if run is None:
         raise HTTPException(status_code=404, detail="Agent 工作流不存在")
     return run
@@ -41,6 +42,7 @@ async def propose_training_program(
         min_length=1, max_length=128, alias="Idempotency-Key"
     ),
 ) -> dict[str, object]:
+    """幂等提议个性化训练方案（待确认）。冲突时返回 409。"""
     user_id = resolve_user_id(request, payload.user_id)
     try:
         run = await run_sync(
@@ -57,6 +59,7 @@ async def propose_training_program(
 
 @router.get("/api/agent-runs")
 async def list_agent_runs(request: Request, user_id: str) -> list[dict[str, object]]:
+    """列出当前用户的训练方案工作流（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     return await run_sync(get_runtime().agent_run_service.list_runs, user_id=user_id)
 
@@ -65,6 +68,7 @@ async def list_agent_runs(request: Request, user_id: str) -> list[dict[str, obje
 async def inspect_agent_run(
     request: Request, run_id: str, user_id: str
 ) -> dict[str, object]:
+    """查看单个工作流详情（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     return _run_or_404(await run_sync(
         get_runtime().agent_run_service.inspect, user_id=user_id, run_id=run_id
@@ -75,6 +79,7 @@ async def inspect_agent_run(
 async def stream_agent_run_events(
     request: Request, run_id: str, user_id: str
 ) -> StreamingResponse:
+    """以 SSE 推送工作流的预计算生命周期事件（仅 lifecycle，无正文）。"""
     user_id = resolve_user_id(request, user_id)
     run = _run_or_404(await run_sync(
         get_runtime().agent_run_service.inspect, user_id=user_id, run_id=run_id
@@ -93,6 +98,7 @@ async def _transition_agent_run(
     payload: UserIdentityRequest,
     transition: str,
 ) -> dict[str, object]:
+    """确认/重试/取消工作流的共用逻辑：所有者校验 + 状态转换 + 冲突映射。"""
     user_id = resolve_user_id(request, payload.user_id)
     method = getattr(get_runtime().agent_run_service, transition)
     try:
@@ -109,6 +115,7 @@ async def _transition_agent_run(
 async def confirm_agent_run(
     request: Request, run_id: str, payload: UserIdentityRequest
 ) -> dict[str, object]:
+    """用户确认并执行已提议的训练方案。"""
     return await _transition_agent_run(request, run_id, payload, "confirm")
 
 
@@ -116,6 +123,7 @@ async def confirm_agent_run(
 async def retry_agent_run(
     request: Request, run_id: str, payload: UserIdentityRequest
 ) -> dict[str, object]:
+    """重试已失败的训练方案工作流。"""
     return await _transition_agent_run(request, run_id, payload, "retry")
 
 
@@ -123,6 +131,7 @@ async def retry_agent_run(
 async def cancel_agent_run(
     request: Request, run_id: str, payload: UserIdentityRequest
 ) -> dict[str, object]:
+    """取消尚未执行的训练方案工作流。"""
     return await _transition_agent_run(request, run_id, payload, "cancel")
 
 
@@ -130,6 +139,7 @@ async def cancel_agent_run(
 async def recover_agent_runs(
     request: Request, payload: AgentRunRecoveryRequest
 ) -> dict[str, int]:
+    """管理员回收长时间卡住的僵死工作流步骤（崩溃恢复）。"""
     require_role(request, {"admin"})
     recovered = await run_sync(
         get_runtime().agent_run_service.recover_stale,
@@ -142,6 +152,7 @@ async def recover_agent_runs(
 async def inspect_agent_run_for_admin(
     request: Request, run_id: str
 ) -> dict[str, object]:
+    """管理员查看工作流：仅生命周期元数据，剥离用户私密正文。"""
     require_role(request, {"admin"})
     return _run_or_404(await run_sync(
         get_runtime().agent_run_service.inspect_for_admin, run_id=run_id
@@ -154,6 +165,7 @@ async def capability_profile(
     user_id: str,
     topic: str | None = None,
 ) -> dict[str, object]:
+    """返回当前用户的跨场次能力画像与岗位就绪度（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     clean_topic = topic.strip() if topic else None
     if clean_topic and len(clean_topic) > 200:
@@ -200,6 +212,7 @@ async def list_learning_tasks(
     user_id: str,
     status: Literal["todo", "in_progress", "completed"] | None = None,
 ) -> list[dict[str, object]]:
+    """列出当前用户的学习任务（可按状态过滤，所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     return await run_sync(
         get_runtime().conversation_store.list_learning_tasks,
@@ -213,6 +226,7 @@ async def generate_learning_tasks(
     request: Request,
     payload: LearningTaskGenerateRequest,
 ) -> dict[str, object]:
+    """基于能力画像的薄弱项生成学习任务候选并落库。无评分数据时返回 409。"""
     user_id = resolve_user_id(request, payload.user_id)
     store = get_runtime().conversation_store
     rows = await run_sync(store.get_capability_rows, user_id=user_id)
@@ -238,6 +252,7 @@ async def update_learning_task(
     task_id: str,
     payload: LearningTaskUpdateRequest,
 ) -> dict[str, object]:
+    """更新学习任务状态或截止时间（所有者范围）。无字段更新或不存在时报错。"""
     user_id = resolve_user_id(request, payload.user_id)
     if payload.status is None and payload.due_at is None:
         raise HTTPException(status_code=422, detail="没有需要更新的字段")
@@ -260,6 +275,7 @@ async def review_learning_task(
     task_id: str,
     payload: LearningTaskReviewRequest,
 ) -> dict[str, object]:
+    """对一次间隔复习进行回顾，据此重算下次复习时间（所有者范围）。"""
     user_id = resolve_user_id(request, payload.user_id)
     task = await run_sync(
         get_runtime().conversation_store.review_learning_task,
@@ -279,6 +295,7 @@ async def delete_learning_task(
     task_id: str,
     user_id: str,
 ) -> dict[str, bool]:
+    """删除单个学习任务（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     deleted = await run_sync(
         get_runtime().conversation_store.delete_learning_task,

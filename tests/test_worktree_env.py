@@ -1,3 +1,5 @@
+"""Worktree 隔离环境（端口/项目名）生成的测试。"""
+
 from pathlib import Path
 
 import pytest

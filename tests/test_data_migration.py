@@ -1,3 +1,5 @@
+"""SQLite→PostgreSQL 数据迁移脚本的测试。"""
+
 from sqlalchemy import create_engine
 
 from app.application.chat_service import ChatTurnService

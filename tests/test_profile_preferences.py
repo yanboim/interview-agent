@@ -1,3 +1,5 @@
+"""用户档案与提醒偏好的测试。"""
+
 import base64
 
 import pytest

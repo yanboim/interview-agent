@@ -17,18 +17,20 @@ from app.model_routing import ModelUnavailable, fallback_policy, model_for_purpo
 
 
 class ModelGatewayError(RuntimeError):
-    """Provider-safe error exposed to application services."""
+    """对外暴露给应用服务的、不泄漏供应商细节的安全错误。"""
 
 
 class ModelBudgetExceeded(ModelGatewayError):
-    """The request exceeded its input budget before provider I/O."""
+    """请求在发起供应商 I/O 之前就超出输入预算。"""
 
 
 def _content_size(messages: list[BaseMessage]) -> int:
+    """估算消息列表总字符数，作为输入预算的保守度量。"""
     return sum(len(str(message.content)) for message in messages)
 
 
 def _raise_gateway_error(name: str, exc: Exception) -> None:
+    """把任意供应商异常映射为统一的 ``ModelGatewayError``（已是网关错误则原样上抛）。"""
     if isinstance(exc, ModelGatewayError):
         raise exc
     raise ModelGatewayError(
@@ -37,6 +39,7 @@ def _raise_gateway_error(name: str, exc: Exception) -> None:
 
 
 def _claim_budget_call(purpose: str) -> None:
+    """若当前处于 Agent 执行预算上下文，则登记一次该用途的模型调用。"""
     from app.agent_budget import current_agent_budget
 
     budget = current_agent_budget()
@@ -45,6 +48,7 @@ def _claim_budget_call(purpose: str) -> None:
 
 
 def _record_budget_usage(input_tokens: int, output_tokens: int) -> None:
+    """把本次调用的 token 用量回写到 Agent 执行预算（若存在）。"""
     from app.agent_budget import current_agent_budget
 
     budget = current_agent_budget()
@@ -53,11 +57,22 @@ def _record_budget_usage(input_tokens: int, output_tokens: int) -> None:
 
 
 def _record_first_token() -> None:
+    """记录「首个 token 已产出」，用于 Agent 预算的首 token 时延统计。"""
     from app.agent_budget import current_agent_budget
 
     budget = current_agent_budget()
     if budget:
         budget.record_first_token()
+
+
+def _record_stream_chunk(gateway_name: str, chunk: Any) -> None:
+    """Account for one provider chunk without inspecting or logging its content."""
+    _record_first_token()
+    usage = getattr(chunk.message, "usage_metadata", None) or {}
+    input_tokens = int(usage.get("input_tokens", 0))
+    output_tokens = int(usage.get("output_tokens", 0))
+    request_metrics.observe_tokens(gateway_name, input_tokens, output_tokens)
+    _record_budget_usage(input_tokens, output_tokens)
 
 
 class PolicyChatOpenAI(ChatOpenAI):
@@ -68,8 +83,10 @@ class PolicyChatOpenAI(ChatOpenAI):
     max_concurrency: int
     schema_repair_model_name: str
     fallback_model_name: str = ""
+    zero_chunk_stream_restarts: int = 0
 
     def for_schema_repair(self) -> "PolicyChatOpenAI":
+        """返回切换到结构化输出修复模型的副本（避免原实例被污染）。"""
         if self.model_name == self.schema_repair_model_name:
             return self
         return self.model_copy(update={
@@ -78,6 +95,7 @@ class PolicyChatOpenAI(ChatOpenAI):
         })
 
     def _fallback_copy(self) -> "PolicyChatOpenAI":
+        """返回切换到回退模型的副本，并清除其回退链（防止无限回退）。"""
         return self.model_copy(update={
             "model_name": self.fallback_model_name,
             "fallback_model_name": "",
@@ -225,50 +243,60 @@ class PolicyChatOpenAI(ChatOpenAI):
         messages = args[0] if args else kwargs.get("messages", [])
         self._validate_budget(messages)
         _claim_budget_call(self.gateway_name)
-        try:
-            with self._sync_slot(), request_metrics.dependency(
-                f"model_{self.gateway_name}"
-            ):
-                for chunk in super()._stream(*args, **kwargs):
-                    _record_first_token()
-                    usage = getattr(chunk.message, "usage_metadata", None) or {}
-                    request_metrics.observe_tokens(
-                        self.gateway_name,
-                        int(usage.get("input_tokens", 0)),
-                        int(usage.get("output_tokens", 0)),
+        yielded_chunk = False
+        restarts = 0
+        while True:
+            try:
+                with self._sync_slot(), request_metrics.dependency(
+                    f"model_{self.gateway_name}"
+                ):
+                    for chunk in super()._stream(*args, **kwargs):
+                        yielded_chunk = True
+                        _record_stream_chunk(self.gateway_name, chunk)
+                        yield chunk
+                if restarts:
+                    request_metrics.observe_product(
+                        "model_zero_chunk_stream_restart_recovered"
                     )
-                    _record_budget_usage(
-                        int(usage.get("input_tokens", 0)),
-                        int(usage.get("output_tokens", 0)),
+                return
+            except Exception as exc:
+                if isinstance(exc, ModelBudgetExceeded):
+                    raise
+                if (
+                    not yielded_chunk
+                    and restarts < self.zero_chunk_stream_restarts
+                ):
+                    restarts += 1
+                    _claim_budget_call(f"{self.gateway_name}_stream_restart")
+                    request_metrics.observe_product(
+                        "model_zero_chunk_stream_restart_attempted"
                     )
-                    yield chunk
-        except Exception as exc:
-            if self.fallback_model_name and not isinstance(exc, ModelBudgetExceeded):
-                try:
-                    _claim_budget_call(f"{self.gateway_name}_fallback")
-                    fallback = self._fallback_copy()
-                    with request_metrics.dependency(
-                        f"model_{self.gateway_name}_fallback"
-                    ):
-                        for chunk in ChatOpenAI._stream(fallback, *args, **kwargs):
-                            _record_first_token()
-                            usage = getattr(chunk.message, "usage_metadata", None) or {}
-                            request_metrics.observe_tokens(
-                                f"{self.gateway_name}_fallback",
-                                int(usage.get("input_tokens", 0)),
-                                int(usage.get("output_tokens", 0)),
-                            )
-                            _record_budget_usage(
-                                int(usage.get("input_tokens", 0)),
-                                int(usage.get("output_tokens", 0)),
-                            )
-                            yield chunk
-                    return
-                except Exception as fallback_error:
-                    raise ModelUnavailable(
-                        f"{self.gateway_name} primary and fallback unavailable"
-                    ) from fallback_error
-            _raise_gateway_error(self.gateway_name, exc)
+                    continue
+                if restarts and not yielded_chunk:
+                    request_metrics.observe_product(
+                        "model_zero_chunk_stream_restart_exhausted"
+                    )
+                if not yielded_chunk and self.fallback_model_name:
+                    try:
+                        _claim_budget_call(f"{self.gateway_name}_fallback")
+                        fallback = self._fallback_copy()
+                        with request_metrics.dependency(
+                            f"model_{self.gateway_name}_fallback"
+                        ):
+                            for chunk in ChatOpenAI._stream(
+                                fallback, *args, **kwargs
+                            ):
+                                yielded_chunk = True
+                                _record_stream_chunk(
+                                    f"{self.gateway_name}_fallback", chunk
+                                )
+                                yield chunk
+                        return
+                    except Exception as fallback_error:
+                        raise ModelUnavailable(
+                            f"{self.gateway_name} primary and fallback unavailable"
+                        ) from fallback_error
+                _raise_gateway_error(self.gateway_name, exc)
 
     async def _astream(
         self,
@@ -278,56 +306,60 @@ class PolicyChatOpenAI(ChatOpenAI):
         messages = args[0] if args else kwargs.get("messages", [])
         self._validate_budget(messages)
         _claim_budget_call(self.gateway_name)
-        try:
-            async with self._async_slot():
-                with request_metrics.dependency(f"model_{self.gateway_name}"):
-                    async for chunk in super()._astream(*args, **kwargs):
-                        _record_first_token()
-                        usage = (
-                            getattr(chunk.message, "usage_metadata", None) or {}
-                        )
-                        request_metrics.observe_tokens(
-                            self.gateway_name,
-                            int(usage.get("input_tokens", 0)),
-                            int(usage.get("output_tokens", 0)),
-                        )
-                        _record_budget_usage(
-                            int(usage.get("input_tokens", 0)),
-                            int(usage.get("output_tokens", 0)),
-                        )
-                        yield chunk
-        except Exception as exc:
-            if self.fallback_model_name and not isinstance(exc, ModelBudgetExceeded):
-                try:
-                    _claim_budget_call(f"{self.gateway_name}_fallback")
-                    fallback = self._fallback_copy()
-                    async with fallback._async_slot():
-                        with request_metrics.dependency(
-                            f"model_{self.gateway_name}_fallback"
-                        ):
-                            async for chunk in ChatOpenAI._astream(
-                                fallback, *args, **kwargs
+        yielded_chunk = False
+        restarts = 0
+        while True:
+            try:
+                async with self._async_slot():
+                    with request_metrics.dependency(f"model_{self.gateway_name}"):
+                        async for chunk in super()._astream(*args, **kwargs):
+                            yielded_chunk = True
+                            _record_stream_chunk(self.gateway_name, chunk)
+                            yield chunk
+                if restarts:
+                    request_metrics.observe_product(
+                        "model_zero_chunk_stream_restart_recovered"
+                    )
+                return
+            except Exception as exc:
+                if isinstance(exc, ModelBudgetExceeded):
+                    raise
+                if (
+                    not yielded_chunk
+                    and restarts < self.zero_chunk_stream_restarts
+                ):
+                    restarts += 1
+                    _claim_budget_call(f"{self.gateway_name}_stream_restart")
+                    request_metrics.observe_product(
+                        "model_zero_chunk_stream_restart_attempted"
+                    )
+                    continue
+                if restarts and not yielded_chunk:
+                    request_metrics.observe_product(
+                        "model_zero_chunk_stream_restart_exhausted"
+                    )
+                if not yielded_chunk and self.fallback_model_name:
+                    try:
+                        _claim_budget_call(f"{self.gateway_name}_fallback")
+                        fallback = self._fallback_copy()
+                        async with fallback._async_slot():
+                            with request_metrics.dependency(
+                                f"model_{self.gateway_name}_fallback"
                             ):
-                                _record_first_token()
-                                usage = (
-                                    getattr(chunk.message, "usage_metadata", None) or {}
-                                )
-                                request_metrics.observe_tokens(
-                                    f"{self.gateway_name}_fallback",
-                                    int(usage.get("input_tokens", 0)),
-                                    int(usage.get("output_tokens", 0)),
-                                )
-                                _record_budget_usage(
-                                    int(usage.get("input_tokens", 0)),
-                                    int(usage.get("output_tokens", 0)),
-                                )
-                                yield chunk
-                    return
-                except Exception as fallback_error:
-                    raise ModelUnavailable(
-                        f"{self.gateway_name} primary and fallback unavailable"
-                    ) from fallback_error
-            _raise_gateway_error(self.gateway_name, exc)
+                                async for chunk in ChatOpenAI._astream(
+                                    fallback, *args, **kwargs
+                                ):
+                                    yielded_chunk = True
+                                    _record_stream_chunk(
+                                        f"{self.gateway_name}_fallback", chunk
+                                    )
+                                    yield chunk
+                        return
+                    except Exception as fallback_error:
+                        raise ModelUnavailable(
+                            f"{self.gateway_name} primary and fallback unavailable"
+                        ) from fallback_error
+                _raise_gateway_error(self.gateway_name, exc)
 
 
 class PolicyEmbeddings(OpenAIEmbeddings):
@@ -422,6 +454,23 @@ def create_chat_model(
     max_retries: int | None = None,
     settings: Settings | None = None,
 ) -> PolicyChatOpenAI:
+    """构建带统一策略的对话模型实例（外部模型唯一构造点之一）。
+
+    应用输入预算、最大输出、超时、重试、并发、回退模型与结构化修复模型
+    等策略。各参数缺省时回退到配置默认值。
+
+    参数:
+        purpose: 模型用途，决定选用哪个模型与是否允许回退。
+        temperature: 采样温度。
+        streaming: 是否启用流式。
+        max_tokens / timeout_seconds / max_retries: 可覆盖配置的相应策略。
+
+    异常:
+        RuntimeError: 未配置 ``ZHIPU_API_KEY``。
+
+    返回:
+        绑定了全部策略的 ``PolicyChatOpenAI`` 实例。
+    """
     current = settings or get_settings()
     if not current.zhipu_api_key:
         raise RuntimeError("未配置 ZHIPU_API_KEY，无法调用模型。")
@@ -436,6 +485,7 @@ def create_chat_model(
         max_concurrency=current.llm_max_concurrency,
         schema_repair_model_name=model_for_purpose(current, "schema_repair"),
         fallback_model_name=fallback.fallback_model or "",
+        zero_chunk_stream_restarts=current.llm_zero_chunk_stream_restarts,
         model=model_for_purpose(current, purpose),
         api_key=current.zhipu_api_key,
         base_url=current.zhipu_api_base,
@@ -459,6 +509,16 @@ def create_embeddings(
     *,
     settings: Settings | None = None,
 ) -> PolicyEmbeddings:
+    """构建带预算与并发保护的向量化模型实例（外部 Embedding 唯一构造点）。
+
+    API Key 优先用 Embedding 专用 Key，回退到通用 Zhipu Key。
+
+    异常:
+        RuntimeError: 未配置任何可用 Key。
+
+    返回:
+        绑定策略的 ``PolicyEmbeddings`` 实例。
+    """
     current = settings or get_settings()
     api_key = current.zhipu_embedding_api_key or current.zhipu_api_key
     if not api_key:

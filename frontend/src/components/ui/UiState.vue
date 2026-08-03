@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 通用状态占位组件：loading/empty/error 三种空态展示。
 withDefaults(
   defineProps<{
     kind?: "loading" | "empty" | "error";

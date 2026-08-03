@@ -1,3 +1,4 @@
+// 管理端会话状态：与产品用户隔离，令牌仅存 sessionStorage。
 import { defineStore } from "pinia";
 import type { AuthPayload } from "@/types";
 import {

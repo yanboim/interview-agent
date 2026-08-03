@@ -93,12 +93,16 @@ Alembic.
 
 ## Before handoff
 
-Run the verification appropriate to the change using the
-[testing guide](testing.md). Repository-wide behavior changes require:
+Run focused tests or `make dev-check` while iterating. Before opening or
+updating a pull request, run:
 
 ```bash
-make harness-check
+make pr-check
 ```
+
+Main and release candidates run `make harness-check`. If the change affects a
+browser-critical journey, run the relevant `make e2e` coverage before handoff.
+See the [testing guide](testing.md) for the complete scope matrix.
 
 If a required check cannot run, report the exact missing dependency and list
 the checks that did run.

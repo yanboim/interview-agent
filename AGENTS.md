@@ -43,8 +43,10 @@ decision when the disagreement is architectural.
 4. Add or update tests and repository documentation with the implementation.
    Run `make docs-generate` when documentation changes so the Simplified
    Chinese mirror stays synchronized.
-5. Run focused checks while iterating.
-6. Run `make harness-check` before declaring a repository-wide change complete.
+5. Run focused checks or `make dev-check` while iterating.
+6. Run `make pr-check` before declaring a branch ready. Main and release
+   candidates run `make harness-check`; changes to browser-critical journeys
+   also run focused `make e2e` coverage before handoff.
 7. Update the execution plan and technical-debt tracker. Move completed plans
    into `docs/exec-plans/completed/`.
 
@@ -88,11 +90,13 @@ module boundaries.
 ## Verification
 
 - Focused backend test: `pytest -q tests/<relevant_file>.py`
+- Short local static feedback: `make dev-check`
+- Deterministic pull-request gate: `make pr-check`
 - Backend suite: `pytest -q`
 - Frontend unit/type/build: `make frontend-check`
 - Harness contracts and architecture: `make harness-static`
 - Generated references and Chinese mirror: `make docs-check`
-- Full local gate, including browser E2E: `make harness-check`
+- Main/release gate, including browser E2E: `make harness-check`
 - External-service PostgreSQL checks require `TEST_POSTGRES_URL`.
 - Live model and RAG evaluations are explicit cost-bearing operations; do not
   run them unless the task requires them and credentials are configured.

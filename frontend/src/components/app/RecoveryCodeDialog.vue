@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 恢复码对话框：注册/重置后展示一次性恢复码并提示妥善保存。
 import { ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";

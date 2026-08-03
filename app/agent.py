@@ -6,8 +6,6 @@ from typing import Any
 from langchain.agents import create_agent
 from app.config import get_settings
 from app.model_gateway import create_chat_model
-from app.model_routing import classify_intent, rollout_allows_direct_route
-from app.operations import request_metrics
 from app.tools import (
     confirm_personal_learning_plan,
     confirm_public_web_search,
@@ -47,7 +45,13 @@ Python 后端、RAG、向量数据库、LangChain/LangGraph、Agent 和系统设
 
 @lru_cache
 def get_single_interview_agent() -> Any:
-    """Create the agent lazily so the health endpoint needs no API key."""
+    """惰性构建单 Agent（健康检查不需要 API Key，故不在导入期创建）。
+
+    组装系统提示、受控工具集与统一网关模型；联网工具仅在功能开关开启时挂载。
+
+    异常:
+        RuntimeError: 未配置 ``ZHIPU_API_KEY``。
+    """
     settings = get_settings()
     if not settings.zhipu_api_key:
         raise RuntimeError("未配置 ZHIPU_API_KEY，请先在 .env 中填写智谱 API Key。")
@@ -72,74 +76,3 @@ def get_single_interview_agent() -> Any:
         tools=tools,
         system_prompt=SYSTEM_PROMPT,
     )
-
-
-@lru_cache
-def get_interview_agent() -> Any:
-    settings = get_settings()
-    if settings.multi_agent_enabled:
-        from app.multi_agent import get_supervisor_agent
-
-        return get_supervisor_agent()
-    return get_single_interview_agent()
-
-
-def select_interview_agent(
-    *,
-    message: str,
-    user_id: str,
-    role: str,
-    default_agent: Any,
-    settings: Any | None = None,
-) -> Any:
-    """Skip Supervisor only for a gated, high-confidence single intent."""
-    current = settings or get_settings()
-    purpose = route_purpose(
-        message=message, user_id=user_id, role=role, settings=current
-    )
-    if purpose in {"single_agent", "supervisor"}:
-        if purpose == "supervisor" and current.agent_direct_route_enabled:
-            request_metrics.observe_product("agent_route_supervisor")
-        return default_agent
-    from app.multi_agent import (
-        get_evaluator_agent,
-        get_interviewer_agent,
-        get_knowledge_agent,
-        get_planner_agent,
-    )
-
-    factories = {
-        "knowledge": get_knowledge_agent,
-        "interviewer": get_interviewer_agent,
-        "evaluator": get_evaluator_agent,
-        "planner": get_planner_agent,
-    }
-    request_metrics.observe_product(f"agent_route_direct_{purpose}")
-    return factories[purpose]()
-
-
-def route_purpose(
-    *, message: str, user_id: str, role: str, settings: Any | None = None
-) -> str:
-    current = settings or get_settings()
-    if not current.multi_agent_enabled:
-        return "single_agent"
-    if (
-        not current.multi_agent_enabled
-        or not current.agent_direct_route_enabled
-        or not rollout_allows_direct_route(
-            stage=current.agent_routing_rollout_stage,
-            user_id=user_id,
-            role=role,
-            canary_percent=current.agent_routing_canary_percent,
-        )
-    ):
-        return "supervisor"
-    decision = classify_intent(message)
-    if (
-        decision.multi_intent
-        or decision.specialist is None
-        or decision.confidence < current.agent_direct_route_min_confidence
-    ):
-        return "supervisor"
-    return decision.specialist

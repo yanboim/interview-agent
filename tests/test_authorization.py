@@ -1,3 +1,5 @@
+"""授权与服务端解析用户身份（owner scoping）的测试。"""
+
 import asyncio
 from types import SimpleNamespace
 

@@ -1,3 +1,4 @@
+// 管理端资源状态/暴露面的中文标签映射。
 import type {
   AdminResourceExposure,
   AdminResourceStatus,

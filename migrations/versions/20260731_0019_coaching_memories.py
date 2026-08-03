@@ -1,4 +1,4 @@
-"""Add owner-scoped confirmed coaching memories.
+"""新增所有者范围内已确认的教练记忆。
 
 Revision ID: 20260731_0019
 Revises: 20260731_0018

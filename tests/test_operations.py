@@ -1,7 +1,11 @@
+"""运维基础设施（Redis 运行时、限流、指标）的测试。"""
+
 import json
 from unittest.mock import MagicMock
 
 import pytest
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from redis.exceptions import RedisError
 
 from app.operations import (
@@ -12,6 +16,7 @@ from app.operations import (
     RequestMetrics,
     SharedRateLimiter,
 )
+from app.operational_metrics import OperationalMetricInstruments
 
 
 def test_rate_limiter_blocks_requests_inside_window():
@@ -93,6 +98,99 @@ def test_model_run_metrics_include_request_class_and_price_version():
     assert f"model_runs_total{{{labels}}} 1" in rendered
     assert f"model_run_calls_total{{{labels}}} 2" in rendered
     assert f"model_run_cost_usd_total{{{labels}}} 0.00100000" in rendered
+
+
+def test_workflow_metrics_support_completion_rate_p95_and_cost_queries():
+    metrics = RequestMetrics()
+    metrics.observe_workflow_run(
+        "chat-workflow-v2",
+        outcome="completed",
+        duration_seconds=1.2,
+        cost_usd=0.015,
+    )
+    metrics.observe_workflow_run(
+        "chat-workflow-v2",
+        outcome="failed",
+        duration_seconds=3.0,
+        cost_usd=0.005,
+    )
+
+    rendered = metrics.render_prometheus()
+    assert (
+        'workflow_runs_total{workflow="chat-workflow-v2",outcome="completed"} 1'
+        in rendered
+    )
+    assert (
+        'workflow_runs_total{workflow="chat-workflow-v2",outcome="failed"} 1'
+        in rendered
+    )
+    assert (
+        'workflow_duration_seconds_bucket{workflow="chat-workflow-v2",le="2.5"} 1'
+        in rendered
+    )
+    assert (
+        'workflow_duration_seconds_bucket{workflow="chat-workflow-v2",le="+Inf"} 2'
+        in rendered
+    )
+    assert (
+        'workflow_duration_seconds_count{workflow="chat-workflow-v2"} 2'
+        in rendered
+    )
+    assert (
+        'workflow_cost_usd_total{workflow="chat-workflow-v2"} 0.02000000'
+        in rendered
+    )
+
+
+def test_metrics_are_also_emitted_through_opentelemetry():
+    reader = InMemoryMetricReader()
+    provider = MeterProvider(metric_readers=[reader])
+    instruments = OperationalMetricInstruments(
+        provider.get_meter("interview-agent-test")
+    )
+    metrics = RequestMetrics(telemetry=instruments)
+
+    started = metrics.start()
+    metrics.finish(started, 503)
+    with metrics.dependency("database"):
+        pass
+    metrics.observe_tokens("knowledge", 20, 5)
+    metrics.observe_product("workflow_completed")
+    metrics.set_product_gauge("score_confidence", 0.8)
+    metrics.observe_model_run({
+        "request_class": "chat", "price_version": "price-v1",
+        "call_count": 1, "input_tokens": 20, "output_tokens": 5,
+        "cost_usd": 0.001, "wall_time_ms": 50, "first_token_ms": 10,
+    })
+    metrics.observe_workflow_run(
+        "chat-workflow-v2",
+        outcome="completed",
+        duration_seconds=0.5,
+        cost_usd=0.001,
+    )
+
+    exported = reader.get_metrics_data()
+    names = {
+        metric.name
+        for resource in exported.resource_metrics
+        for scope in resource.scope_metrics
+        for metric in scope.metrics
+    }
+
+    assert {
+        "interview_agent.requests",
+        "interview_agent.errors",
+        "interview_agent.active_requests",
+        "interview_agent.request.duration",
+        "interview_agent.dependency.calls",
+        "interview_agent.model.input_tokens",
+        "interview_agent.product.events",
+        "interview_agent.product.quality",
+        "interview_agent.model.cost",
+        "interview_agent.workflow.runs",
+        "interview_agent.workflow.duration",
+        "interview_agent.workflow.cost",
+    } <= names
 
 
 def test_shared_rate_limiter_uses_redis_when_available():

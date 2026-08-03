@@ -1,3 +1,4 @@
+// 产品埋点上报：异步发送，失败静默不阻塞用户主流程。
 import { apiFetch } from "@/api/core";
 
 export function trackEvent(

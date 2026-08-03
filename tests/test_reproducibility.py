@@ -1,3 +1,5 @@
+"""依赖锁与构建可复现性校验的测试。"""
+
 from pathlib import Path
 
 from scripts.reproducibility import (

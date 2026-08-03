@@ -15,6 +15,8 @@ from app.database import auth_tokens, users
 
 @dataclass(frozen=True)
 class AuthenticatedUser:
+    """认证通过后的用户身份（服务端解析，作为所有者权威来源）。"""
+
     user_id: str
     username: str
     role: str
@@ -22,6 +24,8 @@ class AuthenticatedUser:
 
 @dataclass(frozen=True)
 class TokenPair:
+    """登录成功后返回的令牌对（访问 + 刷新）。"""
+
     access_token: str
     refresh_token: str
     expires_in: int
@@ -30,10 +34,15 @@ class TokenPair:
 
 
 class AuthSurfaceError(ValueError):
-    """Credentials are valid, but belong to a different login surface."""
+    """凭据有效但属于不同的登录入口（产品用户 vs 管理员）。"""
 
 
 def hash_password(password: str, salt: bytes | None = None) -> tuple[str, str]:
+    """用 scrypt 对密码加盐哈希，返回 ``(哈希 hex, 盐 hex)``。
+
+    盐省略时随机生成 16 字节；参数固定（n=2^14, r=8, p=1, dklen=32）保证
+    计算开销足以抗暴力，且可复现校验。
+    """
     password_salt = salt or secrets.token_bytes(16)
     digest = hashlib.scrypt(
         password.encode("utf-8"),
@@ -47,15 +56,23 @@ def hash_password(password: str, salt: bytes | None = None) -> tuple[str, str]:
 
 
 def verify_password(password: str, expected_hash: str, salt_hex: str) -> bool:
+    """用恒定时间比较校验密码，避免时序侧信道泄露信息。"""
     actual_hash, _ = hash_password(password, bytes.fromhex(salt_hex))
     return secrets.compare_digest(actual_hash, expected_hash)
 
 
 def token_digest(token: str) -> str:
+    """计算令牌的 SHA-256 摘要；库中只存摘要，不存明文令牌。"""
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 class AuthService:
+    """认证领域服务：密码、令牌、恢复码的全生命周期。
+
+    所有写操作都在 ``engine.begin()`` 单事务内原子完成；令牌仅以摘要入库，
+    明文令牌只返回给客户端一次。产品用户与管理员使用独立登录入口，互不相通。
+    """
+
     def __init__(
         self,
         engine: Engine,
@@ -63,6 +80,7 @@ class AuthService:
         access_token_minutes: int = 60,
         refresh_token_days: int = 30,
     ) -> None:
+        """注入数据库引擎与令牌有效期配置。"""
         self.engine = engine
         self.access_token_seconds = access_token_minutes * 60
         self.refresh_token_days = refresh_token_days
@@ -74,6 +92,11 @@ class AuthService:
         *,
         role: str = "user",
     ) -> TokenPair:
+        """创建用户并直接签发令牌对，同时生成首次恢复码。
+
+        异常:
+            ValueError: 用户名已存在或不支持的角色。
+        """
         user = self.create_user(username, password, role=role)
         pair = self._issue_token_pair(user)
         recovery_code = self.generate_recovery_code(user_id=user.user_id)
@@ -92,6 +115,11 @@ class AuthService:
         *,
         role: str = "user",
     ) -> AuthenticatedUser:
+        """创建用户（用户名小写化存库）。
+
+        异常:
+            ValueError: 角色非法或用户名已存在（唯一约束冲突）。
+        """
         if role not in {"user", "admin"}:
             raise ValueError("不支持的用户角色")
         now = datetime.now(UTC).isoformat()
@@ -119,21 +147,33 @@ class AuthService:
         return user
 
     def login(self, username: str, password: str) -> TokenPair:
+        """通用登录（不限角色），校验通过即签发令牌对。"""
         return self._issue_token_pair(self._authenticate(username, password))
 
     def login_user(self, username: str, password: str) -> TokenPair:
+        """产品用户入口：仅允许 role=user 登录，管理员被拒。
+
+        异常:
+            AuthSurfaceError: 该账号是管理员，需走管理入口。
+        """
         user = self._authenticate(username, password)
         if user.role != "user":
             raise AuthSurfaceError("管理员账号请使用独立管理入口")
         return self._issue_token_pair(user)
 
     def login_admin(self, username: str, password: str) -> TokenPair:
+        """管理员入口：仅允许 role=admin 登录，普通用户被拒。
+
+        异常:
+            AuthSurfaceError: 该账号不是管理员。
+        """
         user = self._authenticate(username, password)
         if user.role != "admin":
             raise AuthSurfaceError("该账号不是管理员")
         return self._issue_token_pair(user)
 
     def _authenticate(self, username: str, password: str) -> AuthenticatedUser:
+        """校验用户名密码；失败统一报「用户名或密码错误」避免枚举。"""
         with self.engine.connect() as connection:
             row = connection.execute(
                 select(users).where(users.c.username == username.casefold())
@@ -151,6 +191,11 @@ class AuthService:
         )
 
     def refresh(self, refresh_token: str) -> TokenPair:
+        """用刷新令牌换取新令牌对，并撤销旧刷新令牌（旋转）。
+
+        异常:
+            ValueError: 刷新令牌无效或已过期。
+        """
         user = self._resolve_token(refresh_token, "refresh")
         if not user:
             raise ValueError("刷新令牌无效或已过期")
@@ -158,9 +203,11 @@ class AuthService:
         return self._issue_token_pair(user)
 
     def resolve_access_token(self, access_token: str) -> AuthenticatedUser | None:
+        """校验访问令牌；有效返回用户身份，否则返回 ``None``。"""
         return self._resolve_token(access_token, "access")
 
     def revoke(self, token: str) -> None:
+        """撤销指定令牌（置 ``revoked_at``），用于登出/改密/重置。"""
         now = datetime.now(UTC).isoformat()
         with self.engine.begin() as connection:
             connection.execute(
@@ -179,6 +226,11 @@ class AuthService:
         current_password: str,
         new_password: str,
     ) -> None:
+        """改密并在同一事务吊销该用户所有现存令牌（强制重新登录）。
+
+        异常:
+            ValueError: 当前密码错误。
+        """
         with self.engine.begin() as connection:
             row = connection.execute(
                 select(
@@ -213,6 +265,11 @@ class AuthService:
             )
 
     def generate_recovery_code(self, *, user_id: str) -> str:
+        """生成并持久化新的恢复码（旧恢复码失效），返回明文仅此一次。
+
+        异常:
+            ValueError: 用户不存在。
+        """
         recovery_code = "-".join(
             secrets.token_hex(3).upper() for _ in range(4)
         )
@@ -236,6 +293,14 @@ class AuthService:
         recovery_code: str,
         new_password: str,
     ) -> str:
+        """用恢复码重置密码，并在同一事务吊销所有令牌、生成新恢复码。
+
+        返回:
+            新的明文恢复码（旧恢复码与所有令牌失效）。
+
+        异常:
+            ValueError: 用户名或恢复码无效。
+        """
         with self.engine.begin() as connection:
             row = connection.execute(
                 select(
@@ -283,6 +348,7 @@ class AuthService:
         token: str,
         token_type: str,
     ) -> AuthenticatedUser | None:
+        """按摘要查令牌：未撤销且未过期则返回用户身份，否则 ``None``。"""
         now = datetime.now(UTC).isoformat()
         statement = (
             select(users.c.user_id, users.c.username, users.c.role)
@@ -310,6 +376,7 @@ class AuthService:
         )
 
     def _issue_token_pair(self, user: AuthenticatedUser) -> TokenPair:
+        """签发访问+刷新令牌对（仅摘要入库），明文令牌只返回一次。"""
         now = datetime.now(UTC)
         access_token = secrets.token_urlsafe(32)
         refresh_token = secrets.token_urlsafe(48)

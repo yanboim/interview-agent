@@ -1,3 +1,5 @@
+"""创建或升级管理员账号的运维脚本。"""
+
 import argparse
 
 from app.auth import AuthService

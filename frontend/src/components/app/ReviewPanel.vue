@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 面试复盘面板：文本/音频逐字稿编辑、确认分析与回合评分。
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { confirm } from "@/composables/confirm";

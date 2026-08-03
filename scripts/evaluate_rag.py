@@ -1,3 +1,5 @@
+"""端到端 RAG 评测：检索召回、重排效果与引用命中。"""
+
 import argparse
 import json
 from pathlib import Path

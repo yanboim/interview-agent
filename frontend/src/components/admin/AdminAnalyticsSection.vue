@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理端埋点分析分区：产品事件统计与趋势展示。
 import { computed } from "vue";
 import { useAdminStore } from "@/stores/admin";
 

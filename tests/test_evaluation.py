@@ -1,3 +1,5 @@
+"""评估指标聚合报告的测试。"""
+
 from app.evaluation import hit_at_k, reciprocal_rank
 
 

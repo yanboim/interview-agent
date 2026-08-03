@@ -1,7 +1,9 @@
+"""后台 Worker（领取/心跳/重试/恢复）的测试。"""
+
 from unittest.mock import MagicMock
 
 from app.operations import JobClaim
-from scripts.worker import process_one_job, start_worker_heartbeat
+from app.worker_runtime import process_one_job, start_worker_heartbeat
 
 
 def claim(attempt: int = 1) -> JobClaim:

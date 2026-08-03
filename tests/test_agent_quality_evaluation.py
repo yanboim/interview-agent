@@ -1,3 +1,5 @@
+"""Agent 全栈质量评测脚本的测试。"""
+
 import json
 from copy import deepcopy
 from pathlib import Path

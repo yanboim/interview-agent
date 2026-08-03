@@ -1,3 +1,5 @@
+"""管理员后台 HTTP 接口的集成测试。"""
+
 import asyncio
 from types import SimpleNamespace
 

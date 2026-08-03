@@ -1,3 +1,5 @@
+"""Agent 受控工具（检索、计划、确认）的执行与审计测试。"""
+
 import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace

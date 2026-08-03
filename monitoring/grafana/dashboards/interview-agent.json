@@ -38,6 +38,24 @@
       "title": "Agent output tokens",
       "targets": [{"expr": "increase(interview_agent_llm_output_tokens_total[1h])"}],
       "gridPos": {"x": 12, "y": 13, "w": 12, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Historical Supervisor and Workflow V2 outcomes",
+      "targets": [{"expr": "sum by (workflow, outcome) (increase(interview_agent_workflow_runs_total{workflow=~\"chat-(supervisor-v1|workflow-v2)\"}[30m]))"}],
+      "gridPos": {"x": 0, "y": 21, "w": 8, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Historical Supervisor and Workflow V2 p95 latency",
+      "targets": [{"expr": "histogram_quantile(0.95, sum by (workflow, le) (rate(interview_agent_workflow_duration_seconds_bucket{workflow=~\"chat-(supervisor-v1|workflow-v2)\"}[5m])))"}],
+      "gridPos": {"x": 8, "y": 21, "w": 8, "h": 8}
+    },
+    {
+      "type": "timeseries",
+      "title": "Historical Supervisor and Workflow V2 cost per completion",
+      "targets": [{"expr": "sum by (workflow) (increase(interview_agent_workflow_cost_usd_total{workflow=~\"chat-(supervisor-v1|workflow-v2)\"}[1h])) / clamp_min(sum by (workflow) (increase(interview_agent_workflow_runs_total{workflow=~\"chat-(supervisor-v1|workflow-v2)\",outcome=\"completed\"}[1h])), 1)"}],
+      "gridPos": {"x": 16, "y": 21, "w": 8, "h": 8}
     }
   ]
 }

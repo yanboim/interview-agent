@@ -1,3 +1,5 @@
+"""管理员可观测性（审计事件、执行追踪、交互观察）测试。"""
+
 import json
 import asyncio
 from types import SimpleNamespace

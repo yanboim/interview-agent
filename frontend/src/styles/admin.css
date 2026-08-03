@@ -77,6 +77,31 @@ nav {
 .nav-button.active {
   box-shadow: inset 2px 0 var(--lime);
 }
+.operator-link-group {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
+.nav-group-label {
+  padding: 0 14px 2px;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.operator-link {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  text-decoration: none;
+}
+.operator-link .external-link-icon {
+  margin-left: auto;
+  font-size: var(--fs-xs);
+}
 .sidebar-bottom {
   margin-top: auto;
   display: grid;
@@ -1361,6 +1386,20 @@ body.drawer-open {
   }
   .admin-sidebar nav {
     display: flex;
+  }
+  .operator-link-group {
+    display: flex;
+    margin-top: 0;
+    padding-top: 0;
+    padding-left: 8px;
+    border-top: 0;
+    border-left: 1px solid var(--line);
+  }
+  .nav-group-label {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 8px;
+    white-space: nowrap;
   }
   .sidebar-bottom {
     margin: 0 0 0 auto;

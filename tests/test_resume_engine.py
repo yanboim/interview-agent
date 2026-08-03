@@ -1,3 +1,5 @@
+"""简历解析与事实受控优化稿引擎的测试。"""
+
 from types import SimpleNamespace
 
 from app.config import Settings

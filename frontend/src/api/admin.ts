@@ -1,3 +1,4 @@
+// 管理端 API：用户/审计/交互追踪、知识发布、资源与发版记录。
 import type {
   AdminAudit,
   AdminAuditEvent,

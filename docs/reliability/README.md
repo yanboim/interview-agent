@@ -22,7 +22,12 @@ This document describes the current operating model and safe first actions. The
 - `GET /metrics` exposes Prometheus-format application and dependency metrics.
 - Structured JSON logs are controlled by `JSON_LOGS` and `LOG_LEVEL`.
 - OpenTelemetry export is enabled with `OTEL_ENABLED` and the configured OTLP
-  endpoint.
+  endpoint. The application exports both traces and low-cardinality operational
+  metrics; the bundled Collector accepts both signals.
+- Unknown dependency and provider exceptions are logged server-side and mapped
+  to stable public messages. Readiness and administrator dependency summaries
+  never include exception classes, internal URLs, credentials, or provider
+  response text.
 
 Prometheus and Grafana are included in Compose. Do not expose Qdrant, Redis,
 PostgreSQL, Prometheus, Grafana, or the OpenTelemetry collector publicly.
@@ -54,6 +59,29 @@ PostgreSQL, Prometheus, Grafana, or the OpenTelemetry collector publicly.
 
 Do not delete collections, clear databases, rotate secrets, or run a confirmed
 restore as a diagnostic shortcut.
+
+### Recovering abandoned chat generation
+
+After confirming that the prior application owner is stopped and a chat turn
+has exceeded the approved incident threshold, preview the target database and
+run the bounded recovery command:
+
+```bash
+python -m scripts.recover_stale_chat_turns --older-than-seconds 600 --limit 100 --confirm
+```
+
+The command is intentionally opt-in and refuses thresholds below 60 seconds.
+It changes only matching over-age `generating` claims to `failed`, releases
+their session ownership, and invalidates the old claim token. A retry with the
+same idempotency key then reuses the turn under a new token. Record the command,
+threshold, target environment, recovered count, and retry result. Never use it
+while the previous replica may still be serving normal traffic.
+
+Normal Workflow V2 request timeouts do not require this operator command: the
+executor cancels sibling specialist tasks with a bounded drain and the use case
+persists `failed`/`cancelled` before returning. The command remains only for a
+process crash or a request that was already abandoned before the application
+could run its terminal transition.
 
 ## Knowledge publication and rollback
 
@@ -111,7 +139,8 @@ The prioritized structural register is the
 completed. Residual operational limits still require explicit handling:
 
 - a hard process crash can leave a chat or interview turn in `generating`;
-  automatic takeover is prohibited until an external model call can be fenced;
+  chat has bounded owner-fenced operator recovery, while automatic takeover is
+  prohibited and interview recovery remains workflow-specific;
 - Qdrant historical-version retention is not automated;
 - formal RPO, RTO, data-retention periods, and capacity targets are not yet
   approved.

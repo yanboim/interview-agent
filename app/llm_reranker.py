@@ -17,6 +17,14 @@ _JSON_ARRAY = re.compile(r"\[[\s\d,]*\]")
 
 @lru_cache
 def get_llm_reranker() -> PolicyChatOpenAI:
+    """构建并缓存用于重排的对话模型实例（经统一模型网关创建）。
+
+    返回:
+        低温（``temperature=0``）的 ``PolicyChatOpenAI`` 实例，输出受限为短序号。
+
+    异常:
+        RuntimeError: 未配置 ``ZHIPU_API_KEY`` 时抛出。
+    """
     settings = get_settings()
     if not settings.zhipu_api_key:
         raise RuntimeError("未配置 ZHIPU_API_KEY，无法使用 GLM 重排。")
@@ -29,6 +37,18 @@ def get_llm_reranker() -> PolicyChatOpenAI:
 
 
 def parse_ranking(content: str, candidate_count: int) -> list[int]:
+    """从模型输出文本中解析出候选序号的去重排序。
+
+    模型可能输出多余解释文字，故用正则只截取首个整数数组。序号需落在
+    ``[1, candidate_count]`` 且去重，确保后续可安全地作为重排依据。
+
+    参数:
+        content: 模型原始输出文本。
+        candidate_count: 候选总数，用于序号范围校验。
+
+    返回:
+        合法且去重的序号列表；解析失败或无合法值时返回空列表。
+    """
     match = _JSON_ARRAY.search(content)
     if not match:
         return []
@@ -54,6 +74,21 @@ def llm_rerank_documents(
     query: str,
     candidates: list[RetrievedDocument],
 ) -> list[RerankedDocument]:
+    """用对话模型按「直接回答能力」对候选重排。
+
+    把候选正文摘要与查询送入重排模型，让其输出按相关度排序的序号数组，
+    再据此派生归一化分数。解析失败或序号不全时，用原始顺序补全缺失项，
+    因此模型异常不会丢弃候选——这是「安全回退原始顺序」的设计。
+
+    参数:
+        query: 用户查询。
+        candidates: ``(文档, 原始检索分数)`` 候选列表。
+
+    返回:
+        ``(文档, 重排分数, 原始检索分数)`` 三元组列表，按重排分数降序。
+        重排分数由排名位置 ``1 - (rank-1)/count`` 派生，落在 ``[0, 1]``。
+        输入为空时返回空列表。
+    """
     if not candidates:
         return []
 

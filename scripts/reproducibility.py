@@ -1,6 +1,6 @@
-import argparse
 """检查依赖锁、容器镜像与构建输入是否满足可复现约束。"""
 
+import argparse
 import hashlib
 from pathlib import Path
 import re

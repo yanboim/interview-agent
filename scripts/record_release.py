@@ -1,4 +1,4 @@
-"""Record one deployment outcome in the administrator release ledger."""
+"""向管理员发版记录簿写入一次部署结果。"""
 
 import argparse
 from datetime import UTC, datetime

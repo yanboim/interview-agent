@@ -1,3 +1,5 @@
+"""面试复盘应用服务（转写/确认/分析）的测试。"""
+
 import io
 from pathlib import Path
 

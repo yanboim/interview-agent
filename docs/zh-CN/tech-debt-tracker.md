@@ -22,6 +22,14 @@
 | TD-015 | P1 | Agent质量 | 回答/来源元数据只到回合级，结构化结果依赖自由文本JSON提取，评测规模较小或只检查元数据，浏览器反馈没有进入持久质量闭环。 | 具备声明级证据、已验证的结构化输出、真实Agent栈分组评测门禁，以及带评测候选审核入口的用户级回合反馈。 | 已于2026-07-31完成；由 `agent-quality-feedback-learning-loop` 契约及230例确定性Agent门禁验证 |
 | TD-016 | P1 | Agent编排与上下文 | Specialist委派和聊天尚未形成完整的个性化、持久、可恢复Agent工作流，也缺少可检查的记忆和命令状态。 | 验证受预算约束的服务端上下文快照、经确认的教练记忆、版本化委派信封，以及至少一个持久且幂等的多步骤训练工作流。 | 2026-07-31完成；由 `agent-personalized-context-memory` 和 `durable-personalized-training-workflow` 契约验证 |
 | TD-017 | P2 | Agent效率与学习 | 强制使用同一模型委派会增加成本/延迟，能力聚合校准较弱，复习间隔不考虑回忆结果。 | 验证按用途的模型路由/预算、经过评测的回退策略、感知置信度的能力聚合，以及感知结果的确定性复习调度。 | 已于2026-07-31完成；由 `agent-quality-feedback-learning-loop` 和 `agent-model-cost-resilience-routing` 验证 |
+| TD-018 | P1 | Harness安全与可观测性 | 未知的就绪、面试、队列和知识异常可能进入公开或管理员响应，而核心业务指标只有进程本地兼容视图。 | 使用包含模拟秘密的异常验证稳定公开错误；核心指标同时具备OTLP导出路径，随附的Collector可接收Metrics。 | 已于2026-08-01完成；由 `model-policy-gateway`、`admin-observability-and-audit` 和完整Harness组件门禁验证 |
+| TD-019 | P1 | Agent编排 | 兼容Supervisor增加嵌套模型调用，并留下两套竞争的生产拓扑。 | 失败关闭的预发布验收绑定确定性与隔离真实证据、精确身份清理、不可变回滚产物、所有者批准，并移除所有运行时Supervisor选择器、Prompt和工具路径。 | 已于2026-08-02完成；由 `workflow-v2-prerelease-acceptance.json`、`make workflow-prerelease-retirement-check`、聚焦拓扑测试和不可变镜像回滚指南验证 |
 
 2026-07-29 评审说明：简历中心 UI 优化未引入新的架构技术债；其样式按路由
 加载，现有模型、持久化和权限边界均未改变。
+
+2026-08-03 评审说明：零chunk SSE重启修复补齐了已完成TD-007网关边界的运行时缺口。
+重启仍受模型调用、Token、成本和墙钟预算约束，且不会重放部分流；未引入新的架构技术债。
+
+2026-08-03 评审说明：分层验证移除了Pull Request中重复的浏览器、依赖审计和
+镜像工作，同时保留Main和发布的完整门禁。工作流拆分未引入运行时依赖或产品技术债。

@@ -6,8 +6,29 @@ so entries are grouped by repository milestone.
 
 ## Unreleased
 
-- Synchronize lifecycle documentation with the resume, interview-review,
-  administrator observability, Worker heartbeat, and release-ledger features.
+- Synchronize lifecycle documentation with the completed Agent hardening
+  program and include current onboarding/course documents in the Chinese
+  mirror.
+
+## 2026-07-31
+
+- Add content-free tool audits, outbound-search DLP, untrusted-evidence
+  boundaries, and owner/content-bound confirmations for Agent mutations.
+- Add versioned structured Agent outputs, bounded schema repair, stable
+  evidence identifiers, claim-level citations, and generation provenance.
+- Add confirmed coaching memory, immutable budgeted Agent context snapshots,
+  and versioned specialist delegation envelopes.
+- Add durable personalized-training Agent runs and steps with confirmation,
+  cancellation, retry, recovery, SSE lifecycle events, and stored replay.
+- Add durable assistant feedback, a deterministic 230-case Agent quality gate,
+  calibrated capability confidence, and outcome-aware review scheduling.
+- Add evaluated per-purpose model routing, request budgets, safe fallback, and
+  staged rollout/rollback controls.
+
+## 2026-07-30
+
+- Establish the Agent application hardening program and its safety, quality,
+  personalization, workflow, feedback, and cost/resilience milestones.
 
 ## 2026-07-29
 

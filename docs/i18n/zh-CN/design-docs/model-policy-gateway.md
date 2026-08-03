@@ -8,20 +8,25 @@
 每个聊天调用获得：
 
 - 提供方超时和有界重试次数；
+- 当SSE尝试在未产生任何chunk前失败时，最多执行配置数量的零chunk流重启；每次重启
+  都占用额外的请求模型调用预算，而部分流绝不重放或切换回退模型；
 - 同步/异步调用共享的用途级并发Semaphore；
 - 输入字符安全预算和输出Token上限；
 - 依赖延迟/错误指标；
 - 提供方Token用量核算；
 - 脱敏 `ModelGatewayError` 映射。
 
-Agent调用还会按用途（`supervisor`、`knowledge`、`interviewer`、`evaluator`、
-`planner`、`summarization` 或 `schema_repair`）解析模型；未配置覆盖时继承默认模型。
+Agent调用还会按用途（`knowledge`、`interviewer`、`evaluator`、`planner`、
+`summarization` 或 `schema_repair`）解析模型；未配置覆盖时继承默认模型。
 请求级预算记录调用次数、输入/输出Token、墙钟时间、首Token时间、价格版本和估算成本，
 并在新增调用会超过请求类别上限前拒绝执行。
 
-只有确定性分类器给出高置信单意图且发布阶段允许时，请求才能跳过Supervisor。模糊或
-多意图请求始终保留Supervisor路由。发布依次经过 `off`、`internal`、`canary` 和
-`production`；切换到 `off` 是经过测试的回滚方式。
+启用多Agent执行时，由代码定义的Workflow V2把一个或多个确定性意图映射为有界且有序
+的专业Agent集合，不调用规划模型或嵌套编排调用。未知会话输入遵循有界的知识/通用
+回答专业Agent策略。已退役的Supervisor拓扑不能通过配置恢复；运维回滚必须加载已记录
+并校验摘要的旧版app和worker镜像。对于流式HTTP界面，显式专业Agent并发运行至经过
+验证的最终图状态，再由适配器按确定性路由顺序输出每个结构化答案，因为提供方消息流
+可能只包含工具证据而没有答案chunk。
 
 可选回退在模型及用途取得获批评测报告前保持关闭，并使用同一提供方端点。Evaluator、
 简历分析和面试复盘不会切换到未校准回退模型，而是返回可恢复的不可用状态。
@@ -35,7 +40,10 @@ Embedding和确定性/本地重排不跨提供方网络边界，因此位于网�
 ## 后果
 
 - 提供方策略只有一个实现点。
-- 用途标签区分Supervisor、专业Agent、面试引擎、重排和Embedding遥测。
+- 响应头成功但SSE正文为空并停滞时，可以在不重复可见内容或工具调用chunk的前提下恢复。
+- 用途标签区分专业Agent、面试引擎、重排和Embedding遥测。
 - Agent图仍负责Prompt/工具编排；网关负责传输可靠性和资源限制。
-- `eval/reports/model-routing-canary-approved.json` 记录获批的确定性金丝雀对比和回滚
-  证据；产生费用的Live报告仍作为单独审批的产物保存。
+- `eval/reports/model-routing-canary-approved.json` 记录历史确定性直连路由金丝雀对比，
+  不能作为Workflow V2生产证据。
+- `scripts.check_workflow_rollout` 保留独立的公开生产观察政策及其历史Supervisor基线。
+  已完成的预发布退役改由 `scripts.check_workflow_prerelease` 和不可变回滚产物授权。

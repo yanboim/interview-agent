@@ -5,13 +5,13 @@
 | 领域 | 当前能力 | 主要入口 | 权威证据 |
 |---|---|---|---|
 | 身份 | 注册、登录、刷新、退出、改密、恢复码 | `/api/auth/*` | `tests/test_auth.py` |
-| 目标与账号 | 岗位、方向、JD、头像、提醒偏好 | `/api/profile*` | 资料/偏好/存储测试 |
+| 目标与账号 | 岗位、方向、JD、头像、提醒偏好、训练记忆 | `/api/profile*`, `/api/coaching-memories*` | 资料/记忆/存储测试 |
 | 今日训练 | 基于目标和到期事项推荐下一步 | `/api/today-plan` | 路由及前端E2E |
-| 聊天 | 流式问答、来源、持久历史、幂等重试 | `/api/chat*` | `tests/test_chat_lifecycle.py` |
+| 聊天 | 流式问答、声明级证据、反馈、持久历史、幂等重试 | `/api/chat*` | 聊天生命周期、反馈和前端测试 |
 | 历史 | 搜索、打开、重命名、归档、恢复、删除 | `/api/conversations*` | `tests/test_storage.py` |
 | 面试 | 开始、答题、评分、重答、恢复、归档、报告 | `/api/interviews*` | 面试和存储测试 |
-| 能力 | 跨场次维度、趋势、主题和薄弱点 | `/api/capability-profile` | `tests/test_capability.py` |
-| 学习 | 生成任务、修改状态、复习和删除 | `/api/learning-tasks*` | `tests/test_learning.py` |
+| 能力 | 跨场次维度、趋势、主题、薄弱点和置信度 | `/api/capability-profile` | `tests/test_capability.py` |
+| 学习 | 任务、结果感知复习和持久个性化训练Agent运行 | `/api/learning-tasks*`, `/api/agent-runs*` | 学习、Agent运行和E2E |
 | 简历 | 上传、岗位评估、证据化改写、编辑和DOCX导出 | `/api/resumes*` | 简历服务/API/备份/E2E |
 | 定向面试 | 基于简历项目和JD差距进行文字模拟面试 | `/api/interviews/start` | 定向面试与评估测试 |
 | 面试复盘 | 音频/文本、逐字稿确认、逐题复盘和学习闭环 | `/api/interview-reviews*` | 复盘/转写/Worker/E2E |
@@ -36,7 +36,10 @@
 - SQLite/PostgreSQL持久化和Alembic迁移；
 - Redis限流、缓存、发布锁和可恢复后台任务；
 - Qdrant版本化知识集合与稳定别名；
-- 模型策略网关、上下文预算和多Agent路由；
+- 模型策略网关、按用途路由/预算/回退和多Agent编排；
+- 服务端Agent上下文、确认记忆、版本化委派信封和持久Agent运行；
+- 工具外发DLP、不可信证据、单次确认和内容最小化审计；
+- 结构化输出、声明级引用、用户反馈和230例分组Agent质量门禁；
 - Prometheus指标、结构化日志和OpenTelemetry；
 - Worktree隔离Compose环境；
 - CI、依赖审计、镜像扫描和发布制品。

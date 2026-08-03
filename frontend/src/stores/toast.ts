@@ -1,3 +1,4 @@
+// 全局轻提示状态：info/success/error 的入队、自动消失与手动关闭。
 import { defineStore } from "pinia";
 
 export type ToastKind = "info" | "success" | "error";

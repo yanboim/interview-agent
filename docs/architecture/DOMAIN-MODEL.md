@@ -8,7 +8,9 @@ User
 ├── AuthTokens
 ├── Conversations
 │   ├── Messages
-│   └── ChatTurns
+│   ├── ChatTurns
+│   │   └── AssistantFeedback
+│   └── CoachingMemories
 ├── Interviews
 │   └── InterviewTurns
 │       └── AnswerAttempts
@@ -17,6 +19,10 @@ User
 ├── InterviewReviews
 │   └── InterviewReviewTurns
 ├── LearningTasks
+├── AgentActionConfirmations
+├── AgentRuns
+│   └── AgentSteps
+├── EvaluationCandidates
 ├── ProductEvents
 └── ToolAuditLogs
 ```
@@ -39,6 +45,33 @@ pending -> generating -> completed
 ```
 
 同一会话最多一个生成中的回合。用户消息和助手消息仅在完成时一起物化。
+
+`AssistantFeedback`绑定已完成助手回合和所有者，保存点赞/点踩、原因、可选文本以及
+Prompt/Schema/模型/证据版本。负面反馈只先形成不含正文的 `EvaluationCandidate`；
+隐私评审后才能补充脱敏评估载荷。
+
+## Agent上下文与记忆
+
+`CoachingMemory`是用户拥有的事实、偏好、目标或来源派生观察，状态为 `proposed`、
+`confirmed` 或 `rejected`。只有confirmed且来源仍有效的记录进入不可变Agent上下文
+快照；纠正会递增版本并回到proposed，删除立即从未来快照移除。
+
+`AgentActionConfirmation`保存预览类型、所有者、内容摘要、过期时间、单次领取Token
+和重放结果。它适用于公开搜索外发和学习计划变更，确认不能改变原预览内容。
+
+## 持久Agent工作流
+
+`AgentRun`是应用拥有的多步业务工作流，而不是LangGraph Checkpoint。运行状态为：
+
+```text
+proposed -> awaiting_confirmation -> running -> completed
+                                      ├-> failed
+                                      `-> cancelled
+```
+
+`AgentStep`使用 `pending -> claimed -> completed|failed|skipped`，并保存稳定幂等键、
+输入摘要、领取所有者、尝试、安全错误和结果重放。命令步骤与业务效果在同一事务提交；
+模型/工具网络调用始终位于事务外。
 
 ## 面试
 
@@ -66,8 +99,8 @@ pending -> generating -> completed
 ## 能力与学习
 
 能力画像是从已评分面试回合派生的读取模型，不单独作为权威表。`LearningTask`
-保存薄弱维度、行动、状态、到期时间、复习次数和下次复习时间。活跃任务按业务键
-去重。
+保存薄弱维度、行动、状态、到期时间、复习次数、回忆结果、难度、遗忘次数、置信度
+和下次复习时间。活跃任务按业务键去重，复习间隔在1–60天内确定性计算。
 
 ## 知识发布
 

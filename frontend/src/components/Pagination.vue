@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 通用分页组件：根据总数与页码计算可点击页码列表。
 import { computed } from "vue";
 
 const props = defineProps<{

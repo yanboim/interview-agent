@@ -1,4 +1,4 @@
-"""Add user-owned resume documents and analysis versions.
+"""新增用户拥有的简历文档与评估版本。
 
 Revision ID: 20260729_0014
 Revises: 20260728_0013

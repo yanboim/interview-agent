@@ -1,4 +1,4 @@
-"""Add owner-bound agent action confirmations.
+"""新增所有者绑定的 Agent 动作确认。
 
 Revision ID: 20260730_0017
 Revises: 20260729_0016

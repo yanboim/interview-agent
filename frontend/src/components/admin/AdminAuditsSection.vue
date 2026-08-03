@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理端审计分区：审计事件、工具审计与交互追踪查询。
 import { computed, ref, watch } from "vue";
 import Pagination from "@/components/Pagination.vue";
 import { formatDateTime } from "@/lib/format";

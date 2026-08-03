@@ -106,9 +106,13 @@ Owns SQLAlchemy, Redis, Qdrant, external HTTP, telemetry, and model provider
 details. Infrastructure may implement application-facing interfaces but must
 not import the API composition root.
 
-Current implementations are still organized as flat modules under `app/`.
-Moving them into `app/infrastructure/` is incremental work, not a flag-day
-rewrite.
+Current persistence implementations are composed from aggregate slices in
+`app/repositories/`; `app/storage.py` retains the shared Engine, schema
+initialization, system counts, user administration, and compatibility class.
+Redis jobs/leases, rate limiting, request metrics, private retrieval, public
+search, and learning-tool logic live in capability-specific modules while
+`app/operations.py` and `app/tools.py` preserve stable compatibility exports.
+Further namespace grouping remains incremental work, not a flag-day rewrite.
 
 ## Correctness boundaries
 
@@ -165,9 +169,12 @@ claim-owner tokens, and stored response replay.
 Chat additionally serializes generation per session and materializes its user
 and assistant history messages together only after completion. Provider failure
 or stream cancellation releases the session and preserves the failed/cancelled
-turn for retry. A process crash while `generating` still requires explicit
-operator recovery; automatic lease takeover is prohibited until model-call
-fencing can prevent a slow prior owner from resuming.
+turn for retry. A process crash while `generating` requires the explicit
+`scripts.recover_stale_chat_turns` operator command. Recovery conditionally
+changes only an over-age owner claim to `failed`, releases the session, and
+invalidates its token so a late prior owner cannot commit. Automatic time-based
+takeover remains prohibited because an in-flight model call cannot itself be
+cancelled or leased safely.
 
 ### Knowledge publication
 

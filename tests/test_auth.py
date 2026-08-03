@@ -1,3 +1,5 @@
+"""认证服务：注册、登录、令牌、改密与恢复码的测试。"""
+
 import pytest
 
 from app.auth import AuthService, AuthSurfaceError, hash_password, verify_password

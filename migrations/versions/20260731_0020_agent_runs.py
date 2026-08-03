@@ -1,4 +1,4 @@
-"""Add durable application-owned agent runs and steps.
+"""新增应用拥有的可恢复 Agent run 与 step。
 
 Revision ID: 20260731_0020
 Revises: 20260731_0019

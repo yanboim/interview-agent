@@ -1,3 +1,4 @@
+// Markdown 渲染：完整/流式两种 renderer，统一经 DOMPurify 净化为安全 HTML。
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 import hljs from "highlight.js/lib/common";
@@ -65,9 +66,8 @@ export function renderMarkdown(source: string, streaming = false): string {
 }
 
 /**
- * Render the small inline Markdown subset used inside question headings.
- * Block elements and media are deliberately excluded so model output cannot
- * break the interview layout.
+ * 渲染题干标题使用的小幅内联 Markdown 子集。
+ * 刻意排除块级元素与媒体，避免模型输出破坏面试布局。
  */
 export function renderInlineMarkdown(source: string): string {
   const raw = marked.parseInline(source || "", { async: false }) as string;
@@ -78,10 +78,9 @@ export function renderInlineMarkdown(source: string): string {
 }
 
 /**
- * Repair compact Markdown commonly returned inside structured model fields.
- * This is intentionally opt-in for reference answers; chat content is left
- * untouched. The rules only split explicit numbered bold sections and
- * sentence-delimited bullet markers.
+ * 修复结构化模型字段中常见的紧凑 Markdown。
+ * 仅对参考答案按需启用，聊天内容不做处理；规则只拆分显式编号粗体段与
+ * 句末分隔的列表标记。
  */
 export function normalizeLooseMarkdown(source: string): string {
   return (source || "")
@@ -94,6 +93,20 @@ export function normalizeLooseMarkdown(source: string): string {
       /([。！？；;])\s+-\s+(?=(?:\*\*)?[\p{L}\p{N}])/gu,
       "$1\n- ",
     )
+    .trim();
+}
+
+/**
+ * 修复逐条引用字段中常见但不完整的 Markdown。
+ * 规则严格限定在引用 claim：收紧加粗结束标记前的空格，并移除模型偶发输出的
+ * 句末孤立双反引号；主回答保持原文，不受这些容错规则影响。
+ */
+export function normalizeCitationMarkdown(source: string): string {
+  return (source || "")
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n")
+    .replace(/\*\*([^*\n]*?\S)\s+\*\*/gu, "**$1**")
+    .replace(/\s*``\s*$/u, "")
     .trim();
 }
 

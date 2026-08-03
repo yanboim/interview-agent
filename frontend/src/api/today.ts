@@ -1,3 +1,4 @@
+// 今日训练建议与提醒偏好的 API 封装（含到期复习提醒）。
 import { apiFetch, expectOk } from "@/api/core";
 
 export interface ReminderPreferences {

@@ -1,4 +1,4 @@
-"""Generate and verify the Simplified Chinese lifecycle-document mirror."""
+"""生成并校验文档的简体中文镜像。"""
 
 from __future__ import annotations
 
@@ -29,6 +29,7 @@ MANUAL_TRANSLATIONS = {
     "docs/development.md",
     "docs/documentation-guide.md",
     "docs/design-docs/chat-context-budget.md",
+    "docs/design-docs/chat-use-case-boundary.md",
     "docs/design-docs/durable-chat-turn-lifecycle.md",
     "docs/design-docs/durable-redis-jobs.md",
     "docs/design-docs/frontend-toolchain-audit.md",

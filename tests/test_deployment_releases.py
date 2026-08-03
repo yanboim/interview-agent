@@ -1,3 +1,5 @@
+"""部署发版记录簿（幂等写入）的测试。"""
+
 import asyncio
 from types import SimpleNamespace
 

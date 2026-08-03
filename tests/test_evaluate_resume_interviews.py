@@ -1,3 +1,5 @@
+"""简历定向面试评测脚本的测试。"""
+
 import json
 from pathlib import Path
 

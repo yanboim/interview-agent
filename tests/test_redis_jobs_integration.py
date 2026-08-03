@@ -1,3 +1,5 @@
+"""Redis 可恢复任务队列的集成测试。"""
+
 import hashlib
 import os
 from dataclasses import replace

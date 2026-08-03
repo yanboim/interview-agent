@@ -49,6 +49,11 @@ verification gate.
   images, GitHub Actions, and Python dependency locks.
 - Local `.git` metadata is unavailable, so a temporary bare repository under
   `/tmp` is used with the existing clean workspace as its work tree.
+- After the first two merges refreshed the temporary index, Git exposed a
+  substantial pre-existing August 1–3 workspace delta that the initial
+  timestamp-based status check had misclassified as clean. Preserve that work
+  in a dedicated commit before merging branches that overlap its workflow and
+  dependency files.
 
 ## Rollback
 

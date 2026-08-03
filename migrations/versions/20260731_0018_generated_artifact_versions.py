@@ -1,4 +1,4 @@
-"""Persist prompt, schema, and model versions for generated artifacts.
+"""为生成产物持久化提示词、schema 与模型版本。
 
 Revision ID: 20260731_0018
 Revises: 20260730_0017

@@ -59,7 +59,7 @@ test.beforeEach(async ({ page }) => {
       body: JSON.stringify({
         dependencies: {},
         features: {},
-        agent: { mode: "supervisor", specialists: [] },
+        agent: { mode: "workflow_v2", specialists: [] },
       }),
     }),
   );

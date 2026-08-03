@@ -1,4 +1,4 @@
-"""Deterministic full-stack Agent quality evaluation used by CI."""
+"""供 CI 使用的确定性全栈 Agent 质量评测。"""
 
 import argparse
 import json

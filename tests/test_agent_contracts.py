@@ -1,3 +1,5 @@
+"""Agent 结构化输出契约（pydantic schema）的校验测试。"""
+
 import pytest
 from langchain_core.messages import AIMessage
 

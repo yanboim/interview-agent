@@ -22,7 +22,10 @@
 - `GET /ready` 检查必要且已配置的依赖，用于控制流量准入。
 - `GET /metrics` 暴露Prometheus格式的应用和依赖指标。
 - 结构化JSON日志由 `JSON_LOGS` 和 `LOG_LEVEL` 控制。
-- 通过 `OTEL_ENABLED` 和配置的OTLP Endpoint启用OpenTelemetry导出。
+- 通过 `OTEL_ENABLED` 和配置的OTLP Endpoint启用OpenTelemetry导出。应用同时
+  导出Trace和低基数运维指标；随附的Collector接收这两类信号。
+- 未知依赖和提供方异常只完整记录在服务端日志中，并映射为稳定的公开消息。
+  就绪检查和管理员依赖摘要不会包含异常类型、内部URL、凭据或提供方响应正文。
 - 管理员系统资源中心提供经脱敏的依赖状态和带TTL的Worker新鲜度。
 
 Compose包含Prometheus和Grafana。不得把Qdrant、Redis、PostgreSQL、Prometheus、
@@ -51,6 +54,24 @@ Grafana或OpenTelemetry Collector直接暴露公网。
 6. 记录时间线、受影响功能、缓解措施和后续技术债或设计工作。
 
 不得把删除集合、清空数据库、轮换Secret或确认恢复操作当作诊断捷径。
+
+### 恢复遗留聊天生成
+
+确认原应用所有者已经停止、聊天回合超过批准的事故阈值后，先核对目标数据库，再运行
+有数量上限的恢复命令：
+
+```bash
+python -m scripts.recover_stale_chat_turns --older-than-seconds 600 --limit 100 --confirm
+```
+
+该命令必须显式确认，并拒绝低于60秒的阈值。它只把匹配的超龄 `generating` 领取改为
+`failed`，释放会话所有权并使旧领取Token失效。之后使用同一幂等键重试，会用新Token
+复用原回合。必须记录命令、阈值、目标环境、恢复数量和重试结果。原副本仍可能正常提供
+流量时绝不能运行此命令。
+
+正常的Workflow V2请求超时不需要该运维命令：执行器会以有界清理取消兄弟专家任务，用例会
+在返回前持久化 `failed`/`cancelled`。该命令仅用于进程崩溃，或请求已被放弃且应用来不及执行
+终态转换的情况。
 
 ## 知识发布与回滚
 
@@ -103,8 +124,8 @@ python -m scripts.restore backups/<timestamp> --confirm
 优先级结构问题见[技术债跟踪器](../tech-debt-tracker.md)，当前登记项均已完成。仍需
 显式处理的残余运行限制：
 
-- 进程硬崩溃可能使聊天或面试回合停留在 `generating`；外部模型调用具备围栏前禁止
-  自动接管；
+- 进程硬崩溃可能使聊天或面试回合停留在 `generating`；聊天已具备有界且所有者围栏的
+  人工恢复，仍禁止自动接管，面试恢复继续按具体工作流处理；
 - Qdrant历史版本保留尚未自动化；
 - 正式RPO、RTO、数据保留期限和容量目标尚未批准；
 - 云端音频转写只可在完成提供方、地区、保留和成本审批的环境启用。

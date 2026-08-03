@@ -16,9 +16,8 @@ permissions:
   contents: read
 
 jobs:
-  verify-and-package:
+  verify-harness:
     runs-on: ubuntu-latest
-    environment: ${{ inputs.channel || 'production' }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -34,11 +33,26 @@ jobs:
         run: python -m scripts.reproducibility check
       - run: pip install --require-hashes -r requirements.txt
       - run: npm ci --prefix frontend
-      - run: pytest -q
-      - run: npm test --prefix frontend
-      - run: npm run build --prefix frontend
-      - run: npm run check:bundle --prefix frontend
+      - name: Install browser required by the canonical Harness
+        working-directory: frontend
+        run: npx playwright install --with-deps chromium
+      - name: Run the canonical repository Harness
+        run: make harness-check PYTHON=python NPM=npm
+
+  package:
+    needs: verify-harness
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.channel || 'production' }}
+    steps:
+      - uses: actions/checkout@v4
       - run: docker build -t interview-lab:${{ github.ref_name }} .
+      - name: Scan release image for fixable high-severity vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: interview-lab:${{ github.ref_name }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: "1"
       - run: docker save interview-lab:${{ github.ref_name }} -o interview-lab-image.tar
       - run: sha256sum interview-lab-image.tar > interview-lab-image.sha256
       - uses: actions/upload-artifact@v4

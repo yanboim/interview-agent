@@ -1,4 +1,4 @@
-"""Add users, roles, and opaque authentication tokens.
+"""新增用户、角色与不透明认证令牌。
 
 Revision ID: 20260724_0002
 Revises: 20260724_0001

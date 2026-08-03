@@ -1,3 +1,5 @@
+"""面试出题/评分引擎的测试。"""
+
 import json
 
 from app.interview_engine import build_report, parse_assessment

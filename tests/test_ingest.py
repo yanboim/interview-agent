@@ -1,3 +1,5 @@
+"""知识导入（版本化集合、验证、原子切换）的测试。"""
+
 from pathlib import Path
 
 from scripts.ingest import load_documents

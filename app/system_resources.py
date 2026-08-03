@@ -51,6 +51,20 @@ def _safe_console_url(value: str) -> str | None:
     return value
 
 
+def operator_console_links(settings: Settings) -> list[dict[str, str]]:
+    """Return credential-free operator links safe to expose to administrators."""
+
+    configured = (
+        ("prometheus", "Prometheus", settings.admin_prometheus_url),
+        ("grafana", "Grafana", settings.admin_grafana_url),
+    )
+    return [
+        {"id": resource_id, "name": name, "url": safe_url}
+        for resource_id, name, value in configured
+        if (safe_url := _safe_console_url(value)) is not None
+    ]
+
+
 def _http_probe(url: str, timeout_seconds: float) -> Callable[[], None] | None:
     if not url:
         return None
@@ -223,8 +237,9 @@ def create_system_resource_center(
             "observability",
             "loopback",
             "采集应用指标和告警规则。",
-            "docs/operations/OBSERVABILITY.md",
+            "docs/operations/MONITORING-CATALOG.md",
             check=_http_probe(settings.resource_prometheus_health_url, timeout),
+            console_url=settings.admin_prometheus_url,
         ),
         ResourceSpec(
             "grafana",
@@ -232,7 +247,7 @@ def create_system_resource_center(
             "observability",
             "loopback",
             "提供经过独立运维认证的指标仪表盘。",
-            "docs/operations/OBSERVABILITY.md",
+            "docs/operations/MONITORING-CATALOG.md",
             check=_http_probe(settings.resource_grafana_health_url, timeout),
             console_url=settings.admin_grafana_url,
         ),

@@ -1,3 +1,5 @@
+"""助手回合点赞/点踩反馈的持久化测试。"""
+
 from app.application.chat_service import ChatTurnService
 from app.storage import ConversationStore
 

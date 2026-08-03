@@ -1,3 +1,4 @@
+// 简历上传、评估、优化稿编辑与 DOCX 导出的 API 封装。
 import type { ResumeAnalysis, ResumeDocument, ResumeDraft } from "@/types";
 import { apiFetch, expectOk, makeId } from "@/api/core";
 

@@ -1,3 +1,5 @@
+"""评估简历定向面试的出题质量与相关性。"""
+
 import argparse
 import json
 import re

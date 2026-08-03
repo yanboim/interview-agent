@@ -1,3 +1,4 @@
+// 主题状态：浅色/深色/跟随系统，持久化并应用 ``data-theme`` 到根元素。
 import { defineStore } from "pinia";
 
 export type ThemePreference = "light" | "dark" | "auto";

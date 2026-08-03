@@ -1,3 +1,4 @@
+// 真实面试复盘 API：文本/音频创建、逐字稿编辑、确认分析与重试。
 import { apiFetch, expectOk } from "@/api/core";
 import type { InterviewReview, TranscriptSegment } from "@/types";
 

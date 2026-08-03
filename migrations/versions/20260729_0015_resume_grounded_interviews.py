@@ -1,4 +1,4 @@
-"""Add immutable resume context to interviews.
+"""为面试新增不可变的简历上下文。
 
 Revision ID: 20260729_0015
 Revises: 20260729_0014

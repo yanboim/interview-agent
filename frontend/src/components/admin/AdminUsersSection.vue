@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理端用户分区：用户列表与角色变更。
 import { computed, ref, watch } from "vue";
 import Pagination from "@/components/Pagination.vue";
 import { formatDateTime } from "@/lib/format";

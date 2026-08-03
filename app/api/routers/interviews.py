@@ -7,6 +7,7 @@ import time
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from app.api.execution import run_sync
+from app.api.errors import internal_http_error
 from app.api.runtime import get_runtime
 from app.api.schemas import (
     InterviewAnswerRequest,
@@ -37,6 +38,7 @@ async def _record_interview_trace(
     duration_ms: int,
     detail: dict[str, object],
 ) -> None:
+    """把面试评分的一次执行记入执行追踪（安全元数据，不影响主流程）。"""
     try:
         settings = get_runtime().settings
         await run_sync(
@@ -66,6 +68,7 @@ async def list_interviews(
     user_id: str,
     include_archived: bool = False,
 ) -> list[dict[str, object]]:
+    """列出当前用户的模拟面试（默认不含归档，所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     return await run_sync(
         get_runtime().conversation_store.list_interviews,
@@ -80,6 +83,7 @@ async def interview_detail(
     interview_id: str,
     user_id: str,
 ) -> dict[str, object]:
+    """返回单场面试详情、各回合与待答题、汇总报告（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     store = get_runtime().conversation_store
     interview = await run_sync(
@@ -109,6 +113,7 @@ async def resume_interview(
     interview_id: str,
     payload: UserIdentityRequest,
 ) -> dict[str, object]:
+    """恢复一场未完成的面试，返回当前待答题（所有者范围）。"""
     user_id = resolve_user_id(request, payload.user_id)
     store = get_runtime().conversation_store
     interview = await run_sync(
@@ -147,6 +152,7 @@ async def archive_interview(
     interview_id: str,
     payload: InterviewArchiveRequest,
 ) -> dict[str, bool]:
+    """归档/取消归档单场面试（所有者范围）。"""
     user_id = resolve_user_id(request, payload.user_id)
     changed = await run_sync(
         get_runtime().conversation_store.archive_interview,
@@ -165,6 +171,7 @@ async def delete_interview(
     interview_id: str,
     user_id: str,
 ) -> dict[str, bool]:
+    """永久删除单场面试及其回合（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     deleted = await run_sync(
         get_runtime().conversation_store.delete_interview,
@@ -179,6 +186,7 @@ async def start_interview(
     request: InterviewStartRequest,
     http_request: Request,
 ) -> dict[str, object]:
+    """开始一场模拟面试并生成第一题（可定向到简历评估）。"""
     user_id = resolve_user_id(http_request, request.user_id)
     try:
         return await run_sync(
@@ -195,8 +203,8 @@ async def start_interview(
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("Failed to start interview")
-        raise HTTPException(
-            status_code=500, detail=f"模拟面试启动失败：{exc}"
+        raise internal_http_error(
+            500, operation="模拟面试启动"
         ) from exc
 
 
@@ -212,6 +220,7 @@ async def answer_interview(
         pattern=r"^[A-Za-z0-9._:-]+$",
     ),
 ) -> dict[str, object]:
+    """提交一题答案：幂等评分 + 出下一题（用 ``Idempotency-Key`` 安全重试）。"""
     user_id = resolve_user_id(http_request, request.user_id)
     started_at = time.monotonic()
     try:
@@ -255,7 +264,7 @@ async def answer_interview(
             detail={"error_type": type(exc).__name__},
         )
         logger.exception("Failed to score interview %s", interview_id)
-        raise HTTPException(status_code=500, detail=f"回答评分失败：{exc}") from exc
+        raise internal_http_error(500, operation="回答评分") from exc
 
 
 @router.post("/api/interviews/{interview_id}/turns/{turn_index}/retry")
@@ -265,6 +274,7 @@ async def retry_interview_answer(
     request: InterviewAnswerRequest,
     http_request: Request,
 ) -> dict[str, object]:
+    """重答某一题并重新评分，返回与历史最佳的比较（所有者范围）。"""
     runtime = get_runtime()
     user_id = resolve_user_id(http_request, request.user_id)
     store = runtime.conversation_store
@@ -317,7 +327,7 @@ async def retry_interview_answer(
         logger.exception(
             "Failed to rescore interview %s turn %s", interview_id, turn_index
         )
-        raise HTTPException(status_code=500, detail=f"重新评分失败：{exc}") from exc
+        raise internal_http_error(500, operation="重新评分") from exc
     return {
         "interview_id": interview_id,
         "turn_index": turn_index,
@@ -338,6 +348,7 @@ async def interview_report(
     interview_id: str,
     user_id: str,
 ) -> dict[str, object]:
+    """返回面试汇总报告，含各回合、历史重答尝试与统计（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     store = get_runtime().conversation_store
     interview = await run_sync(

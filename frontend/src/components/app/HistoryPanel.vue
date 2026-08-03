@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 会话历史面板：会话列表、归档、重命名与切换。
 import { computed, onMounted, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";

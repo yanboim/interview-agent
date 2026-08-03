@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 模拟面试面板：出题、作答评分、四维维度与重答。
 import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";

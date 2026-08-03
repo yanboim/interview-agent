@@ -1,3 +1,5 @@
+"""知识分块稳定标识计算的测试。"""
+
 from uuid import UUID
 
 from app.chunks import stable_chunk_id

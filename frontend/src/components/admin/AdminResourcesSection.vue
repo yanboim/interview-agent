@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理端资源分区：监控组件存活、Worker 心跳与依赖暴露面。
 import { computed } from "vue";
 import { useAdminStore } from "@/stores/admin";
 import {

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 用户档案面板：目标岗位、JD、头像、提醒偏好与长期训练记忆管理。
 import { computed, onMounted, watch } from "vue";
 import { useRouter } from "vue-router";
 import { useProfileStore } from "@/stores/profile";

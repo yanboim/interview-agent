@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 全局轻提示堆叠：渲染 toast 列表并处理自动消失与手动关闭。
 import { useToastStore } from "@/stores/toast";
 
 const toasts = useToastStore();

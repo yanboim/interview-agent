@@ -214,6 +214,11 @@
       "mode": "translated"
     },
     {
+      "source": "docs/design-docs/chat-use-case-boundary.md",
+      "mirror": "docs/zh-CN/design-docs/chat-use-case-boundary.md",
+      "mode": "translated"
+    },
+    {
       "source": "docs/design-docs/durable-chat-turn-lifecycle.md",
       "mirror": "docs/zh-CN/design-docs/durable-chat-turn-lifecycle.md",
       "mode": "translated"
@@ -254,6 +259,11 @@
       "mode": "translated"
     },
     {
+      "source": "docs/design-docs/repository-boundary-evolution.md",
+      "mirror": "docs/zh-CN/design-docs/repository-boundary-evolution.md",
+      "mode": "mirrored"
+    },
+    {
       "source": "docs/design-docs/user-sensitive-file-processing.md",
       "mirror": "docs/zh-CN/design-docs/user-sensitive-file-processing.md",
       "mode": "mirrored"
@@ -281,6 +291,16 @@
     {
       "source": "docs/ENGINEERING-HANDOVER-MANUAL.md",
       "mirror": "docs/zh-CN/ENGINEERING-HANDOVER-MANUAL.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/ONBOARDING-GUIDE.md",
+      "mirror": "docs/zh-CN/ONBOARDING-GUIDE.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/enterprise-agent-engineering-course.md",
+      "mirror": "docs/zh-CN/enterprise-agent-engineering-course.md",
       "mode": "mirrored"
     },
     {
@@ -356,6 +376,11 @@
     {
       "source": "docs/quality/README.md",
       "mirror": "docs/zh-CN/quality/README.md",
+      "mode": "mirrored"
+    },
+    {
+      "source": "docs/quality/dynamic-audit.json",
+      "mirror": "docs/zh-CN/quality/dynamic-audit.json",
       "mode": "mirrored"
     },
     {

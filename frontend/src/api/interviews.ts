@@ -1,3 +1,4 @@
+// 模拟面试 API：开始/作答/重答/恢复/归档与报告。
 import type {
   ActiveInterview,
   AnswerResult,

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 简历面板：上传评估、事实受控优化稿编辑与 DOCX 导出。
 import { computed, onMounted, onUnmounted, ref, toRaw, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { exportResumeDocx } from "@/api/resumes";

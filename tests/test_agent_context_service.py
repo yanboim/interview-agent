@@ -1,10 +1,12 @@
+"""Agent 上下文快照服务的构建与不可信记忆过滤测试。"""
+
 import json
 
 import pytest
 
 from app.agent_context import reset_conversation_context, set_conversation_context
 from app.agent_context_service import AgentContextService
-from app.multi_agent import _build_sub_agent_messages
+from app.multi_agent import build_specialist_messages
 from app.storage import ConversationStore
 from app.tool_context import reset_tool_identity, set_tool_identity
 
@@ -72,7 +74,7 @@ def test_context_snapshot_is_immutable_budgeted_and_delegated_once():
         interaction_id="turn-1",
     )
     try:
-        messages = _build_sub_agent_messages("评价这个回答")
+        messages = build_specialist_messages("评价这个回答")
     finally:
         reset_tool_identity(identity_token)
         reset_conversation_context(context_token)
@@ -152,7 +154,7 @@ def test_memory_requires_confirmation_and_is_owner_scoped(tmp_path):
         interaction_id="turn-after-correction",
     )
     try:
-        delegated = json.loads(_build_sub_agent_messages("制定训练计划")[0].content)
+        delegated = json.loads(build_specialist_messages("制定训练计划")[0].content)
     finally:
         reset_tool_identity(identity_token)
         reset_conversation_context(context_token)

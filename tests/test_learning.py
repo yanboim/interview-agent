@@ -1,3 +1,5 @@
+"""学习候选生成与间隔复习时间计算的测试。"""
+
 from datetime import UTC, datetime
 
 from app.learning import build_learning_candidates, next_review_time

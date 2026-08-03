@@ -71,6 +71,7 @@ services:
       RESOURCE_GRAFANA_HEALTH_URL: http://grafana:3000/api/health
       RESOURCE_PROBE_TIMEOUT_SECONDS: ${RESOURCE_PROBE_TIMEOUT_SECONDS:-2}
       WORKER_HEARTBEAT_TTL_SECONDS: ${WORKER_HEARTBEAT_TTL_SECONDS:-20}
+      ADMIN_PROMETHEUS_URL: ${ADMIN_PROMETHEUS_URL:-}
       ADMIN_GRAFANA_URL: ${ADMIN_GRAFANA_URL:-}
       # 前端产物由 Dockerfile 多阶段构建拷贝到 /app/frontend/dist
       FRONTEND_DIST: /app/frontend/dist
@@ -85,6 +86,7 @@ services:
       - "127.0.0.1:${APP_HOST_PORT:-8000}:8000"
     volumes:
       - app_data:/app/data
+      # Keep default named-volume copy-up: first mount initializes approved image seeds.
       - knowledge_data:/app/knowledge
     cap_drop: ["ALL"]
     security_opt: ["no-new-privileges:true"]
@@ -149,6 +151,7 @@ services:
     tmpfs:
       - /tmp
     volumes:
+      # Shared with app; do not set nocopy without an explicit seed initializer.
       - knowledge_data:/app/knowledge
       - app_data:/app/data
 

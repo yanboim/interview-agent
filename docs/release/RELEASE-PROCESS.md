@@ -21,7 +21,8 @@
 ## 2. 构建制品
 
 Release workflow通过Tag或手动选择Canary/Production通道运行，构建Docker镜像，
-导出Tar并生成SHA-256。制品保留期当前为14天。
+在导出前用Trivy阻断仍有修复版本的高危或严重漏洞，然后导出Tar并生成SHA-256。
+制品保留期当前为14天。
 
 制品校验：
 

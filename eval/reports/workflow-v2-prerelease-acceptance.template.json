@@ -1,0 +1,45 @@
+{
+  "schema_version": "workflow-v2-prerelease-acceptance-v1",
+  "workflow_version": "chat-workflow-v2",
+  "lifecycle_stage": "prerelease",
+  "release_id": "REPLACE_WITH_RELEASE_ID",
+  "release_version": "REPLACE_WITH_RELEASE_VERSION",
+  "contains_production_user_content": false,
+  "deterministic_evaluation": {
+    "report_path": "eval/reports/agent-stack-ci.json",
+    "report_sha256": "",
+    "total_cases": 0,
+    "passed_cases": 0,
+    "zero_tolerance_failures": -1,
+    "gate_passed": false
+  },
+  "live_acceptance": {
+    "report_path": ".var/workflow-v2-prerelease-live-acceptance.json",
+    "report_sha256": "",
+    "ended_at": "",
+    "total_cases": 0,
+    "passed_cases": 0,
+    "multi_intent_cases": 0,
+    "specialist_coverage": [],
+    "zero_tolerance_failures": -1,
+    "contains_user_content": false,
+    "cleanup_verified": false
+  },
+  "rollback": {
+    "stage": "off",
+    "verified": false,
+    "exercise_release_id": "",
+    "app_artifact_sha256": "",
+    "worker_artifact_sha256": ""
+  },
+  "artifacts": {
+    "app_image": "",
+    "worker_image": ""
+  },
+  "approval": {
+    "status": "pending",
+    "approved_by": "",
+    "approved_at": "",
+    "ticket": ""
+  }
+}

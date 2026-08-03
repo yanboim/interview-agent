@@ -83,10 +83,13 @@ PostgreSQL特有行为使用 `TEST_POSTGRES_URL`。运行时 `create_all` 只用
 
 ## 交付前
 
-按[测试指南](testing.md)运行与变更匹配的验证。仓库范围行为变更要求：
+迭代时运行聚焦测试或 `make dev-check`。创建或更新Pull Request前运行：
 
 ```bash
-make harness-check
+make pr-check
 ```
+
+Main和发布候选运行 `make harness-check`。变更影响浏览器关键旅程时，交付前运行
+相关 `make e2e` 覆盖。完整范围矩阵见[测试指南](testing.md)。
 
 如果必要检查无法运行，必须报告缺失的具体依赖以及实际已运行的检查。

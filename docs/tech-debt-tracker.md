@@ -23,7 +23,23 @@ problem.
 | TD-015 | P1 | Agent quality | Answer/source metadata is turn-level, structured results rely on free-form JSON extraction, evaluation is small or metadata-only, and browser feedback does not enter a durable quality loop. | Claim-level evidence, validated structured output, real-stack grouped evaluation gates, and owner-scoped turn feedback with reviewed eval-candidate intake exist. | Completed 2026-07-31; verified by the `agent-quality-feedback-learning-loop` contract and deterministic 230-case Agent gate |
 | TD-016 | P1 | Agent orchestration and context | Specialist delegation and chat do not yet provide a complete personalized, durable, recoverable agent workflow with inspectable memory and command state. | A budgeted server context snapshot, confirmed coaching memory, versioned delegation envelope, and at least one durable idempotent multi-step training workflow are verified. | Completed 2026-07-31; verified by the `agent-personalized-context-memory` and `durable-personalized-training-workflow` contracts |
 | TD-017 | P2 | Agent efficiency and learning | Forced same-model delegation adds cost/latency, capability aggregation is weakly calibrated, and review intervals ignore recall outcome. | Per-purpose model routing/budgets, evaluated fallback policy, confidence-aware capability aggregation, and outcome-aware deterministic review scheduling are verified. | Completed 2026-07-31; verified by `agent-quality-feedback-learning-loop` and `agent-model-cost-resilience-routing` |
+| TD-018 | P1 | Harness security and observability | Unknown readiness, interview, queue, and knowledge exceptions can reach public/admin responses, while core business metrics have only a local-process compatibility view. | Stable public errors are tested with secret-shaped exceptions; core metrics also use an OTLP export path and the bundled Collector accepts metrics. | Completed 2026-08-01; verified by `model-policy-gateway`, `admin-observability-and-audit`, and the complete Harness component gates |
+| TD-019 | P1 | Agent orchestration | The compatibility Supervisor adds nested model calls and leaves two competing production topologies. | A fail-closed pre-release acceptance binds deterministic and isolated live evidence, exact identity cleanup, immutable rollback artifacts, owner approval, and removal of every runtime Supervisor selector/prompt/tool path. | Completed 2026-08-02; verified by `workflow-v2-prerelease-acceptance.json`, `make workflow-prerelease-retirement-check`, focused topology tests, and immutable-image rollback guidance |
 
 Review note 2026-07-29: the resume-center UI refresh introduced no new
 architectural debt; its styles are route-scoped and the existing model,
 persistence, and authorization boundaries are unchanged.
+
+Review note 2026-08-03: the zero-chunk SSE restart fix closes a runtime gap in
+the completed TD-007 gateway boundary. Restarts remain bounded by model-call,
+token, cost and wall-clock budgets, and partial streams are not replayed; no new
+architectural debt is introduced.
+
+Review note 2026-08-03: tiered verification removes duplicate PR browser,
+dependency-audit, and image work while retaining complete main and release
+gates. The workflow split introduces no runtime dependency or product debt.
+
+Review note 2026-08-03: claim-level citation Markdown now reuses the shared
+sanitized renderer with citation-scoped normalization and styles. This closes a
+presentation gap without adding a second rendering or security boundary, so no
+new architectural debt is introduced.

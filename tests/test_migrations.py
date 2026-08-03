@@ -1,3 +1,5 @@
+"""Alembic 迁移建表与修订连续性的测试。"""
+
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text

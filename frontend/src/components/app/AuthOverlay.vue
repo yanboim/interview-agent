@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 认证遮罩：未登录时展示登录/注册表单与功能开关状态。
 import { onMounted, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";

@@ -1,10 +1,11 @@
 // @vitest-environment jsdom
 
-import { mount } from "@vue/test-utils";
-import { describe, expect, it } from "vitest";
+import { flushPromises, mount } from "@vue/test-utils";
+import { describe, expect, it, vi } from "vitest";
 import MarkdownContent from "@/components/MarkdownContent.vue";
 import UiButton from "@/components/ui/UiButton.vue";
 import {
+  normalizeCitationMarkdown,
   normalizeLooseMarkdown,
   renderInlineMarkdown,
   renderMarkdown,
@@ -26,12 +27,51 @@ describe("MarkdownContent", () => {
     expect(wrapper.html()).not.toContain("onerror");
   });
 
-  it("marks streaming output as busy without changing content", () => {
+  it("uses the streaming renderer while output is in progress", async () => {
     const wrapper = mount(MarkdownContent, {
-      props: { content: "**正在生成**", streaming: true },
+      props: { content: "**正在生成", streaming: true },
     });
+    await vi.dynamicImportSettled();
+    await flushPromises();
     expect(wrapper.text()).toContain("正在生成");
     expect(wrapper.attributes("aria-busy")).toBe("true");
+    expect(wrapper.find(".markstream-vue").exists()).toBe(true);
+
+    await wrapper.setProps({ content: "**生成完成**", streaming: false });
+    expect(wrapper.find(".markstream-vue").exists()).toBe(false);
+    expect(wrapper.find("strong").text()).toBe("生成完成");
+    expect(wrapper.attributes("aria-busy")).toBeUndefined();
+  });
+
+  it("does not activate unsafe HTML during streaming", async () => {
+    const wrapper = mount(MarkdownContent, {
+      props: {
+        content: '安全文本\n\n<img src="x" onerror="alert(1)">',
+        streaming: true,
+      },
+    });
+    await vi.dynamicImportSettled();
+    await flushPromises();
+
+    expect(wrapper.html()).not.toContain("onerror");
+    expect(wrapper.text()).toContain("安全文本");
+  });
+});
+
+describe("normalizeCitationMarkdown", () => {
+  it("repairs citation emphasis spacing and removes an orphan trailing marker", () => {
+    const normalized = normalizeCitationMarkdown(
+      "> ⚠️ 使用 **SATB (Snapshot-At-The-Beginning) ** 与 `JDK 21`。 ``",
+    );
+    const html = renderMarkdown(normalized);
+
+    expect(normalized).toBe(
+      "> ⚠️ 使用 **SATB (Snapshot-At-The-Beginning)** 与 `JDK 21`。",
+    );
+    expect(html).toContain("<blockquote>");
+    expect(html).toContain("<strong>SATB (Snapshot-At-The-Beginning)</strong>");
+    expect(html).toContain("<code>JDK 21</code>");
+    expect(html).not.toContain("``");
   });
 });
 

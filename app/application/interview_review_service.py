@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from typing import Any, BinaryIO, Callable
+from typing import Any, BinaryIO, Callable, Protocol
 from uuid import uuid4
 
 from app.config import Settings
@@ -20,8 +20,24 @@ from app.transcription import TranscriptionProvider
 from app.user_files import LocalUserFileStore
 
 
+class InterviewReviewRepository(Protocol):
+    def create_interview_review(self, **kwargs: Any) -> Any: ...
+    def list_interview_reviews(self, **kwargs: Any) -> Any: ...
+    def get_interview_review(self, **kwargs: Any) -> Any: ...
+    def update_interview_review_transcript(self, **kwargs: Any) -> Any: ...
+    def claim_interview_transcription(self, **kwargs: Any) -> Any: ...
+    def complete_interview_transcription(self, **kwargs: Any) -> Any: ...
+    def schedule_interview_review_analysis(self, **kwargs: Any) -> Any: ...
+    def claim_interview_review_analysis(self, **kwargs: Any) -> Any: ...
+    def fail_scheduled_interview_review_analysis(self, **kwargs: Any) -> Any: ...
+    def complete_interview_review_analysis(self, **kwargs: Any) -> Any: ...
+    def fail_interview_review_job(self, **kwargs: Any) -> Any: ...
+    def retry_interview_transcription(self, **kwargs: Any) -> Any: ...
+    def delete_interview_review(self, **kwargs: Any) -> Any: ...
+
+
 class InterviewReviewError(RuntimeError):
-    pass
+    """面试复盘服务应用层基类错误。"""
 
 
 class InterviewReviewNotFound(InterviewReviewError):
@@ -37,9 +53,17 @@ class InterviewReviewUnavailable(InterviewReviewError):
 
 
 class InterviewReviewService:
+    """真实面试复盘服务：管理上传、转写确认、后台分析与所有权隔离。
+
+    音频是用户敏感文件，仅在「转写开关 + 供应商配置 + 用户每次明确同意」
+    三者同时满足时才接受；转写成功即删除音频。后台转写与分析都用
+    claim_token 所有者封闭、有界模型调用，逐字稿草稿用乐观版本
+    （transcript_revision）保护并发确认。
+    """
+
     def __init__(
         self,
-        repository: Any,
+        repository: InterviewReviewRepository,
         files: LocalUserFileStore,
         settings: Settings,
         *,
@@ -47,6 +71,16 @@ class InterviewReviewService:
         transcription_provider: TranscriptionProvider,
         analyzer: Callable[..., InterviewReviewResult] = analyze_interview_review,
     ) -> None:
+        """注入持久化仓库、文件存储、配置、入队回调与转写/分析回调。
+
+        参数:
+            repository: 持久化适配器（``ConversationStore`` 或替身）。
+            files: 本地用户文件存储（音频暂存与清理）。
+            settings: 应用配置（转写开关、音频上限、提示词版本等）。
+            enqueue: 后台任务入队回调。
+            transcription_provider: 外部转写提供方适配器。
+            analyzer: 复盘分析回调，默认为引擎纯函数实现。
+        """
         self.repository = repository
         self.files = files
         self.settings = settings
@@ -61,6 +95,17 @@ class InterviewReviewService:
         transcript: str,
         idempotency_key: str,
     ) -> dict[str, object]:
+        """创建基于文本逐字稿的复盘（幂等）。
+
+        把文本逐字稿解析为段落后幂等创建复盘记录；同一幂等键换不同内容
+        则报冲突。文本入口不要求外部转写服务，无需用户同意外发。
+
+        返回:
+            该复盘的公开视图。
+
+        异常:
+            InterviewReviewConflict: 同一幂等键不能用于不同内容。
+        """
         segments = parse_text_transcript(transcript)
         digest = hashlib.sha256(
             transcript.strip().encode("utf-8")
@@ -90,6 +135,22 @@ class InterviewReviewService:
         external_processing_consent: bool,
         idempotency_key: str,
     ) -> dict[str, object]:
+        """创建基于音频的复盘（需用户每次明确同意外发转写，幂等）。
+
+        三重门禁：用户明确同意 + 转写开关 + 供应商配置齐全，缺一不可，
+        否则拒绝上传。音频以服务端存储键暂存，幂等创建后入队转写；若入队
+        失败则领取并标记失败，避免留下卡死任务。
+
+        参数:
+            external_processing_consent: 用户本次是否明确同意外部转写。
+
+        返回:
+            该复盘的公开视图（含上传后的初始状态）。
+
+        异常:
+            InterviewReviewConflict: 未确认外部转写数据流。
+            InterviewReviewUnavailable: 转写服务未启用或队列暂不可用（可重试）。
+        """
         if not external_processing_consent:
             raise InterviewReviewConflict("上传音频前必须确认外部转写数据流")
         if (
@@ -161,6 +222,7 @@ class InterviewReviewService:
         return self.get(user_id=user_id, review_id=review_id)
 
     def list(self, *, user_id: str) -> list[dict[str, object]]:
+        """列出当前用户的所有复盘（不含逐字稿正文，所有者范围）。"""
         return [
             self._public_review(item, include_transcript=False)
             for item in self.repository.list_interview_reviews(user_id=user_id)
@@ -172,6 +234,11 @@ class InterviewReviewService:
         user_id: str,
         review_id: str,
     ) -> dict[str, object]:
+        """获取单个复盘视图（含逐字稿与回合评分）。
+
+        异常:
+            InterviewReviewNotFound: 复盘不存在或不属于该用户。
+        """
         review = self.repository.get_interview_review(
             user_id=user_id,
             review_id=review_id,
@@ -188,6 +255,21 @@ class InterviewReviewService:
         expected_revision: int,
         segments_payload: list[dict[str, object]],
     ) -> dict[str, object]:
+        """编辑/确认逐字稿草稿（乐观并发保护）。
+
+        用 ``expected_revision`` 做条件更新，确保用户编辑不被并发转写或
+        他方修改覆盖。确认后的版本才是复盘分析的输入。
+
+        参数:
+            expected_revision: 客户端持有的逐字稿版本号。
+            segments_payload: 逐字稿段落数组。
+
+        返回:
+            更新后的复盘公开视图。
+
+        异常:
+            InterviewReviewConflict: 逐字稿为空，或已有新版本需刷新重试。
+        """
         segments = [
             TranscriptSegment.model_validate(item)
             for item in segments_payload
@@ -212,6 +294,25 @@ class InterviewReviewService:
         expected_revision: int,
         idempotency_key: str,
     ) -> dict[str, object]:
+        """确认逐字稿版本并排队后台复盘分析（幂等）。
+
+        以 ``(expected_revision, transcript_json)`` 计算请求摘要，配合
+        幂等键判定是否为重放：若已用相同键与版本排过队且状态在
+        ``analyzing/ready``，则直接返回现状。否则条件调度分析任务并入队。
+
+        参数:
+            expected_revision: 客户端确认的逐字稿版本号。
+            idempotency_key: 客户端幂等键。
+
+        返回:
+            该复盘的公开视图。
+
+        异常:
+            InterviewReviewNotFound: 复盘不存在。
+            InterviewReviewConflict: 幂等键复用于不同版本 / 版本已过期 /
+                当前状态不能开始分析。
+            InterviewReviewUnavailable: 分析队列暂不可用（可重试）。
+        """
         review = self.repository.get_interview_review(
             user_id=user_id,
             review_id=review_id,
@@ -275,6 +376,13 @@ class InterviewReviewService:
         return self.get(user_id=user_id, review_id=review_id)
 
     def retry(self, *, user_id: str, review_id: str) -> dict[str, object]:
+        """重试失败的转写任务（仅转写失败可直接重试）。
+
+        异常:
+            InterviewReviewNotFound: 复盘不存在。
+            InterviewReviewConflict: 当前失败不能直接重试（请先检查逐字稿）。
+            InterviewReviewUnavailable: 转写队列暂不可用（可重试）。
+        """
         review = self.repository.get_interview_review(
             user_id=user_id,
             review_id=review_id,
@@ -308,6 +416,11 @@ class InterviewReviewService:
         return self.get(user_id=user_id, review_id=review_id)
 
     def delete(self, *, user_id: str, review_id: str) -> bool:
+        """删除复盘记录及其暂存音频（幂等清理）。
+
+        返回:
+            是否删除了记录；删除后亦尝试清理底层音频文件，失败不报错（幂等）。
+        """
         storage_key = self.repository.delete_interview_review(
             user_id=user_id,
             review_id=review_id,
@@ -319,6 +432,16 @@ class InterviewReviewService:
         return True
 
     def process_transcription(self, *, review_id: str) -> dict[str, object]:
+        """后台执行音频转写（claim_token 所有者封闭）。
+
+        先领取任务（仅所有者能完成），调用外部转写得到逐字稿段落，再条件
+        提交并删除音频；任何异常都把任务标记失败再上抛。转写成功后音频
+        立即删除，不再留存。
+
+        返回:
+            ``{"review_id", "outcome"}``，``outcome`` 为
+            ``"completed"`` 或 ``"not_claimed"``。
+        """
         token = str(uuid4())
         review = self.repository.claim_interview_transcription(
             review_id=review_id,
@@ -356,6 +479,15 @@ class InterviewReviewService:
             raise
 
     def process_analysis(self, *, review_id: str) -> dict[str, object]:
+        """后台执行逐字稿复盘分析（claim_token 所有者封闭）。
+
+        先领取任务，再在事务之外把已确认的问答回合送入引擎打分，最后把
+        报告与各回合评分条件提交；任何异常都把任务标记失败再上抛。
+
+        返回:
+            ``{"review_id", "outcome"}``，``outcome`` 为
+            ``"completed"`` 或 ``"not_claimed"``。
+        """
         token = str(uuid4())
         review = self.repository.claim_interview_review_analysis(
             review_id=review_id,
@@ -420,6 +552,7 @@ class InterviewReviewService:
         review_id: str,
         result: dict[str, object],
     ) -> dict[str, object]:
+        """统一解析幂等创建结果：重用既有记录或返回新记录的公开视图。"""
         if result["outcome"] == "key_reused":
             raise InterviewReviewConflict("同一幂等键不能用于不同内容")
         if result["outcome"] == "existing":
@@ -432,6 +565,7 @@ class InterviewReviewService:
         review_id: str,
         idempotency_key: str,
     ) -> None:
+        """按任务类型入队后台作业，用幂等键保证可安全重放。"""
         self.enqueue(
             job_type,
             {"review_id": review_id},

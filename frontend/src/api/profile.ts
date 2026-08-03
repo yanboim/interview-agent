@@ -1,3 +1,4 @@
+// 用户档案、头像、提醒偏好与长期训练记忆的 API 封装。
 import type { CoachingMemory, InterviewGoal } from "@/types";
 import { apiFetch, expectOk } from "@/api/core";
 

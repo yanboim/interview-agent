@@ -1,12 +1,11 @@
 """跨 Agent 传递的对话上下文。
 
-多 Agent 模式下,Supervisor 通过 tool-calling 委派任务给专业 Agent。默认情况下
-子 Agent 只会收到 Supervisor 拼装的 task 字符串,丢失全部对话历史(见 multi_agent
-模块的 _invoke)。本模块用一个 ContextVar 在 Supervisor 的调用链里携带「已预算裁剪的
-对话历史」,子 Agent 工具执行时可读取并注入,从而恢复多轮对话的上下文连续性。
+多 Agent 模式下，Workflow V2 直接调用一个或多个专业 Agent。本模块用 ContextVar
+携带「已预算裁剪的对话 + 不可变个性化快照」，每条显式专家分支据此构造同一版本的
+DelegationEnvelope，而不复制完整历史。
 
-ContextVar 在同一 asyncio task / 同步调用栈内自动传播,因此 Supervisor 的 ReAct
-循环里发起的 tool_call 会继承该上下文,无需显式传参。
+ContextVar 会复制到 asyncio 子任务，因此并发专家分支可透明访问同一请求快照。
+请求结束后由应用用例 reset，避免跨请求泄漏。
 """
 
 from contextvars import ContextVar, Token

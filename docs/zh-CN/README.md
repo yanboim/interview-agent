@@ -21,9 +21,9 @@ make docs-check
 
 | 角色/任务 | 建议入口 |
 |---|---|
-| 新接手工程师（循序渐进完整教程 + 速查参考 + cookbook） | [新工程师完整上手指南](../ONBOARDING-GUIDE.md) |
+| 新接手工程师（循序渐进完整教程 + 速查参考 + cookbook） | [新工程师完整上手指南](ONBOARDING-GUIDE.md) |
 | 新接手工程师（精炼速查、14 节概览） | [开发、运维与使用接手手册](ENGINEERING-HANDOVER-MANUAL.md) |
-| 想系统性补 Agent 工程基础（12 周课程） | [从零到企业级 Agent 工程课程](../enterprise-agent-engineering-course.md) |
+| 想系统性补 Agent 工程基础（12 周课程） | [从零到企业级 Agent 工程课程](enterprise-agent-engineering-course.md) |
 | 产品负责人 | [产品愿景与PRD](product/README.md) |
 | 产品/交互设计 | [信息架构、流程和原型](ux/README.md) |
 | 架构师/后端开发 | [系统架构](architecture/README.md) |

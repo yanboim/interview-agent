@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理后台主视图：概览/用户/审计/交互/知识/资源/发版等分区。
 import { computed, onMounted, ref, watch } from "vue";
 import { useToastStore } from "@/stores/toast";
 import { useAdminStore } from "@/stores/admin";
@@ -34,6 +35,7 @@ const titles: Record<typeof section.value, string> = {
 };
 
 const isReady = computed(() => adminAuth.isAuthenticated && !adminAuth.initializing);
+const operatorLinks = computed(() => admin.runtime?.operator_links ?? []);
 
 async function submitLogin() {
   loginError.value = "";
@@ -122,6 +124,24 @@ onMounted(async () => {
         >
           {{ titles[key] }}
         </button>
+        <div v-if="operatorLinks.length" class="operator-link-group">
+          <span class="nav-group-label">运维工具</span>
+          <a
+            v-for="link in operatorLinks"
+            :key="link.id"
+            class="nav-button operator-link"
+            :href="link.url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <i
+              :class="link.id === 'grafana' ? 'ph ph-chart-line-up' : 'ph ph-activity'"
+              aria-hidden="true"
+            ></i>
+            {{ link.name }}
+            <i class="ph ph-arrow-square-out external-link-icon" aria-hidden="true"></i>
+          </a>
+        </div>
       </nav>
       <div class="sidebar-bottom">
         <a href="/" class="back-link">

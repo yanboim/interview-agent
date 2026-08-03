@@ -30,11 +30,13 @@ router = APIRouter()
 
 
 def _require_enabled() -> None:
+    """功能开关：面试复盘未启用时直接 404。"""
     if not get_runtime().settings.review_feature_enabled:
         raise HTTPException(status_code=404, detail="面试复盘尚未启用")
 
 
 def _raise_review_error(exc: Exception) -> None:
+    """把复盘服务异常映射为对应的 HTTP 状态码，未知异常原样上抛。"""
     if isinstance(exc, InterviewReviewNotFound):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     if isinstance(exc, InterviewReviewConflict):
@@ -51,6 +53,7 @@ def _raise_review_error(exc: Exception) -> None:
 
 
 def _idempotency_header() -> Header:
+    """返回复用的 Idempotency-Key 头声明（长度/格式约束）。"""
     return Header(
         alias="Idempotency-Key",
         min_length=8,
@@ -65,6 +68,7 @@ async def create_text_review(
     request: Request,
     idempotency_key: str = _idempotency_header(),
 ) -> dict[str, object]:
+    """创建基于文本逐字稿的复盘（幂等，无需外部转写）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -85,6 +89,7 @@ async def create_audio_review(
     external_processing_consent: bool = Form(...),
     idempotency_key: str = _idempotency_header(),
 ) -> dict[str, object]:
+    """创建基于音频的复盘（需每次明确同意外发转写，幂等）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -104,6 +109,7 @@ async def create_audio_review(
 
 @router.get("/api/interview-reviews")
 async def list_reviews(request: Request) -> list[dict[str, object]]:
+    """列出当前用户的复盘（不含逐字稿正文，所有者范围）。"""
     _require_enabled()
     return await run_sync(
         get_runtime().interview_review_service.list,
@@ -113,6 +119,7 @@ async def list_reviews(request: Request) -> list[dict[str, object]]:
 
 @router.get("/api/interview-reviews/{review_id}")
 async def get_review(review_id: str, request: Request) -> dict[str, object]:
+    """获取单个复盘视图（含逐字稿与回合评分，所有者范围）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -131,6 +138,7 @@ async def update_transcript(
     payload: InterviewReviewTranscriptUpdateRequest,
     request: Request,
 ) -> dict[str, object]:
+    """编辑/确认逐字稿草稿（乐观并发，所有者范围）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -155,6 +163,7 @@ async def confirm_and_analyze(
     request: Request,
     idempotency_key: str = _idempotency_header(),
 ) -> dict[str, object]:
+    """确认逐字稿版本并排队后台复盘分析（幂等，所有者范围）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -171,6 +180,7 @@ async def confirm_and_analyze(
 
 @router.post("/api/interview-reviews/{review_id}/retry")
 async def retry_review(review_id: str, request: Request) -> dict[str, object]:
+    """重试失败的转写任务（所有者范围）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -185,6 +195,7 @@ async def retry_review(review_id: str, request: Request) -> dict[str, object]:
 
 @router.delete("/api/interview-reviews/{review_id}")
 async def delete_review(review_id: str, request: Request) -> dict[str, bool]:
+    """删除复盘记录及其暂存音频（所有者范围）。"""
     _require_enabled()
     deleted = await run_sync(
         get_runtime().interview_review_service.delete,

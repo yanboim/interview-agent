@@ -2,6 +2,7 @@
 
 ## 迭代门禁
 
+- 日常静态反馈运行 `make dev-check`；
 - 聚焦单元和契约测试通过；
 - 新行为具有失败和权限负向测试；
 - 文档与功能契约同步；
@@ -10,7 +11,7 @@
 ## 合并门禁
 
 ```bash
-make harness-check
+make pr-check
 ```
 
 覆盖：
@@ -18,9 +19,10 @@ make harness-check
 - 文档、功能契约和架构规则；
 - Python编译和后端测试；
 - 前端类型、单元、生产构建和Bundle预算；
-- Playwright关键旅程。
+- 空库Migration升级。
 
-CI还执行Python/npm依赖审计、容器构建和高危/严重镜像漏洞扫描。
+Main、Nightly、手动和发布深度门禁运行 `make harness-check`，补充Playwright
+关键旅程、Python/npm依赖审计、容器构建和高危/严重镜像漏洞扫描。
 
 ## 数据库门禁
 

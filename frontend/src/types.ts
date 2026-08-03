@@ -394,8 +394,18 @@ export interface AdminRuntime {
   features: Record<string, boolean>;
   agent: {
     mode: string;
+    workflow?: {
+      version: string;
+      planner: string;
+      max_specialists: number;
+    } | null;
     specialists: Array<{ name: string; responsibility: string }>;
   };
+  operator_links: Array<{
+    id: "prometheus" | "grafana";
+    name: string;
+    url: string;
+  }>;
 }
 
 export type AdminResourceStatus =

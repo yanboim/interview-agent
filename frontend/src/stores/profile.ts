@@ -1,3 +1,4 @@
+// 用户档案状态：目标/JD/能力画像/提醒偏好的读取与持久化。
 import { defineStore } from "pinia";
 import type { CapabilityProfile } from "@/types";
 import * as api from "@/api/client";

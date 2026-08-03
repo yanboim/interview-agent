@@ -1,3 +1,5 @@
+"""聊天上下文窗口规划与摘要边界的测试。"""
+
 import pytest
 
 from app.chat_context import (

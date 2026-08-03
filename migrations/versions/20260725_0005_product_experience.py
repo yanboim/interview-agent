@@ -1,4 +1,4 @@
-"""Persist product profiles, citations, answer attempts, and events.
+"""持久化产品档案、引用、答题尝试与事件。
 
 Revision ID: 20260725_0005
 Revises: 20260724_0004

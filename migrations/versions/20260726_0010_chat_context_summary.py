@@ -1,4 +1,4 @@
-"""Add durable chat context summary.
+"""新增可恢复的聊天上下文摘要。
 
 Revision ID: 20260726_0010
 Revises: 20260726_0009

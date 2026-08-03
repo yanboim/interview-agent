@@ -1,4 +1,4 @@
-"""Add tool audit logs.
+"""新增工具调用审计日志。
 
 Revision ID: 20260724_0004
 Revises: 20260724_0003

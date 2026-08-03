@@ -1,3 +1,5 @@
+"""评估模型回答的引用精确率/召回率与声明忠实度（faithfulness）。"""
+
 import argparse
 import json
 from pathlib import Path

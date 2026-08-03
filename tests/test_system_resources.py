@@ -1,3 +1,5 @@
+"""系统资源中心（依赖探测、Worker 心跳）的测试。"""
+
 import asyncio
 import json
 from types import SimpleNamespace
@@ -7,7 +9,12 @@ from fastapi import HTTPException
 
 from app.api.routers import admin as admin_routes
 from app.auth import AuthenticatedUser
-from app.system_resources import ResourceSpec, SystemResourceCenter
+from app.config import Settings
+from app.system_resources import (
+    ResourceSpec,
+    SystemResourceCenter,
+    operator_console_links,
+)
 
 
 def request_for(role: str = "admin"):
@@ -63,6 +70,56 @@ def test_resource_snapshot_redacts_probe_errors_and_unsafe_links() -> None:
     assert "secret-password" not in serialized
     assert "private-db" not in serialized
     assert snapshot["resources"][1]["console_url"] is None
+
+
+def test_operator_console_links_keep_only_safe_configured_urls() -> None:
+    settings = Settings(
+        _env_file=None,
+        admin_prometheus_url="https://ops.example.test/prometheus/",
+        admin_grafana_url="https://admin:secret@ops.example.test/grafana/",
+    )
+
+    assert operator_console_links(settings) == [
+        {
+            "id": "prometheus",
+            "name": "Prometheus",
+            "url": "https://ops.example.test/prometheus/",
+        }
+    ]
+
+
+def test_admin_runtime_projects_safe_operator_console_links(monkeypatch) -> None:
+    runtime = SimpleNamespace(
+        settings=Settings(
+            _env_file=None,
+            admin_prometheus_url="https://ops.example.test/prometheus/",
+            admin_grafana_url="https://ops.example.test/grafana/",
+        ),
+        conversation_store=SimpleNamespace(check_connection=lambda: None),
+        redis_runtime=SimpleNamespace(check=lambda: None),
+        require_serving_knowledge=lambda: None,
+    )
+    monkeypatch.setattr(admin_routes, "get_runtime", lambda: runtime)
+
+    async def direct_run(function):
+        return function()
+
+    monkeypatch.setattr(admin_routes, "run_sync", direct_run)
+
+    payload = asyncio.run(admin_routes.admin_runtime(request_for()))
+
+    assert payload["operator_links"] == [
+        {
+            "id": "prometheus",
+            "name": "Prometheus",
+            "url": "https://ops.example.test/prometheus/",
+        },
+        {
+            "id": "grafana",
+            "name": "Grafana",
+            "url": "https://ops.example.test/grafana/",
+        },
+    ]
 
 
 def test_resource_snapshot_distinguishes_unknown_and_disabled() -> None:

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 产品端主视图：侧边栏 + 顶栏 + 各功能面板（聊天/面试/学习/简历/复盘等）。
 import { computed, defineAsyncComponent, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";

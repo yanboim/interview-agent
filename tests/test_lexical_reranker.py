@@ -1,3 +1,5 @@
+"""词法重排器（查询覆盖度）的测试。"""
+
 from langchain_core.documents import Document
 
 from app.lexical_reranker import (

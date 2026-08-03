@@ -4,9 +4,7 @@ import json
 import hashlib
 import logging
 import time
-from datetime import UTC, datetime
 from functools import lru_cache
-from urllib.parse import urlparse
 
 import httpx
 from langchain.tools import tool
@@ -15,13 +13,14 @@ from app.agent_safety import (
     classify_public_search_query,
     content_fingerprint,
     safe_audit_summary,
-    wrap_untrusted_evidence,
 )
-from app.agent_contracts import TrainingPlanPreviewV1
-from app.capability import build_capability_profile
-from app.chunks import stable_chunk_id
 from app.config import get_settings
-from app.learning import build_learning_candidates
+from app.knowledge_search import _search_interview_knowledge as _search_knowledge
+from app.learning_tools import (
+    confirm_learning_plan,
+    learning_plan_preview,
+    learning_progress,
+)
 from app.lexical_reranker import lexical_rerank_documents
 from app.llm_reranker import llm_rerank_documents
 from app.rag import (
@@ -30,7 +29,8 @@ from app.rag import (
     get_vector_store,
 )
 from app.reranker import rerank_documents
-from app.operations import RedisRuntime, request_metrics
+from app.operations import RedisRuntime
+from app.public_web_search import execute_public_web_search
 from app.storage import ConversationStore
 from app.tool_context import get_tool_identity
 
@@ -91,146 +91,20 @@ def _run_audited(
 
 
 def _search_interview_knowledge(
-    query: str,
-    *,
-    collection_name: str | None = None,
+    query: str, *, collection_name: str | None = None
 ) -> str:
-    query = query.strip()
-    if not query:
-        return "查询内容不能为空。"
-
-    last_error: Exception | None = None
-    scored_documents = []
-    for attempt in range(1, 3):
-        try:
-            settings = get_settings()
-            with request_metrics.dependency("embedding_qdrant"):
-                dense_results = (
-                    get_dense_vector_store(
-                        collection_name
-                    ).similarity_search_with_score(
-                        query=query,
-                        k=1,
-                    )
-                )
-            if (
-                not dense_results
-                or dense_results[0][1] < settings.dense_relevance_min_score
-            ):
-                return "知识库中没有达到语义相关度阈值的资料。"
-
-            with request_metrics.dependency("embedding_qdrant"):
-                scored_documents = (
-                    get_vector_store(collection_name).similarity_search_with_score(
-                        query=query,
-                        k=settings.retrieval_candidate_k,
-                        score_threshold=(
-                            settings.retrieval_min_score
-                            if settings.retrieval_min_score > 0
-                            else None
-                        ),
-                    )
-                )
-            break
-        except Exception as exc:
-            last_error = exc
-            logger.warning(
-                "Knowledge retrieval attempt %s failed for query length %s",
-                attempt,
-                len(query),
-                exc_info=True,
-            )
-            get_vector_store.cache_clear()
-            get_dense_vector_store.cache_clear()
-            if attempt == 1:
-                time.sleep(0.5)
-
-    if last_error is not None and not scored_documents:
-        return (
-            f"知识库查询失败（{type(last_error).__name__}）。"
-            "请明确告知用户本次未使用私人知识库。"
-        )
-
-    if not scored_documents:
-        return "知识库中没有检索到相关内容。"
-
-    settings = get_settings()
-    if settings.reranker_enabled:
-        reranked_documents = rerank_documents(query, scored_documents)
-        score_type = "cross_encoder"
-    elif settings.llm_reranker_enabled:
-        try:
-            reranked_documents = llm_rerank_documents(
-                query,
-                scored_documents,
-            )
-            score_type = "llm"
-        except Exception:
-            logger.warning("GLM reranking failed; using retrieval order.", exc_info=True)
-            reranked_documents = [
-                (document, score, score)
-                for document, score in scored_documents
-            ]
-            score_type = "retrieval"
-    elif settings.lexical_reranker_enabled:
-        lexical_documents = lexical_rerank_documents(
-            query,
-            scored_documents,
-            retrieval_weight=settings.lexical_retrieval_weight,
-        )
-        reranked_documents = [
-            (document, combined_score, retrieval_score)
-            for document, combined_score, retrieval_score, _ in lexical_documents
-        ]
-        score_type = "lexical"
-    else:
-        reranked_documents = [
-            (document, score, score)
-            for document, score in scored_documents
-        ]
-        score_type = "retrieval"
-
-    relevant_documents = [
-        item
-        for item in reranked_documents
-        if item[1] >= settings.reranker_min_score
-    ]
-    if not relevant_documents:
-        return "知识库中没有达到相关度阈值的资料。"
-
-    results = []
-    final_documents = relevant_documents[: settings.retrieval_final_k]
-    for index, (document, reranker_score, retrieval_score) in enumerate(
-        final_documents,
-        start=1,
-    ):
-        source = document.metadata.get("source", "未知来源")
-        evidence_id = str(
-            document.metadata.get("chunk_id")
-            or stable_chunk_id(str(source), document.page_content)
-        )
-        score_lines = f"RRF 分数：{retrieval_score:.4f}\n"
-        if score_type == "cross_encoder":
-            score_lines += f"重排分数：{reranker_score:.4f}\n"
-        elif score_type == "llm":
-            score_lines += f"GLM 重排分数：{reranker_score:.4f}\n"
-        elif score_type == "lexical":
-            score_lines += f"轻量重排分数：{reranker_score:.4f}\n"
-        evidence = (
-            f"[资料 {index}]\n"
-            f"证据ID：{evidence_id}\n"
-            f"来源：{source}\n"
-            f"{score_lines}"
-            f"内容：{document.page_content.strip()}"
-        )
-        results.append(
-            wrap_untrusted_evidence(
-                evidence,
-                evidence_type="private_knowledge",
-                evidence_id=evidence_id,
-            )
-        )
-    return "\n\n".join(results)
+    """Compatibility seam forwarding injected retrieval dependencies."""
+    return _search_knowledge(
+        query,
+        collection_name=collection_name,
+        settings_provider=get_settings,
+        dense_store_provider=get_dense_vector_store,
+        vector_store_provider=get_vector_store,
+        cross_reranker=rerank_documents,
+        llm_reranker=llm_rerank_documents,
+        lexical_reranker=lexical_rerank_documents,
+        sleep=time.sleep,
+    )
 
 
 @tool
@@ -286,22 +160,8 @@ def get_learning_progress(topic: str = "") -> str:
     identity = get_tool_identity()
 
     def execute() -> str:
-        store = _get_tool_store()
-        rows = store.get_capability_rows(user_id=identity.user_id)
-        profile = build_capability_profile(rows, topic=topic or None)
-        tasks = store.list_learning_tasks(user_id=identity.user_id)
-        task_counts = {
-            status: sum(1 for item in tasks if item["status"] == status)
-            for status in ("todo", "in_progress", "completed")
-        }
-        return json.dumps(
-            {
-                "summary": profile["summary"],
-                "dimension_scores": profile["dimension_scores"],
-                "weaknesses": profile["weaknesses"][:5],
-                "learning_tasks": task_counts,
-            },
-            ensure_ascii=False,
+        return learning_progress(
+            _get_tool_store(), user_id=identity.user_id, topic=topic
         )
 
     return _run_audited(
@@ -320,27 +180,8 @@ def create_personal_learning_plan(topic: str = "") -> str:
     identity = get_tool_identity()
 
     def execute() -> str:
-        store = _get_tool_store()
-        rows = store.get_capability_rows(user_id=identity.user_id)
-        profile = build_capability_profile(rows, topic=topic or None)
-        candidates = build_learning_candidates(profile)
-        if not candidates:
-            return "暂无足够的面试评分，无法生成学习计划。"
-        preview = store.create_learning_plan_preview(
-            user_id=identity.user_id,
-            topic=topic,
-            candidates=candidates,
-        )
-        validated = TrainingPlanPreviewV1.model_validate(preview)
-        return json.dumps(
-            {
-                **validated.model_dump(),
-                "instruction": (
-                    "尚未创建任务。仅当用户明确确认这份预览时，调用 "
-                    "confirm_personal_learning_plan。"
-                ),
-            },
-            ensure_ascii=False,
+        return learning_plan_preview(
+            _get_tool_store(), user_id=identity.user_id, topic=topic
         )
 
     return _run_audited(
@@ -359,13 +200,11 @@ def confirm_personal_learning_plan(confirmation_id: str) -> str:
     identity = get_tool_identity()
 
     def execute() -> str:
-        result = _get_tool_store().confirm_learning_plan(
+        return confirm_learning_plan(
+            _get_tool_store(),
             user_id=identity.user_id,
             confirmation_id=confirmation_id.strip(),
         )
-        if result is None:
-            return "未找到当前用户可确认的学习计划。"
-        return json.dumps(result, ensure_ascii=False)
 
     return _run_audited(
         "confirm_personal_learning_plan",
@@ -378,47 +217,7 @@ def confirm_personal_learning_plan(confirmation_id: str) -> str:
 
 
 def _execute_public_web_search(clean_query: str, settings: object) -> str:
-    response = httpx.post(
-        settings.web_search_api_url,
-        json={
-            "api_key": settings.web_search_api_key,
-            "query": clean_query,
-            "max_results": settings.web_search_max_results,
-            "search_depth": "advanced",
-            "include_answer": False,
-            "include_raw_content": False,
-        },
-        timeout=settings.web_search_timeout_seconds,
-    )
-    response.raise_for_status()
-    fetched_at = datetime.now(UTC).isoformat()
-    results = []
-    for item in response.json().get("results", []):
-        url = str(item.get("url", "")).strip()
-        if urlparse(url).scheme not in {"http", "https"}:
-            continue
-        results.append(
-            {
-                "title": str(item.get("title", "")).strip(),
-                "url": url,
-                "snippet": str(item.get("content", "")).strip()[:1200],
-                "fetched_at": fetched_at,
-            }
-        )
-    if not results:
-        return "公开网络未返回可引用结果。"
-    return "\n\n".join(
-        wrap_untrusted_evidence(
-            f"[网络来源 {index}]\n"
-            f"证据ID：web-{content_fingerprint(item['url'])[:24]}\n"
-            f"标题：{item['title']}\n"
-            f"链接：{item['url']}\n抓取时间：{item['fetched_at']}\n"
-            f"摘要：{item['snippet']}",
-            evidence_type="public_web",
-            evidence_id=f"web-{content_fingerprint(item['url'])[:24]}",
-        )
-        for index, item in enumerate(results, start=1)
-    )
+    return execute_public_web_search(clean_query, settings, post=httpx.post)
 
 
 @tool

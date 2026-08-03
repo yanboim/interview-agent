@@ -1,0 +1,50 @@
+{
+  "schema_version": "workflow-v2-prerelease-acceptance-v1",
+  "workflow_version": "chat-workflow-v2",
+  "lifecycle_stage": "prerelease",
+  "release_id": "production-workflow-v2-prerelease-20260802-59bd896c-r5",
+  "release_version": "workflow-v2-prerelease-20260802-59bd896c",
+  "contains_production_user_content": false,
+  "deterministic_evaluation": {
+    "report_path": "eval/reports/agent-stack-ci.json",
+    "report_sha256": "bdddf9bb651348abf9f8c6b7849669417b4599b7f8aaff50ed4601acd49bc142",
+    "total_cases": 230,
+    "passed_cases": 230,
+    "zero_tolerance_failures": 0,
+    "gate_passed": true
+  },
+  "live_acceptance": {
+    "report_path": ".var/workflow-v2-prerelease-live-acceptance.json",
+    "report_sha256": "0be93b5e541ca05900021818d5d8eb1ed5b76a05b8dcbf0e10b8315be3b1b78b",
+    "ended_at": "2026-08-02T10:02:46.317551+00:00",
+    "total_cases": 6,
+    "passed_cases": 6,
+    "multi_intent_cases": 2,
+    "specialist_coverage": [
+      "evaluator",
+      "interviewer",
+      "knowledge",
+      "planner"
+    ],
+    "zero_tolerance_failures": 0,
+    "contains_user_content": false,
+    "cleanup_verified": true
+  },
+  "rollback": {
+    "stage": "off",
+    "verified": true,
+    "exercise_release_id": "production-workflow-v2-20260802-41ae64d192ab-r2",
+    "app_artifact_sha256": "ef53f93a11284bc9b24787cb47c59c9155eb127f3885933a5546189a470bcfa8",
+    "worker_artifact_sha256": "0dbfef6b7d91f71f720c2fc88c7b81b8d7e9fddb3fa2bec8164426b628a45f63"
+  },
+  "artifacts": {
+    "app_image": "sha256:59bd896c5a770b205c9413fa6fa2742ca1963c441075a339cfec0d5c4094eab5",
+    "worker_image": "sha256:1328d269a339874470a6f52da1eb9886df6244c16368c039d70a6fc5d41be221"
+  },
+  "approval": {
+    "status": "approved",
+    "approved_by": "project-owner-via-codex-coordination-task",
+    "approved_at": "2026-08-02T10:08:56.759417Z",
+    "ticket": "codex-thread:019fb95a-e176-7d13-8733-06b5567a7923:post-acceptance-supervisor-retirement-approval"
+  }
+}

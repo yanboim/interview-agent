@@ -1,8 +1,15 @@
+"""私人知识检索适配器（缓存、版本化）的测试。"""
+
 from unittest.mock import MagicMock, patch
 
 from langchain_qdrant import RetrievalMode
 
-from app.rag import get_dense_vector_store, get_embeddings, get_vector_store
+from app.rag import (
+    get_dense_vector_store,
+    get_embeddings,
+    get_sparse_embeddings,
+    get_vector_store,
+)
 from app.tools import search_interview_knowledge
 
 
@@ -25,6 +32,26 @@ def test_zhipu_embedding_configuration(
     assert embeddings is create_embeddings.return_value
     create_embeddings.assert_called_once_with(settings=settings.return_value)
     get_embeddings.cache_clear()
+
+
+@patch("langchain_qdrant.FastEmbedSparse")
+@patch("app.rag.get_settings")
+def test_sparse_embedding_uses_persistent_cache(
+    settings: MagicMock,
+    sparse_embedding: MagicMock,
+) -> None:
+    settings.return_value.sparse_embedding_model = "Qdrant/bm25"
+    settings.return_value.sparse_embedding_cache_dir = "/app/data/fastembed-cache"
+    get_sparse_embeddings.cache_clear()
+
+    result = get_sparse_embeddings()
+
+    assert result is sparse_embedding.return_value
+    sparse_embedding.assert_called_once_with(
+        model_name="Qdrant/bm25",
+        cache_dir="/app/data/fastembed-cache",
+    )
+    get_sparse_embeddings.cache_clear()
 
 
 @patch("langchain_qdrant.QdrantVectorStore.from_existing_collection")

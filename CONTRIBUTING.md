@@ -28,11 +28,14 @@
 
 ## 验证
 
-迭代时运行聚焦测试，仓库级变化运行：
+迭代时运行聚焦测试或 `make dev-check`，Pull Request提交前运行：
 
 ```bash
-make harness-check
+make pr-check
 ```
+
+Main和发布候选由深度门禁运行 `make harness-check`。涉及浏览器关键旅程的
+变更在交付前也应主动运行 `make e2e`。
 
 只改文档且没有运行时依赖时，至少运行：
 

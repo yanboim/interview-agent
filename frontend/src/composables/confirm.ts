@@ -1,3 +1,4 @@
+// 全局确认对话框组合式 API：以 Promise 形式等待用户「确认/取消」。
 import { reactive } from "vue";
 
 export interface ConfirmOptions {

@@ -1,3 +1,5 @@
+"""PostgreSQL 持久化适配器的专项测试。"""
+
 import os
 from uuid import uuid4
 

@@ -11,12 +11,16 @@ Vue、PostgreSQL/SQLite、Redis、Qdrant 和可配置的大模型，把岗位目
 - 账号注册、登录、刷新、退出、改密、恢复码和管理员独立登录；
 - 目标岗位、方向、JD、头像、提醒偏好和今日训练建议；
 - 流式AI问答、私人知识来源、可选公开搜索和会话历史；
+- 声明级证据引用、无证据/冲突提示和按回合点赞或点踩反馈；
+- 账号级可检查、确认、纠正、拒绝和删除的长期训练记忆；
 - 可恢复通用/简历定向模拟面试、四维评分、重答、报告和安全幂等重试；
 - PDF/DOCX简历评估、事实受控优化稿编辑和DOCX导出；
 - 文本或经明确同意外发的音频面试记录、逐字稿确认和真实面试复盘；
 - 跨场次能力画像、趋势、薄弱点、学习任务和间隔复习；
+- 需要用户确认、可恢复和安全重放的个性化训练计划Agent工作流；
 - 管理员资源中心、用户/审计/交互追踪、自动发版记录和知识发布回滚；
-- Redis可恢复任务、模型策略网关、指标、日志、Trace和CI/CD门禁。
+- 工具外发DLP、变更预览确认、结构化Agent输出和不可信证据边界；
+- Redis可恢复任务、按用途模型路由/预算/回退、指标、日志、Trace和CI/CD门禁。
 
 已交付行为和验证证据以
 [机器可读功能契约](docs/product-specs/feature-contract.json)为准。
@@ -29,11 +33,15 @@ Browser
        |-- PostgreSQL / SQLite: users, conversations, interviews, learning
        |-- Redis: rate limits, cache, locks, durable jobs
        |-- Qdrant: versioned private knowledge
+       |-- Agent state: memory, confirmations, runs, steps, feedback
        |-- Zhipu APIs: chat and embeddings
        `-- optional public search
 
 Worker -> Redis jobs -> knowledge validation -> Qdrant alias publication
        -> resume analysis / interview transcription and review
+
+Agent -> budgeted context -> routed specialist -> grounded structured result
+      -> preview/confirmation -> durable idempotent workflow
 ```
 
 详细设计见[架构总纲](ARCHITECTURE.md)和
@@ -94,6 +102,8 @@ docker compose up -d --build
 常用验证：
 
 ```bash
+make dev-check
+make pr-check
 make harness-static
 make backend-check
 make frontend-check
@@ -101,8 +111,9 @@ make e2e
 make harness-check
 ```
 
-`make harness-check` 是仓库级本地门禁。PostgreSQL专项、真实Qdrant和Live模型评估
-需要显式环境或可能产生费用，不在默认门禁中。详见
+`make dev-check` 用于日常快速反馈，`make pr-check` 是不启动浏览器和容器的
+Pull Request门禁，`make harness-check` 保留给Main和发布候选的完整验证。
+PostgreSQL专项、真实Qdrant和Live模型评估需要显式环境或可能产生费用，不在默认门禁中。详见
 [测试策略](docs/quality/TEST-STRATEGY.md)。
 
 ## 知识库

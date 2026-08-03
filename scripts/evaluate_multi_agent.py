@@ -1,27 +1,10 @@
+"""评估 Workflow V2 代码定义路由的准确性。"""
+
 import argparse
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
-
-from langchain_core.messages import HumanMessage, SystemMessage
-
-from app.multi_agent import (
-    SUPERVISOR_PROMPT,
-    _model,
-    evaluator_agent,
-    interviewer_agent,
-    knowledge_agent,
-    planner_agent,
-)
-
-
-TOOLS = [
-    knowledge_agent,
-    interviewer_agent,
-    evaluator_agent,
-    planner_agent,
-]
+from app.model_routing import explicit_workflow_routes
 
 
 def load_cases(path: Path) -> list[dict[str, str]]:
@@ -32,11 +15,8 @@ def load_cases(path: Path) -> list[dict[str, str]]:
     ]
 
 
-def selected_tool(response: Any) -> str:
-    tool_calls = getattr(response, "tool_calls", []) or []
-    if not tool_calls:
-        return ""
-    return str(tool_calls[0].get("name", ""))
+def selected_routes(query: str) -> list[str]:
+    return [f"{route}_agent" for route in explicit_workflow_routes(query)]
 
 
 def summarize(rows: list[dict[str, object]]) -> dict[str, object]:
@@ -64,19 +44,10 @@ def summarize(rows: list[dict[str, object]]) -> dict[str, object]:
 
 
 def evaluate(cases: list[dict[str, str]]) -> dict[str, object]:
-    router = _model(temperature=0).bind_tools(
-        TOOLS,
-        tool_choice="required",
-    )
     rows = []
     for case in cases:
-        response = router.invoke(
-            [
-                SystemMessage(content=SUPERVISOR_PROMPT),
-                HumanMessage(content=case["query"]),
-            ]
-        )
-        actual = selected_tool(response)
+        routes = selected_routes(case["query"])
+        actual = routes[0] if len(routes) == 1 else "+".join(routes)
         rows.append(
             {
                 **case,
@@ -93,7 +64,7 @@ def evaluate(cases: list[dict[str, str]]) -> dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Evaluate first-hop Supervisor routing."
+        description="Evaluate deterministic Workflow V2 routing."
     )
     parser.add_argument(
         "--cases",

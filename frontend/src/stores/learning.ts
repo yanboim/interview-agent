@@ -1,3 +1,4 @@
+// 学习任务与训练方案工作流状态：列表、复习回顾与能力画像。
 import { defineStore } from "pinia";
 import type { LearningStatus, LearningTask, TrainingProgramRun } from "@/types";
 import * as api from "@/api/client";

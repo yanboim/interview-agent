@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理端发版分区：Canary/生产发版记录与状态查询。
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { formatDateTime } from "@/lib/format";
 import { handleDialogKeydown } from "@/lib/focusTrap";

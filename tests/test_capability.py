@@ -1,3 +1,5 @@
+"""跨面试能力画像聚合的确定性计算测试。"""
+
 import json
 
 from app.capability import build_capability_profile, score_calibration_report

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 通用确认对话框：由 ``composables/confirm`` 驱动的全局确认/取消交互。
 import { onMounted, onUnmounted, ref, watch } from "vue";
 import { answerConfirm, useConfirm } from "@/composables/confirm";
 import { handleDialogKeydown } from "@/lib/focusTrap";

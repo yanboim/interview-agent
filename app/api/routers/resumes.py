@@ -32,11 +32,13 @@ router = APIRouter()
 
 
 def _require_enabled() -> None:
+    """功能开关：简历功能未启用时直接 404。"""
     if not get_runtime().settings.resume_feature_enabled:
         raise HTTPException(status_code=404, detail="简历功能尚未启用")
 
 
 def _raise_resume_error(exc: Exception) -> None:
+    """把简历服务异常映射为对应的 HTTP 状态码，未知异常原样上抛。"""
     if isinstance(exc, ResumeNotFound):
         raise HTTPException(status_code=404, detail=str(exc)) from exc
     if isinstance(exc, ResumeConflict):
@@ -62,6 +64,7 @@ async def upload_resume(
         pattern=r"^[A-Za-z0-9._:-]+$",
     ),
 ) -> dict[str, object]:
+    """上传简历并创建评估任务（幂等，所有者以服务端会话为准）。"""
     _require_enabled()
     user_id = current_product_user_id(request)
     try:
@@ -82,6 +85,7 @@ async def upload_resume(
 
 @router.get("/api/resumes")
 async def list_resumes(request: Request) -> list[dict[str, object]]:
+    """列出当前用户的简历文档（所有者以服务端会话为准）。"""
     _require_enabled()
     return await run_sync(
         get_runtime().resume_service.list,
@@ -94,6 +98,7 @@ async def get_resume(
     resume_id: str,
     request: Request,
 ) -> dict[str, object]:
+    """获取单个简历文档视图（所有者以服务端会话为准）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -121,6 +126,7 @@ async def create_resume_analysis(
         pattern=r"^[A-Za-z0-9._:-]+$",
     ),
 ) -> dict[str, object]:
+    """为已存在简历创建新的评估任务（幂等，可换 JD 重新评估）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -141,6 +147,7 @@ async def update_resume_draft(
     payload: ResumeDraftUpdateRequest,
     request: Request,
 ) -> dict[str, object]:
+    """更新事实受控的优化稿草稿（乐观并发，所有者以服务端会话为准）。"""
     _require_enabled()
     try:
         return await run_sync(
@@ -160,6 +167,7 @@ async def export_resume_docx(
     analysis_id: str,
     request: Request,
 ) -> Response:
+    """把已完成的优化稿导出为 DOCX 下载（事实受控，所有者范围）。"""
     _require_enabled()
     try:
         content, filename = await run_sync(
@@ -190,6 +198,7 @@ async def delete_resume(
     resume_id: str,
     request: Request,
 ) -> dict[str, bool]:
+    """删除简历文档及其文件（所有者以服务端会话为准）。"""
     _require_enabled()
     deleted = await run_sync(
         get_runtime().resume_service.delete,

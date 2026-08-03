@@ -1,10 +1,13 @@
+"""聊天回合生命周期（领取/完成/失败/取消）的测试。"""
+
 import asyncio
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 import pytest
 from langchain_core.messages import AIMessage, AIMessageChunk
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 import app.main as main_module
 from app.application.chat_service import ChatTurnConflict, ChatTurnService
@@ -130,6 +133,45 @@ def test_same_key_with_different_content_is_rejected(tmp_path) -> None:
         begin(service, content="更换后的内容")
 
 
+def test_operator_recovery_fences_stale_generating_owner_and_allows_retry(
+    tmp_path,
+) -> None:
+    store = ConversationStore(tmp_path / "stale-chat.db")
+    service = ChatTurnService(store)
+    stale_claim = begin(service)
+    stale_at = (datetime.now(UTC) - timedelta(hours=2)).isoformat()
+    with store.engine.begin() as connection:
+        connection.execute(
+            update(chat_turns)
+            .where(chat_turns.c.turn_id == stale_claim["turn_id"])
+            .values(updated_at=stale_at)
+        )
+
+    recovered = store.recover_stale_chat_turns(
+        stale_before=datetime.now(UTC) - timedelta(minutes=30)
+    )
+    assert recovered == [stale_claim["turn_id"]]
+    with pytest.raises(ValueError, match="claim lost"):
+        service.complete(
+            stale_claim,
+            user_id="user-1",
+            session_id="session-1",
+            answer="迟到结果",
+            metadata={},
+        )
+
+    retry = begin(service)
+    assert retry["turn_id"] == stale_claim["turn_id"]
+    assert retry["claim_token"] != stale_claim["claim_token"]
+    service.complete(
+        retry,
+        user_id="user-1",
+        session_id="session-1",
+        answer="恢复后的结果",
+        metadata={},
+    )
+
+
 def test_context_summary_is_durable_and_retry_does_not_duplicate_it(
     tmp_path,
 ) -> None:
@@ -251,7 +293,8 @@ def test_normal_chat_replay_does_not_invoke_agent_twice(
         return function(*args, **kwargs)
 
     monkeypatch.setattr(main_module, "chat_turn_service", service)
-    monkeypatch.setattr(main_module, "get_interview_agent", lambda: agent)
+    monkeypatch.setattr(main_module, "get_single_interview_agent", lambda: agent)
+    monkeypatch.setattr(main_module.settings, "multi_agent_enabled", False)
     monkeypatch.setattr(main_module.asyncio, "to_thread", run_inline)
     monkeypatch.setattr(main_module.settings, "auth_required", False)
     request = SimpleNamespace(state=SimpleNamespace())
@@ -294,7 +337,8 @@ def test_normal_chat_failure_is_durable_and_retryable(
         return function(*args, **kwargs)
 
     monkeypatch.setattr(main_module, "chat_turn_service", service)
-    monkeypatch.setattr(main_module, "get_interview_agent", lambda: agent)
+    monkeypatch.setattr(main_module, "get_single_interview_agent", lambda: agent)
+    monkeypatch.setattr(main_module.settings, "multi_agent_enabled", False)
     monkeypatch.setattr(main_module.asyncio, "to_thread", run_inline)
     monkeypatch.setattr(main_module.settings, "auth_required", False)
     request = SimpleNamespace(state=SimpleNamespace())
@@ -340,7 +384,8 @@ def test_recoverable_model_unavailable_returns_503_and_safe_retry_state(
         return function(*args, **kwargs)
 
     monkeypatch.setattr(main_module, "chat_turn_service", service)
-    monkeypatch.setattr(main_module, "get_interview_agent", lambda: agent)
+    monkeypatch.setattr(main_module, "get_single_interview_agent", lambda: agent)
+    monkeypatch.setattr(main_module.settings, "multi_agent_enabled", False)
     monkeypatch.setattr(main_module.asyncio, "to_thread", run_inline)
     monkeypatch.setattr(main_module.settings, "auth_required", False)
     request = SimpleNamespace(state=SimpleNamespace())
@@ -381,9 +426,10 @@ def test_closing_stream_marks_turn_cancelled(
     monkeypatch.setattr(main_module.asyncio, "to_thread", run_inline)
     monkeypatch.setattr(
         main_module,
-        "get_interview_agent",
+        "get_single_interview_agent",
         lambda: StreamingAgent(),
     )
+    monkeypatch.setattr(main_module.settings, "multi_agent_enabled", False)
     monkeypatch.setattr(main_module.settings, "auth_required", False)
     request = SimpleNamespace(state=SimpleNamespace())
     payload = main_module.ChatRequest(

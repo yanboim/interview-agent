@@ -1,4 +1,4 @@
-"""Add durable interview answer submission lifecycle.
+"""新增可恢复的面试答题提交生命周期（幂等领取/完成/失败）。
 
 Revision ID: 20260726_0008
 Revises: 20260725_0007

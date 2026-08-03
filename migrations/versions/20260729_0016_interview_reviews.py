@@ -1,4 +1,4 @@
-"""Add real interview transcription and review records.
+"""新增真实面试转写与复盘记录。
 
 Revision ID: 20260729_0016
 Revises: 20260729_0015

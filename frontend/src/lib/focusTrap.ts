@@ -1,3 +1,4 @@
+// 对话框焦点陷阱：Tab 在容器内循环、Escape 关闭，保证键盘可访问性。
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 

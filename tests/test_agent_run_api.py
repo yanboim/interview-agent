@@ -1,3 +1,5 @@
+"""Agent 工作流（训练方案）API 的集成测试。"""
+
 import asyncio
 
 import httpx

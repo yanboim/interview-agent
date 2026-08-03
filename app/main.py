@@ -1,9 +1,4 @@
-"""FastAPI composition root.
-
-Business HTTP flows live in ``app.api.routers``. This module constructs process
-dependencies, installs middleware/static routes, and exposes temporary
-compatibility aliases used by existing callers.
-"""
+"""FastAPI 组合根：装配进程依赖、安装中间件与静态路由，保留旧调用方兼容别名。"""
 
 import asyncio
 import logging
@@ -16,9 +11,10 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from qdrant_client import QdrantClient
 
-from app.agent import get_interview_agent
+from app.agent import get_single_interview_agent
 from app.api.agent_io import extract_message_text, extract_sources
 from app.api.execution import run_sync
+from app.api.errors import unavailable_http_error
 from app.api.routers import admin as admin_routes
 from app.api.routers import auth as auth_routes
 from app.api.routers import chat as chat_routes
@@ -29,9 +25,12 @@ from app.api.routers import learning as learning_routes
 from app.api.routers import profile as profile_routes
 from app.api.routers import resumes as resume_routes
 from app.api.runtime import ApiRuntime, configure_runtime
+from app.api.security_policy import deployment_api_key_required
 from app.api.schemas import *  # noqa: F403 - compatibility exports
 from app.api.security import require_role, resolve_user_id, token_pair_response
 from app.application.chat_service import ChatTurnService
+from app.application.chat_use_case import ChatUseCase
+from app.chat_agent_executor import RoutedChatAgentExecutor
 from app.application.agent_run_service import AgentRunService
 from app.agent_context_service import AgentContextService
 from app.application.execution import SyncExecutor
@@ -39,6 +38,7 @@ from app.application.interview_service import (
     InterviewAnswerService,
     InterviewStartService,
 )
+from app.interview_engine import get_interview_capabilities
 from app.application.interview_review_service import InterviewReviewService
 from app.application.resume_service import ResumeService
 from app.auth import AuthService, AuthSurfaceError
@@ -49,6 +49,7 @@ from app.knowledge_publication import (
     resolve_serving_knowledge,
     rollback_knowledge,
 )
+from app.knowledge_ingestion import ingest_knowledge
 from app.logging_config import configure_logging, reset_request_id, set_request_id
 from app.multi_agent import assess_answer, generate_question
 from app.model_routing import model_for_purpose
@@ -59,7 +60,6 @@ from app.system_resources import create_system_resource_center
 from app.transcription import HttpTranscriptionProvider
 from app.telemetry import configure_telemetry
 from app.user_files import LocalUserFileStore
-from scripts.ingest import ingest_knowledge
 
 logger = logging.getLogger(__name__)
 
@@ -71,29 +71,26 @@ app = FastAPI(
 
 WEB_DIRECTORY = Path(__file__).parent / "web"
 settings = get_settings()
-_dist_candidate = Path(settings.frontend_dist) if settings.frontend_dist else (
-    Path(__file__).parent.parent / "frontend" / "dist"
-)
+_dist_candidate = Path(settings.frontend_dist or Path(__file__).parent.parent / "frontend" / "dist")
 FRONTEND_DIST = _dist_candidate if (_dist_candidate / "index.html").exists() else None
 STATIC_DIRECTORY = FRONTEND_DIST if FRONTEND_DIST else WEB_DIRECTORY
 app.mount("/static", StaticFiles(directory=STATIC_DIRECTORY, check_dir=False), name="static")
-
 configure_logging(settings.log_level, settings.json_logs)
 conversation_store = ConversationStore(
     settings.database_url or settings.conversation_db_path,
     auto_create_schema=settings.auto_create_schema,
 )
+interview_capabilities = get_interview_capabilities()
 interview_answer_service = InterviewAnswerService(
     conversation_store,
-    assessor=assess_answer,
-    question_generator=generate_question,
+    capabilities=interview_capabilities,
     assessment_prompt_version=settings.interview_assessment_prompt_version,
     assessment_schema_version="assessment-v1",
     model_version=model_for_purpose(settings, "evaluator"),
 )
 interview_start_service = InterviewStartService(
     conversation_store,
-    question_generator=generate_question,
+    capabilities=interview_capabilities,
     prompt_version=settings.interview_question_prompt_version,
     schema_version="question-text-v1",
     model_version=model_for_purpose(settings, "interviewer"),
@@ -107,6 +104,15 @@ chat_turn_service = ChatTurnService(
         token_budget=settings.agent_context_reserve_tokens,
     ),
     agent_context_reserve_tokens=settings.agent_context_reserve_tokens,
+)
+chat_agent_executor = RoutedChatAgentExecutor(
+    settings, lambda: get_single_interview_agent()
+)
+sync_executor = SyncExecutor()
+chat_use_case = ChatUseCase(
+    turn_service=chat_turn_service, agent_executor=chat_agent_executor,
+    sync_executor=sync_executor, trace_repository=conversation_store,
+    metrics=request_metrics, settings=settings,
 )
 agent_run_service = AgentRunService(conversation_store)
 auth_service = AuthService(
@@ -142,23 +148,20 @@ system_resource_center = create_system_resource_center(
     ),
     qdrant_check=require_serving_knowledge,
 )
-rate_limiter = SharedRateLimiter(
-    settings.rate_limit_requests, settings.rate_limit_window_seconds, redis_runtime
-)
+rate_limiter = SharedRateLimiter(settings.rate_limit_requests, settings.rate_limit_window_seconds, redis_runtime)
 runtime = ApiRuntime(
     settings=settings,
     conversation_store=conversation_store,
     auth_service=auth_service,
     redis_runtime=redis_runtime,
     rate_limiter=rate_limiter,
-    chat_turn_service=chat_turn_service,
+    chat_use_case=chat_use_case,
     agent_run_service=agent_run_service,
     interview_answer_service=interview_answer_service,
     interview_start_service=interview_start_service,
     interview_review_service=interview_review_service,
     resume_service=resume_service,
-    sync_executor=SyncExecutor(),
-    get_interview_agent=get_interview_agent,
+    sync_executor=sync_executor,
     generate_question=generate_question,
     assess_answer=assess_answer,
     ingest_knowledge=ingest_knowledge,
@@ -168,7 +171,6 @@ runtime = ApiRuntime(
     system_resource_center=system_resource_center,
 )
 configure_runtime(runtime)
-
 for router in (
     auth_routes.router,
     profile_routes.router,
@@ -193,11 +195,12 @@ configure_telemetry(
 
 @app.middleware("http")
 async def operational_controls(request: Request, call_next):
+    """运营控制中间件：API Key、会话鉴权、限流，并在结束时审计请求并记录指标。"""
     started_at = request_metrics.start()
     status_code = 500
     try:
-        protected = request.url.path.startswith("/api/") or request.url.path == "/ready"
-        if protected and settings.app_api_key:
+        deployment_key_protected = deployment_api_key_required(request.url.path)
+        if deployment_key_protected and settings.app_api_key:
             supplied = request.headers.get("x-api-key", "").strip()
             if not secrets.compare_digest(supplied, settings.app_api_key):
                 status_code = 401
@@ -265,6 +268,7 @@ async def operational_controls(request: Request, call_next):
 
 @app.middleware("http")
 async def request_context_and_security(request: Request, call_next):
+    """请求上下文与安全头中间件：生成/透传 request_id 并统一注入安全响应头。"""
     request_id = request.headers.get("x-request-id", "").strip()
     if not request_id or len(request_id) > 128:
         request_id = str(uuid4())
@@ -297,6 +301,7 @@ async def request_context_and_security(request: Request, call_next):
 
 
 def _resolve_index_html() -> Path:
+    """解析前端入口 index.html（优先 Vue 构建产物，回退旧静态页）。"""
     if FRONTEND_DIST:
         return FRONTEND_DIST / "index.html"
     return WEB_DIRECTORY / "index.html"
@@ -326,10 +331,8 @@ async def admin_web_app() -> FileResponse:
 @app.get("/reviews", include_in_schema=False)
 @app.get("/reviews/{review_id}", include_in_schema=False)
 async def main_web_app(
-    session_id: str | None = None,
-    interview_id: str | None = None,
-    resume_id: str | None = None,
-    review_id: str | None = None,
+    session_id: str | None = None, interview_id: str | None = None,
+    resume_id: str | None = None, review_id: str | None = None,
 ) -> FileResponse:
     return FileResponse(_resolve_index_html())
 
@@ -359,19 +362,17 @@ async def readiness() -> dict[str, str]:
             with request_metrics.dependency("redis"):
                 await run_sync(redis_runtime.check)
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"依赖未就绪：{exc}") from exc
+        logger.exception("Readiness dependency check failed")
+        raise unavailable_http_error(dependency="应用依赖") from exc
     return {"status": "ready"}
 
 
 @app.get("/metrics", response_class=PlainTextResponse)
 async def metrics() -> str:
     return request_metrics.render_prometheus()
-
-
-# Temporary callable compatibility for tests and integrations importing app.main.
-register = auth_routes.register
-login = auth_routes.login
-admin_login = auth_routes.admin_login
+# 旧调用方/测试直接从 app.main 导入函数名的兼容别名；新代码请从各 router 导入。
+# 下列 async 别名在转交前先把运行时回调/服务复位，确保测试中的替换不会被绕过。
+register, login, admin_login = auth_routes.register, auth_routes.login, auth_routes.admin_login
 admin_knowledge_files = admin_routes.admin_knowledge_files
 admin_save_knowledge_file = admin_routes.admin_save_knowledge_file
 admin_delete_knowledge_file = admin_routes.admin_delete_knowledge_file
@@ -385,12 +386,10 @@ async def admin_knowledge_rollback(payload, request: Request) -> dict[str, objec
     runtime.rollback_knowledge = rollback_knowledge
     return await admin_routes.admin_knowledge_rollback(payload, request)
 async def chat(request, http_request: Request, idempotency_key: str):
-    runtime.chat_turn_service = chat_turn_service
-    runtime.get_interview_agent = get_interview_agent
+    runtime.chat_use_case.turn_service = chat_turn_service
     return await chat_routes.chat(request, http_request, idempotency_key)
 async def chat_stream(request, http_request: Request, idempotency_key: str):
-    runtime.chat_turn_service = chat_turn_service
-    runtime.get_interview_agent = get_interview_agent
+    runtime.chat_use_case.turn_service = chat_turn_service
     return await chat_routes.chat_stream(request, http_request, idempotency_key)
 async def answer_interview(interview_id, request, http_request, idempotency_key):
     runtime.interview_answer_service = interview_answer_service

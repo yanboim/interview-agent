@@ -1,3 +1,5 @@
+"""简历定向面试上下文构建的测试。"""
+
 import json
 from pathlib import Path
 

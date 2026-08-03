@@ -1,3 +1,5 @@
+"""Agent 输出转换为 API 文本/来源/引用元数据的测试。"""
+
 from app.api.agent_io import build_citation_metadata, extract_sources
 
 

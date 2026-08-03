@@ -1,3 +1,5 @@
+"""Alembic 迁移环境：从应用配置解析数据库 URL 并驱动离线/在线迁移。"""
+
 from logging.config import fileConfig
 
 from alembic import context
@@ -20,6 +22,7 @@ target_metadata = metadata
 
 
 def run_migrations_offline() -> None:
+    """离线模式：生成 SQL 脚本而不连接数据库（``alembic upgrade --sql``）。"""
     context.configure(
         url=database_url,
         target_metadata=target_metadata,
@@ -32,6 +35,7 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
+    """在线模式：连接数据库并在单事务中执行迁移（默认 ``alembic upgrade``）。"""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
         prefix="sqlalchemy.",

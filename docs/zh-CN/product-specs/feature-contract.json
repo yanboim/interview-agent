@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product": "interview-agent",
-  "updated_at": "2026-07-31",
+  "updated_at": "2026-08-03",
   "status_values": [
     "passing",
     "planned"
@@ -111,16 +111,25 @@
     {
       "id": "agent-routing-contract",
       "category": "ai-quality",
-      "description": "Supervisor暴露专业Agent工具，路由评估报告各Agent准确率。",
+      "description": "启用多Agent模式时，聊天路由始终使用有界的显式Workflow V2专业Agent图；关闭多Agent模式时选择独立单Agent路径，不使用嵌套Supervisor。",
       "status": "passing",
       "steps": [
-        "构建配置的Supervisor。",
-        "确认知识、面试官、评估和规划工具可用。",
-        "评估记录的路由样本并报告各Agent准确率。"
+        "构建显式Workflow V2执行器和独立单Agent模式，不使用专业Agent作为工具的嵌套拓扑。",
+        "把一个或多个确定性意图仅路由到有界的知识、面试官、评估和规划阶段。",
+        "并发执行相互独立的多意图专业Agent路由，任一路失败时取消尚未完成的同级任务，并保持确定性的结果组合顺序。",
+        "对于流式聊天，等待每个显式专业Agent经过验证的最终图状态；即使提供方消息流只包含工具证据，也按确定性路由顺序输出结构化答案。",
+        "不调用规划模型或嵌套Supervisor，完成结果验证、组合和持久化。",
+        "忽略已退役的Rollout开关；恢复时重新部署已记录的退役前不可变app和worker产物，而不是在当前镜像内切换拓扑。",
+        "评估记录的路由样本并报告各Agent准确率、完成率、延迟、成本和零容忍安全结果。"
       ],
       "verification": [
         "tests/test_multi_agent.py",
-        "tests/test_multi_agent_evaluation.py"
+        "tests/test_multi_agent_evaluation.py",
+        "tests/test_chat_execution.py",
+        "tests/test_chat_workflow.py",
+        "tests/test_model_routing_policy.py",
+        "tests/test_workflow_prerelease_gate.py",
+        "eval/reports/workflow-v2-prerelease-acceptance.json"
       ],
       "category_zh_CN": "AI质量"
     },
@@ -203,11 +212,13 @@
         "通过注册创建产品账号，通过运维脚本创建管理员。",
         "确认两种凭据都会被另一登录面拒绝。",
         "确认产品Shell不暴露后台导航或服务API Key设置。",
+        "APP_API_KEY只在服务端保护就绪探针；确认产品与管理员浏览器登录及认证API既不要求也不暴露共享部署密钥。",
         "确认管理员端点继续要求管理员角色。"
       ],
       "verification": [
         "tests/test_auth.py",
         "tests/test_authorization.py",
+        "tests/test_api_key_scope.py",
         "frontend/e2e/product.spec.ts"
       ],
       "category_zh_CN": "安全"
@@ -330,12 +341,13 @@
     {
       "id": "model-policy-gateway",
       "category": "reliability",
-      "description": "所有外部聊天和Embedding调用统一使用超时、重试、并发、预算、指标、Token和安全错误策略。",
+      "description": "所有外部聊天和Embedding调用统一使用超时、重试、并发、预算、指标、Token和安全错误策略；聊天流仅可在提供方零chunk失败后重启。",
       "status": "passing",
       "steps": [
         "通过网关构建每个外部模型。",
         "拒绝超出配置预算的输入和输出。",
         "限制同步和异步提供方并发。",
+        "仅在失败聊天流没有产生任何chunk时重启，每次重启占用请求模型调用预算，部分流不得重放或切换回退模型。",
         "记录延迟、错误和提供方Token用量。"
       ],
       "verification": [
@@ -343,7 +355,10 @@
         "tests/test_architecture.py",
         "tests/test_interview_engine.py",
         "tests/test_llm_reranker.py",
-        "tests/test_rag.py"
+        "tests/test_rag.py",
+        "tests/test_operations.py",
+        "tests/test_telemetry.py",
+        "tests/test_error_redaction.py"
       ],
       "category_zh_CN": "可靠性"
     },
@@ -403,6 +418,25 @@
       "category_zh_CN": "运维"
     },
     {
+      "id": "tiered-verification-gates",
+      "category": "operations",
+      "description": "开发者获得简洁快速的反馈，同时Main和发布候选仍保留完整的浏览器、依赖和镜像验证。",
+      "status": "passing",
+      "steps": [
+        "本地迭代时运行编译、架构和前端静态检查，不启动服务或浏览器。",
+        "Pull Request运行确定性仓库、后端、前端、构建和空库Migration检查。",
+        "取消已被取代的分支或Pull Request运行，快速工作流不执行重型浏览器、依赖和镜像工作。",
+        "Main、Nightly、手动和发布验证路径运行完整Harness、依赖审计和镜像扫描。"
+      ],
+      "verification": [
+        "tests/test_harness_contract.py",
+        ".github/workflows/ci.yml",
+        ".github/workflows/deep-verification.yml",
+        ".github/workflows/release.yml"
+      ],
+      "category_zh_CN": "运维"
+    },
+    {
       "id": "admin-system-resource-center",
       "category": "operations",
       "description": "管理员可以检查应用、数据、任务、网关和观测资源的脱敏清单及有界实时健康摘要，不暴露基础设施凭据或管理端口。",
@@ -420,7 +454,8 @@
         "tests/test_worker.py",
         "tests/test_architecture.py",
         "frontend/src/lib/adminResources.test.ts",
-        "frontend/src/components/admin/AdminResourcesSection.vue"
+        "frontend/src/components/admin/AdminResourcesSection.vue",
+        "frontend/e2e/admin-monitoring-links.spec.ts"
       ],
       "category_zh_CN": "运维"
     },
@@ -438,7 +473,7 @@
       "verification": [
         "frontend/scripts/check-toolchain.mjs",
         "frontend/package-lock.json",
-        ".github/workflows/ci.yml",
+        ".github/workflows/deep-verification.yml",
         "frontend/e2e/product.spec.ts"
       ],
       "category_zh_CN": "安全"
@@ -457,6 +492,7 @@
       ],
       "verification": [
         "tests/test_admin_observability.py",
+        "tests/test_error_redaction.py",
         "tests/test_migrations.py",
         "tests/test_architecture.py",
         "frontend/src/components/admin/AdminAuditsSection.vue"
@@ -479,7 +515,9 @@
         "tests/test_deployment_releases.py",
         "tests/test_migrations.py",
         "frontend/e2e/admin-releases.spec.ts",
-        "scripts/record_release.py"
+        "scripts/record_release.py",
+        "tests/test_production_preflight.py",
+        "scripts/check_production_preflight.py"
       ],
       "category_zh_CN": "运维"
     },
@@ -600,7 +638,9 @@
         "tests/test_storage.py",
         "tests/test_multi_agent.py",
         "frontend/src/api/chat.test.ts",
-        "frontend/src/stores/chat.test.ts"
+        "frontend/src/stores/chat.test.ts",
+        "frontend/src/components/app/ChatPanel.test.ts",
+        "frontend/e2e/chat-citations.spec.ts"
       ],
       "category_zh_CN": "AI质量"
     },
@@ -679,14 +719,18 @@
     {
       "id": "agent-model-cost-resilience-routing",
       "category": "reliability",
-      "description": "Agent模型调用使用经过评测的按用途路由、请求级调用/Token/成本预算、可恢复的同供应商回退策略，以及具备即时测试回滚的分阶段发布。",
+      "description": "Agent模型调用使用经过评测的按用途路由、请求级调用/Token/成本预算、可恢复的同供应商回退策略、显式Workflow V2执行和不可变产物回滚。",
       "status": "passing",
       "steps": [
-        "分别解析Supervisor、Knowledge、Interviewer、Evaluator、Planner、摘要和Schema修复模型配置；覆盖为空时继续使用已配置默认模型。",
-        "只有高置信确定性单意图且内测、金丝雀或生产阶段允许时才跳过Supervisor；模糊和多意图请求经过Supervisor，阶段切到off时立即恢复Supervisor。",
+        "分别解析Knowledge、Interviewer、Evaluator、Planner、摘要和Schema修复模型配置；覆盖为空时继续使用已配置默认模型。",
+        "启用多Agent模式时，通过有界Workflow V2专业Agent计划执行一个或多个确定性意图；关闭时只执行独立的单Agent路径。",
         "按请求类别记录模型调用次数、输入/输出Token、墙钟与首Token时间、价格版本和估算成本；新增调用会超过调用、Token或成本上限时在执行前拒绝。",
         "只有用途已列入评测批准配置时才使用可选同供应商回退；Evaluator、简历分析和面试复盘禁止未校准回退，并返回可恢复的不可用状态。",
-        "仅当Agent分组门禁没有零容忍失败，且路由后的质量、完成率、p95延迟和单次完成训练成本相对保留基线均不退化时，才批准推进金丝雀。"
+        "仅当Agent分组门禁没有零容忍失败，且路由后的质量、完成率、p95延迟和单次完成训练成本相对保留基线均不退化时，才批准推进金丝雀。",
+        "为显式Workflow V2的每次成功、失败或取消执行导出有界结果、时延直方图和成本指标；历史Supervisor查询仅用于审计退役前证据。",
+        "未来公开发布继续使用独立的失败关闭生产门禁：从已记录的不可变回滚产物获得Supervisor窗口并与Workflow V2窗口比较，两者分别至少覆盖24小时和100个完成请求，同时要求外部批准、指标不回退以及匹配的成功/已回滚发布台账；该证据政策不会把Supervisor恢复到当前运行时。",
+        "首次公开发布前允许使用独立预发布退役门禁：至少230个确定性应用栈案例、至少6个覆盖全部四类专业Agent且含2个多意图的隔离真实模型案例、零容忍安全成功、精确测试数据清理、不可变当前/回滚产物、匹配的成功与已回滚台账，以及真实验收后的项目所有者明确批准。",
+        "门禁通过后移除Supervisor源码和发布配置；回滚必须校验摘要并重新部署已记录的Supervisor兼容app/worker产物。"
       ],
       "verification": [
         "tests/test_model_routing_policy.py",
@@ -694,7 +738,16 @@
         "tests/test_multi_agent.py",
         "tests/test_operations.py",
         "tests/test_chat_lifecycle.py",
-        "eval/reports/model-routing-canary-approved.json"
+        "tests/test_workflow_rollout_gate.py",
+        "tests/test_workflow_observation.py",
+        "tests/test_workflow_prerelease_gate.py",
+        "tests/test_operations.py",
+        "scripts/collect_workflow_observation.py",
+        "scripts/check_workflow_prerelease.py",
+        "eval/reports/model-routing-canary-approved.json",
+        "eval/reports/workflow-v2-production-observation.template.json",
+        "eval/reports/workflow-v2-prerelease-acceptance.template.json",
+        "eval/reports/workflow-v2-prerelease-acceptance.json"
       ],
       "category_zh_CN": "可靠性"
     }

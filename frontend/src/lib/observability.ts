@@ -1,3 +1,4 @@
+// 前端可观测性：捕获全局错误、未处理 Promise 拒绝与 Web Vitals（LCP/页面加载）。
 import { trackEvent } from "@/api/analytics";
 
 let started = false;

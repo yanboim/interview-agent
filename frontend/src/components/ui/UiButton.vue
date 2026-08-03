@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 通用按钮组件：支持主/文本/危险样式与 loading 态。
 withDefaults(
   defineProps<{
     variant?: "primary" | "text" | "danger";

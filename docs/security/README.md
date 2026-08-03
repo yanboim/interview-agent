@@ -35,8 +35,9 @@ them.
 - Every user-owned read and write includes the authenticated `user_id`; a
   client-supplied ID does not grant access.
 - `/api/admin/*` checks the server-side `admin` role.
-- When `APP_API_KEY` is configured, protected API traffic also requires the
-  deployment-level `X-API-Key`.
+- `APP_API_KEY` is a server-only deployment secret for the operator readiness
+  probe (`/ready`). Browser APIs never require or expose it; product and admin
+  APIs rely on their own Bearer identity, role, ownership, and rate-limit checks.
 
 Executable evidence is indexed by the security features in
 [`feature-contract.json`](../product-specs/feature-contract.json), principally
@@ -82,8 +83,8 @@ unapproved user or private knowledge text.
 
 ## Network and deployment controls
 
-- Enable `AUTH_REQUIRED=true`, PostgreSQL, Redis, and a strong `APP_API_KEY` in
-  production.
+- Enable `AUTH_REQUIRED=true`, PostgreSQL, Redis, and a strong `APP_API_KEY` for
+  the authenticated production readiness probe.
 - Terminate TLS at a trusted ingress and restrict allowed origins and hosts at
   the deployment boundary.
 - Keep PostgreSQL, Redis, Qdrant, Prometheus, Grafana, and OpenTelemetry ports on
@@ -101,6 +102,8 @@ unapproved user or private knowledge text.
   writes.
 - Review logs, metrics, errors, and audit records for secret or private-data
   leakage.
+- Map unknown infrastructure and provider exceptions to stable public messages;
+  keep the complete exception in restricted server logs only.
 - Document every new external data destination, timeout, failure mapping, and
   cost behavior.
 - Run focused auth/authorization tests and the full required Harness gate.

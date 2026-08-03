@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 目标设置对话框：引导新用户填写目标岗位、方向、经验与面试日期。
 import { onMounted, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";

@@ -17,6 +17,21 @@ REVIEW_INTERVAL_DAYS = (1, 3, 7, 14, 30, 60)
 def build_learning_candidates(
     profile: dict[str, Any],
 ) -> list[dict[str, str]]:
+    """把能力画像的薄弱维度与弱点转化为可去重的学习任务候选。
+
+    优先取评分最低的两个能力维度，按 ``DIMENSION_ACTIONS`` 给出对应
+    训练动作；再补充最薄弱维度下的前三条弱点作为案例式复习。最终按
+    ``(维度, 弱点)`` 的小写键去重，避免同一薄弱点重复出现。
+
+    参数:
+        profile: 能力画像，至少包含 ``dimension_scores``（或
+            ``calibrated_dimension_scores``，校准后优先）与
+            ``weaknesses``（``{"label": str}``` 列表）。
+
+    返回:
+        学习候选列表，每项为
+        ``{"dimension", "weakness", "action"}``。
+    """
     candidates: list[dict[str, str]] = []
     dimension_scores = profile.get("calibrated_dimension_scores") or profile[
         "dimension_scores"
@@ -72,6 +87,27 @@ def next_review_time(
     lapse_count: int = 0,
     confidence: float = 0.5,
 ) -> datetime:
+    """计算下次间隔复习时间。
+
+    在 ``REVIEW_INTERVAL_DAYS`` 基础间隔上叠加多个调节因子，模拟
+    间隔重复（spaced repetition）：回忆结果越好、题目越简单、用户
+    越有信心、遗忘越少，间隔越长。
+
+    参数:
+        review_count: 已完成的复习次数，用于索引基础间隔。
+        now: 起算时刻，默认当前 UTC 时间；可注入便于测试。
+        outcome: 上次回忆结果，``"remembered"`` / ``"partial"`` /
+            ``"forgotten"`` 之一，未知值按 ``"partial"`` 处理。
+        difficulty: 难度 ``1-5``，越难间隔越短；越界会被钳制。
+        lapse_count: 已遗忘次数，越多间隔越短。
+        confidence: 自评信心 ``0.0-1.0``，越有信心间隔越长；越界会被钳制。
+
+    返回:
+        下次复习时刻（带 UTC 时区信息）。最终天数被钳制在 ``[1, 60]``。
+
+    规则:
+        所有因子相乘后四舍五入到整数天，确保最小 1 天、最大 60 天。
+    """
     current = now or datetime.now(UTC)
     interval_index = min(
         max(review_count - 1, 0),

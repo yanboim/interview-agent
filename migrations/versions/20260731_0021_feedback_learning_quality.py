@@ -1,4 +1,4 @@
-"""Add durable feedback and outcome-aware learning state.
+"""新增可恢复的反馈与结果感知的学习状态。
 
 Revision ID: 20260731_0021
 Revises: 20260731_0020

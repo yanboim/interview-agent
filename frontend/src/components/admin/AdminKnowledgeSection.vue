@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理端知识库分区：知识源文件增删改、导入与版本/回滚。
 import { computed, ref } from "vue";
 import { confirm } from "@/composables/confirm";
 import { formatDateTime, formatSize } from "@/lib/format";

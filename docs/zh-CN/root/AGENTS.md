@@ -34,8 +34,9 @@
 2. 说明预期行为和最小验收标准。
 3. 完成最小且完整的变更，不混入无关清理。
 4. 随实现增加或更新测试与仓库文档。
-5. 迭代时运行聚焦检查。
-6. 宣布仓库范围变更完成前运行 `make harness-check`。
+5. 迭代时运行聚焦检查或 `make dev-check`。
+6. 宣布分支就绪前运行 `make pr-check`。Main和发布候选运行
+   `make harness-check`；修改浏览器关键旅程时，交付前还需运行聚焦 `make e2e`。
 7. 更新执行计划和技术债跟踪器；把完成计划移入 `docs/exec-plans/completed/`。
 
 没有可执行验证引用时，不得在功能契约中把功能标记为 `passing`。文档变化后运行
@@ -70,10 +71,12 @@
 ## 验证
 
 - 聚焦后端测试：`pytest -q tests/<relevant_file>.py`
+- 本地快速静态反馈：`make dev-check`
+- 确定性Pull Request门禁：`make pr-check`
 - 后端套件：`pytest -q`
 - 前端单测/类型/构建：`make frontend-check`
 - Harness契约和架构：`make harness-static`
-- 完整本地门禁（含浏览器E2E）：`make harness-check`
+- Main/发布门禁（含浏览器E2E）：`make harness-check`
 - 外部服务PostgreSQL检查要求 `TEST_POSTGRES_URL`。
 - Live模型和RAG评估会产生费用；除非任务需要且凭据已配置，否则不得运行。
 

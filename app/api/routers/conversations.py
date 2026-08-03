@@ -23,6 +23,7 @@ async def list_conversations(
     user_id: str,
     include_archived: bool = False,
 ) -> list[dict[str, str | None]]:
+    """列出当前用户的会话摘要（默认不含归档，所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     if not user_id or len(user_id) > 128:
         raise HTTPException(status_code=422, detail="user_id 不合法")
@@ -38,6 +39,7 @@ async def archive_conversations(
     payload: ConversationArchiveRequest,
     request: Request,
 ) -> dict[str, int]:
+    """批量归档/取消归档指定会话（所有者范围）。"""
     user_id = resolve_user_id(request, payload.user_id)
     updated = await run_sync(
         get_runtime().conversation_store.archive_conversations,
@@ -57,6 +59,7 @@ async def conversation_messages(
     session_id: str,
     user_id: str,
 ) -> list[HistoryMessage]:
+    """返回单个会话的完整历史消息（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     messages = await run_sync(
         get_runtime().conversation_store.get_messages,
@@ -80,6 +83,7 @@ async def delete_conversation(
     session_id: str,
     user_id: str,
 ) -> dict[str, bool]:
+    """永久删除单个会话及其消息（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     deleted = await run_sync(
         get_runtime().conversation_store.delete_conversation,
@@ -98,6 +102,11 @@ async def rename_conversation(
     session_id: str,
     payload: ConversationRenameRequest,
 ) -> dict[str, str]:
+    """重命名单个会话标题（所有者范围）。
+
+    异常:
+        HTTPException 404: 会话不存在。
+    """
     user_id = resolve_user_id(request, payload.user_id)
     renamed = await run_sync(
         get_runtime().conversation_store.rename_conversation,

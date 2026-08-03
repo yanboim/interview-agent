@@ -1,3 +1,5 @@
+"""交叉编码器重排器的测试。"""
+
 from unittest.mock import MagicMock, patch
 
 from langchain_core.documents import Document

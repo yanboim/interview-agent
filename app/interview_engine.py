@@ -11,10 +11,21 @@ from app.agent_contracts import (
     validate_structured_text,
 )
 from app.config import get_settings
+from app.application.interview_capabilities import (
+    ASSESSMENT_DIMENSIONS,
+    ASSESSMENT_RUBRIC_ZH,
+    ASSESSMENT_SYSTEM_PROMPT,
+    AnswerEvaluationRequestV1,
+    AnswerEvaluationResultV1,
+    InterviewReportV1,
+    QUESTION_SYSTEM_PROMPT,
+    QuestionGenerationRequestV1,
+    QuestionGenerationResultV1,
+)
 from app.model_gateway import PolicyChatOpenAI, create_chat_model
 
 
-DIMENSIONS = ("accuracy", "depth", "communication", "practicality")
+DIMENSIONS = ASSESSMENT_DIMENSIONS
 DIMENSION_LABELS = {
     "accuracy": "技术准确性",
     "depth": "原理深度",
@@ -58,7 +69,7 @@ def _message_text(response: Any) -> str:
     return str(response.content).strip()
 
 
-def generate_question(
+def _generate_question(
     *,
     topic: str,
     level: str,
@@ -85,9 +96,7 @@ def generate_question(
         [
             SystemMessage(
                 content=(
-                    "你是一名高级软件工程师面试官。一次只提出一个清晰、可评分的"
-                    "中文技术问题，不要给答案、提示或评分标准。避免与历史问题重复。"
-                    "如有简历上下文，问题必须关联其中的项目证据或岗位差距。"
+                    QUESTION_SYSTEM_PROMPT
                 )
             ),
             HumanMessage(
@@ -125,7 +134,7 @@ def parse_assessment(content: str) -> dict[str, Any]:
     }
 
 
-def assess_answer(
+def _assess_answer(
     *,
     topic: str,
     level: str,
@@ -137,7 +146,7 @@ def assess_answer(
         [
             SystemMessage(
                 content=(
-                    "你是严格但建设性的高级工程师面试评分官。只输出 JSON，"
+                    f"{ASSESSMENT_SYSTEM_PROMPT}只输出 JSON，"
                     "不要使用 Markdown 代码块。评分范围 0 到 10。JSON 格式："
                     '{"overall":7.5,"dimensions":{"accuracy":8,'
                     '"depth":7,"communication":8,"practicality":7},'
@@ -152,7 +161,7 @@ def assess_answer(
                 content=(
                     f"主题：{topic}\n难度：{level}\n"
                     f"问题：{question}\n候选人回答：{answer}\n"
-                    "请基于技术正确性、原理深度、表达结构和工程实践评分。"
+                    f"请基于{ASSESSMENT_RUBRIC_ZH}评分。"
                 )
             ),
         ],
@@ -161,7 +170,7 @@ def assess_answer(
     return parse_assessment(assessment.model_dump_json())
 
 
-def build_report(turns: list[dict[str, object]]) -> dict[str, Any]:
+def _build_report(turns: list[dict[str, object]]) -> dict[str, Any]:
     assessed = [turn for turn in turns if turn.get("score") is not None]
     if not assessed:
         return {
@@ -215,3 +224,56 @@ def build_report(turns: list[dict[str, object]]) -> dict[str, Any]:
             for name in weakest_dimensions
         ],
     }
+
+
+class ModelInterviewCapabilities:
+    """Model-backed adapter for all versioned interview capabilities."""
+
+    def generate(
+        self, request: QuestionGenerationRequestV1
+    ) -> QuestionGenerationResultV1:
+        question = _generate_question(
+            topic=request.topic,
+            level=request.level,
+            turn_index=request.turn_index,
+            previous_turns=request.previous_turns,
+            resume_context=request.resume_context,
+        )
+        return QuestionGenerationResultV1(question=question)
+
+    def evaluate(
+        self, request: AnswerEvaluationRequestV1
+    ) -> AnswerEvaluationResultV1:
+        result = _assess_answer(
+            topic=request.topic,
+            level=request.level,
+            question=request.question,
+            answer=request.answer,
+        )
+        return AnswerEvaluationResultV1(**result)
+
+    def build(self, turns: list[dict[str, object]]) -> InterviewReportV1:
+        return InterviewReportV1(**_build_report(turns))
+
+
+@lru_cache
+def get_interview_capabilities() -> ModelInterviewCapabilities:
+    return ModelInterviewCapabilities()
+
+
+def generate_question(**kwargs: Any) -> str:
+    request = QuestionGenerationRequestV1.model_validate(kwargs)
+    return get_interview_capabilities().generate(request).question
+
+
+def assess_answer(**kwargs: Any) -> dict[str, Any]:
+    request = AnswerEvaluationRequestV1.model_validate(kwargs)
+    return get_interview_capabilities().evaluate(request).model_dump(
+        exclude={"schema_version", "prompt_version", "model_version"}
+    )
+
+
+def build_report(turns: list[dict[str, object]]) -> dict[str, Any]:
+    return get_interview_capabilities().build(turns).model_dump(
+        exclude={"schema_version"}
+    )

@@ -1,10 +1,12 @@
 <script setup lang="ts">
+// 聊天面板：消息流、流式占位、引用证据展示与停止生成。
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useChatStore } from "@/stores/chat";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";
 import * as api from "@/api/client";
 import MarkdownContent from "@/components/MarkdownContent.vue";
+import { normalizeCitationMarkdown } from "@/lib/markdown";
 
 const chat = useChatStore();
 const auth = useAuthStore();
@@ -304,9 +306,12 @@ async function retryLast() {
               aria-label="逐条引用与证据状态"
             >
               <strong>逐条引用</strong>
-              <ul>
+              <ul class="citation-list">
                 <li v-for="citation in msg.citations" :key="`${citation.support}:${citation.claim}`">
-                  <span>{{ citation.claim }}</span>
+                  <MarkdownContent
+                    class="citation-claim"
+                    :content="normalizeCitationMarkdown(citation.claim)"
+                  />
                   <small>
                     {{ citation.support === "supported" ? `证据 ${citation.evidence_ids.join(", ")}` : citation.support === "conflicting" ? "证据冲突" : "暂无证据支持" }}
                   </small>

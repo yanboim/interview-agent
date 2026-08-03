@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 应用顶栏：当前会话标题、新会话入口、主题切换与登出。
 import { ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { confirm } from "@/composables/confirm";

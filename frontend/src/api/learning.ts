@@ -1,3 +1,4 @@
+// 学习任务与个性化训练方案工作流 API 封装。
 import type { LearningTask, TrainingProgramRun } from "@/types";
 import { apiFetch, expectOk } from "@/api/core";
 

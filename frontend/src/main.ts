@@ -1,3 +1,4 @@
+// 应用入口：创建 Vue 实例、挂载 Pinia/路由并初始化前端可观测性。
 import { createApp } from "vue";
 import { createPinia } from "pinia";
 import App from "./App.vue";

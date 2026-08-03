@@ -1,3 +1,5 @@
+"""同步用例执行器（SyncExecutor）的测试。"""
+
 import asyncio
 
 from app.application.execution import SyncExecutor

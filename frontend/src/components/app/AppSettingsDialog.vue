@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 设置对话框：主题、提醒偏好、改密与恢复码等应用设置。
 import { onMounted, onUnmounted, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useToastStore } from "@/stores/toast";

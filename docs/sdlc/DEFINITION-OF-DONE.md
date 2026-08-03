@@ -19,7 +19,7 @@
 
 - 聚焦测试通过；
 - 适用的后端、前端、迁移、浏览器、可访问性、AI评估和安全检查通过；
-- 仓库级变化通过 `make harness-check`；
+- Pull Request通过 `make pr-check`；Main和发布候选通过 `make harness-check`；
 - 无法执行的要求检查被明确报告；
 - 功能契约只在有真实执行证据时标记为 `passing`。
 

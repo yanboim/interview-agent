@@ -1,3 +1,5 @@
+"""LLM 重排器（解析失败安全回退）的测试。"""
+
 from app.llm_reranker import parse_ranking
 
 

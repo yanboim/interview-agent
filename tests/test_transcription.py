@@ -1,3 +1,5 @@
+"""外部转写提供方适配器的测试。"""
+
 from pathlib import Path
 
 import httpx

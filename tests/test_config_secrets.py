@@ -1,3 +1,5 @@
+"""配置加载与密钥文件回填、跨字段校验的测试。"""
+
 from app.config import Settings
 
 

@@ -1,4 +1,4 @@
-"""Add reminder preferences and conversation archives.
+"""新增提醒偏好与会话归档。
 
 Revision ID: 20260725_0006
 Revises: 20260725_0005

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 应用侧边栏：导航入口、会话历史与健康状态指示。
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { handleDialogKeydown } from "@/lib/focusTrap";
@@ -42,7 +43,9 @@ let healthTimer: number | undefined;
 
 async function checkHealth() {
   try {
-    online.value = (await fetch("/ready")).ok;
+    // `/ready` is an operator-only dependency probe and requires the deployment
+    // key. Browser status only needs the public process liveness endpoint.
+    online.value = (await fetch("/health")).ok;
   } catch {
     online.value = false;
   }

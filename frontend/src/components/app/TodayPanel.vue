@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 今日训练面板：展示今日建议、到期复习提醒与训练进度。
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";

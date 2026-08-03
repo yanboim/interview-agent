@@ -1,4 +1,4 @@
-"""Add the administrator deployment release ledger.
+"""新增管理员部署发版记录簿。
 
 Revision ID: 20260728_0013
 Revises: 20260728_0012

@@ -1,3 +1,5 @@
+"""评估面试复盘分析的回合评分质量。"""
+
 import argparse
 import json
 from pathlib import Path

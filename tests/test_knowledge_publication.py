@@ -1,3 +1,5 @@
+"""知识发布（版本化、验证、别名切换、回滚）的测试。"""
+
 from datetime import UTC, datetime
 from pathlib import Path
 from types import SimpleNamespace
@@ -6,6 +8,7 @@ from unittest.mock import MagicMock
 import pytest
 from qdrant_client import models
 
+from app import knowledge_ingestion as ingest
 from app.knowledge_publication import (
     KnowledgePublicationConflict,
     KnowledgePublicationError,
@@ -18,7 +21,6 @@ from app.knowledge_publication import (
     switch_serving_alias,
 )
 from app.operations import RedisRuntime
-from scripts import ingest
 
 
 def settings(**overrides):

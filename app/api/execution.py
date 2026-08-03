@@ -15,5 +15,12 @@ async def run_sync(
     *args: P.args,
     **kwargs: P.kwargs,
 ) -> R:
-    """Dispatch one synchronous application or infrastructure call."""
+    """派发一次同步的应用或基础设施调用到工作线程。
+
+    统一从运行时取 ``SyncExecutor``，把阻塞型数据库工作移出事件循环，
+    而不是在各路由内散落地把同步用例交给线程池。
+
+    返回:
+        被调用函数的返回值。
+    """
     return await get_runtime().sync_executor.run(function, *args, **kwargs)

@@ -13,7 +13,12 @@
 | 面试 | 模拟面试 | `interview-lifecycle`, `idempotent-interview-answer` | interview service/router | interview、migration、E2E |
 | 学习闭环 | 能力与学习 | `learning-review-cycle` | capability/learning | capability、learning、storage测试 |
 | RAG | AI问答/管理 | `rag-relevance-and-traceability`, `atomic-knowledge-publication` | rag/publication/worker | RAG、知识发布、评估报告 |
-| Agent | 平台能力 | `agent-routing-contract` | multi_agent/tools | multi-agent测试和路由报告 |
+| Agent安全 | AI问答/平台能力 | `agent-tool-safety-boundary` | agent tools/outbound policy/confirmations | 工具、学习、迁移和架构测试 |
+| Agent证据 | AI问答 | `agent-grounded-structured-output` | contracts/agent IO/model artifacts | 结构化输出、引用、前后端测试 |
+| Agent上下文 | 账号与目标 | `agent-personalized-context-memory` | context service/coaching memory | 上下文、迁移、会话和E2E |
+| Agent工作流 | 能力与学习 | `durable-personalized-training-workflow` | agent run service/learning UI | 运行服务/API/迁移/E2E |
+| Agent质量 | 能力与学习 | `agent-quality-feedback-learning-loop` | feedback/evaluation/capability/scheduler | 230例门禁、反馈、能力和学习测试 |
+| Agent路由 | 平台能力 | `agent-routing-contract`, `agent-model-cost-resilience-routing` | multi_agent/model routing/budget | 路由、网关、运维和Canary报告 |
 | 管理 | 管理故事 | `admin-knowledge-files`, `separate-product-admin-surfaces` | admin router | admin、authorization、E2E |
 | 体验 | 页面范围 | `responsive-accessible-shell`, `conversation-history-workspace` | Vue工作区 | Playwright、axe、组件测试 |
 | 账号体验 | 账号与目标 | `account-avatar-and-reminder-preferences` | profile router/settings | 资料偏好、存储、E2E |
@@ -30,6 +35,17 @@
 | 简历评估 | 简历驱动的面试训练与面试复盘 | `resume-assessment-and-optimization` | 简历应用服务与中心 | `tests/test_resume_*`, `frontend/e2e/resume.spec.ts` |
 | 定向面试 | 简历驱动的面试训练与面试复盘 | `resume-grounded-mock-interview` | 现有面试服务与页面 | 定向面试测试、评估、E2E |
 | 面试复盘 | 简历驱动的面试训练与面试复盘 | `real-interview-transcription-review` | 转写/复盘服务与空间 | 复盘/转写/Worker测试和E2E |
+
+## Agent应用闭环证据
+
+| 阶段 | 功能契约 | 当前实现 | 执行证据 |
+|---|---|---|---|
+| 安全工具 | `agent-tool-safety-boundary` | DLP、不可信证据、内容最小化审计和单次确认 | `tests/test_agent_tools.py`, `tests/test_learning.py` |
+| 证据输出 | `agent-grounded-structured-output` | 版本化Schema、有限修复、声明级引用和生成来源 | Agent contracts/IO、领域引擎和前端测试 |
+| 个性化 | `agent-personalized-context-memory` | 预算快照、委派信封和确认训练记忆 | `tests/test_agent_context_service.py`, 记忆E2E |
+| 持久执行 | `durable-personalized-training-workflow` | `agent_runs`/`agent_steps` 和训练计划UI | Agent run服务/API、迁移和E2E |
+| 反馈学习 | `agent-quality-feedback-learning-loop` | 回合反馈、评估候选、能力置信和复习调度 | 230例套件及反馈/能力/学习测试 |
+| 成本弹性 | `agent-model-cost-resilience-routing` | 用途路由、请求预算、批准回退和阶段开关 | 路由/网关/指标测试及Canary报告 |
 
 ## 维护规则
 

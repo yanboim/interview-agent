@@ -1,3 +1,5 @@
+"""回填历史知识分块的稳定 ID，使旧集合也能用幂等分块标识重算。"""
+
 from qdrant_client import QdrantClient, models
 
 from app.chunks import stable_chunk_id

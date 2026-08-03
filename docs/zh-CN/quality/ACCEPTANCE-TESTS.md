@@ -6,11 +6,18 @@
 | 租户隔离 | 第二用户不能读取、修改或删除第一用户资源 | `tests/test_authorization.py` |
 | 目标与今日训练 | 资料持久化，建议使用账号数据 | 存储测试、产品E2E |
 | 聊天 | 流式回答、完成原子化、失败/取消恢复、同键重放 | `tests/test_chat_lifecycle.py` |
+| Agent工具安全 | 审计无正文、搜索DLP、不可信证据、所有者/内容绑定确认 | `tests/test_agent_tools.py`, 学习/迁移测试 |
+| 声明级证据 | Schema校验、有限修复、稳定证据ID、支持/冲突/无证据和历史重放 | Agent contracts/IO、引擎和前端测试 |
+| 训练记忆 | 仅confirmed进入上下文、纠正重确认、来源过期和删除即时生效 | 上下文/记忆/迁移/E2E |
 | 会话历史 | 搜索、重命名、归档、恢复和删除按用户隔离 | `tests/test_storage.py` |
 | 模拟面试 | 题目、回答、评分、下一题和报告持久化 | 面试/存储测试 |
 | 面试幂等 | 并发只评分一次，同键重放，不同内容拒绝 | `tests/test_interview_idempotency.py` |
 | 能力画像 | 跨场次聚合、主题筛选和异常历史容错 | `tests/test_capability.py` |
-| 学习复习 | 去重、状态、复习次数和递增间隔 | `tests/test_learning.py` |
+| 学习复习 | 去重、状态、回忆结果、难度、遗忘、置信度和1–60天确定性间隔 | `tests/test_learning.py` |
+| Agent训练工作流 | 预览确认、原子任务、并发/重试/取消/恢复、SSE和跨用户隔离 | Agent run服务/API/迁移/E2E |
+| 用户反馈闭环 | 所有者绑定反馈、删除、内容最小化负面候选和隐私评审门禁 | `tests/test_assistant_feedback.py` |
+| Agent质量门禁 | 230例分组最小数量、真实应用栈和安全零容忍阈值 | `tests/test_agent_quality_evaluation.py` |
+| 模型路由与预算 | 用途覆盖、阶段回滚、调用/Token/成本上限和批准回退 | 路由、网关、运维测试和Canary报告 |
 | 私人RAG | 低相关拒绝、来源保留、版本缓存隔离 | `tests/test_rag.py` |
 | Agent路由 | 专用Agent工具存在，按Agent报告准确率 | 多Agent测试与评估 |
 | 管理后台 | 独立登录、角色限制、安全知识文件 | 管理/授权测试 |

@@ -1,4 +1,4 @@
-"""Generate deterministic repository references from implementation sources."""
+"""从实现源码生成确定性的仓库参考文档。"""
 
 from __future__ import annotations
 

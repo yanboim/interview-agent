@@ -19,3 +19,32 @@ groups:
           severity: warning
         annotations:
           summary: "Interview Agent dependency latency is above 5 seconds"
+      - alert: InterviewAgentWorkflowV2Failures
+        expr: |
+          increase(interview_agent_workflow_runs_total{
+            workflow="chat-workflow-v2",outcome="failed"
+          }[10m]) > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Workflow V2 has failed production executions"
+      - alert: InterviewAgentWorkflowV2CompletionRegression
+        expr: |
+          sum(increase(interview_agent_workflow_runs_total{
+            workflow="chat-workflow-v2",outcome="completed"
+          }[30m]))
+          /
+          clamp_min(sum(increase(interview_agent_workflow_runs_total{
+            workflow="chat-workflow-v2"
+          }[30m])), 1)
+          < 0.95
+          and
+          sum(increase(interview_agent_workflow_runs_total{
+            workflow="chat-workflow-v2"
+          }[30m])) >= 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Workflow V2 completion rate is below 95 percent"

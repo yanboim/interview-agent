@@ -44,6 +44,13 @@ POST /api/admin/knowledge/rollback
 配置回滚需要确认旧应用与当前Schema/数据兼容。Secret泄露应执行轮换而不是简单改回
 旧值，同时撤销相关Token并审查日志。
 
+## Agent Workflow V2
+
+Supervisor已经通过预发布门禁退役，`AGENT_ROUTING_ROLLOUT_STAGE=off` 不再改变当前
+镜像行为。需要回滚时，先校验预发布验收报告中记录的上一版app/worker tar SHA-256，
+加载并同时重新部署两个Supervisor兼容制品，验证普通、流式和多意图聊天，再把结果写入
+新的`rolled_back`发布台账。不要恢复数据库、修改历史回合或把未固定的`latest`当作回滚。
+
 ## 回滚后
 
 - 记录触发原因、时间、版本、数据影响和验证；

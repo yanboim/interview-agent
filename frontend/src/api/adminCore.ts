@@ -1,3 +1,4 @@
+// 管理端 API 基础设施：管理员会话独立持久化（sessionStorage）与带鉴权的 fetch。
 import type { AuthPayload } from "@/types";
 import { ApiError, parseApiError } from "@/api/core";
 

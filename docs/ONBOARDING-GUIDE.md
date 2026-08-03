@@ -73,7 +73,7 @@ Interview Agent（也叫 Interview Lab）是一个**面向技术岗位求职者�
 | 迁移 | Alembic | ≥1.14 | 生产 schema 演进 |
 | 缓存/队列/限流 | Redis | ≥5.2 | Lua 脚本实现的可靠任务队列 |
 | 向量库 | Qdrant | 客户端 ≥1.12 | 版本化私人知识 HYBRID 检索 |
-| Agent | langchain + langgraph | ≥1.0 | supervisor + 4 专家拓扑 |
+| Agent | langchain + langgraph | ≥1.0 | 显式工作流 + 4 专家；保留Supervisor回滚 |
 | 模型适配 | langchain-openai | ≥0.3 | 调用智谱 GLM |
 | 重排 | fastembed | ≥0.7 | 本地 Cross-Encoder + BM25 sparse |
 | 前端 | Vue 3.5 + Vue Router 4 + Pinia 2 | — | SPA |
@@ -293,7 +293,7 @@ plan_chat_context()                              app/chat_context.py（纯计算
   │  在 token 预算内保留最近消息，更早的折叠成带 sha 指纹的摘要
   ▼
 Agent / RAG                                      app/agent.py → app/multi_agent.py
-  │  supervisor 路由到 knowledge/interviewer/evaluator/planner 专家
+  │  显式路由到 knowledge/interviewer/evaluator/planner；off时回滚Supervisor
   │  search_interview_knowledge() 走 app/tools.py → app/rag.py（版本化别名）
   ▼
 model_gateway (唯一外部出口)                     app/model_gateway.py
@@ -465,8 +465,8 @@ python -m scripts.create_admin --username <admin-name> --password '<strong-passw
 
 - 认证开启（`AUTH_REQUIRED=true`，**生产必须**）时，产品用户用 **Bearer access token**
   调用受保护接口；管理员 token 只能从 `POST /api/admin/auth/login` 取得。
-- `APP_API_KEY`（部署层可选 Bearer 防护）是**附加**保护，**不能替代**用户身份和所有权
-  校验——服务端始终用解析出的 `user_id` 隔离数据。
+- `APP_API_KEY` 是仅供服务端运维探针访问 `/ready` 的部署密钥；浏览器API既不要求也不
+  暴露它。用户与后台API继续依赖各自的Bearer身份、角色、所有权和限流校验。
 - 公开路径白名单：`/api/config`、`/api/auth/register`、`/api/auth/login`、
   `/api/admin/auth/login`、`/api/auth/refresh`、`/api/auth/reset-password`。
 
@@ -696,7 +696,7 @@ app/
 ├── main.py                    组合根：依赖装配 + 中间件 + 路由注册 + 静态托管 + 健康端点
 │                              ⚠️ 不再新增业务规则（架构测试限制行数且禁 /api 装饰器）
 ├── config.py                  Settings(BaseSettings)：从 .env 加载所有配置
-├── database.py                SQLAlchemy Core 表元数据（19 张表）+ normalize_database_url
+├── database.py                SQLAlchemy Core 表元数据（25 张表）+ normalize_database_url
 │                              ⚠️ 只定义 schema，不依赖 API/Agent/检索/网络层
 ├── api/
 │   ├── runtime.py             ApiRuntime 依赖容器 + 模块级单例 configure_runtime/get_runtime
@@ -705,12 +705,12 @@ app/
 │   ├── execution.py           run_sync()：统一把同步用例丢线程池（唯一执行边界）
 │   └── routers/               9 个 domain router（适配层，只做 HTTP + 鉴权 + 映射状态码）
 │       ├── auth.py            认证 + /api/agent/topology + /api/config
-│       ├── chat.py            /api/chat + /api/chat/stream（流式）
+│       ├── chat.py            聊天/流式 + 声明引用 + 回合反馈
 │       ├── conversations.py   会话列表/归档/重命名/历史
 │       ├── interviews.py      面试 start/answer/resume/retry/report/归档
 │       ├── interview_reviews.py  真实面试复盘（audio/text/确认/分析）
-│       ├── learning.py        能力画像 + 学习任务
-│       ├── profile.py         画像/头像/提醒/今日计划/product event
+│       ├── learning.py        能力画像 + 学习任务 + 持久Agent运行
+│       ├── profile.py         画像/头像/提醒/训练记忆/今日计划/product event
 │       ├── resumes.py         简历上传/分析/草稿/导出
 │       └── admin.py           管理员控制面（19 端点：资源/审计/发布/知识/用户）
 ├── application/               应用服务层（用例编排 + 事务/并发边界）
@@ -718,12 +718,13 @@ app/
 │   ├── chat_service.py        ChatTurnService：幂等 begin/complete/fail/cancel
 │   ├── interview_service.py   InterviewStartService + InterviewAnswerService
 │   ├── resume_service.py      简历后台作业编排（owner-fenced）
-│   └── interview_review_service.py  复盘后台作业编排
+│   ├── interview_review_service.py  复盘后台作业编排
+│   └── agent_run_service.py   个性化训练Agent运行/步骤/确认/恢复
 │
 ├── agent.py                   Agent 入口选择器（multi_agent_enabled 决定单/多 agent）；
 │                              单 agent 在本文件内用 create_agent + 工具集构造
-├── multi_agent.py             Supervisor + 4 专家（knowledge/interviewer/evaluator/planner）
-├── interview_engine.py        出题/评分 prompt + JSON 解析 + 四维 clamp + build_report
+├── multi_agent.py             4专家组装 + 保留的Supervisor回滚实现
+├── interview_engine.py        出题/评分 prompt + 版本化结构化输出 + 四维 clamp + build_report
 ├── resume_engine.py           简历解析(PDF/DOCX) + analyze_resume + 事实警告 + DOCX 导出
 ├── interview_review_engine.py 复盘分析引擎（批量打分）
 ├── resume_interview.py        从简历评估构建最小化面试上下文
@@ -740,6 +741,11 @@ app/
 ├── knowledge_publication.py   知识发布：锁/候选/验证/原子切别名/回滚
 ├── reranker.py / lexical_reranker.py / llm_reranker.py  三种重排实现
 ├── tools.py                   Agent 工具：search_interview_knowledge / search_public_web 等
+├── agent_safety.py            公开搜索DLP、不可信证据和工具安全元数据
+├── agent_contracts.py         委派/评分/引用等版本化结构化输出Schema
+├── agent_context_service.py   不可变预算上下文和confirmed训练记忆
+├── agent_budget.py            请求级调用/Token/成本预算
+├── model_routing.py           按用途模型、阶段路由和批准回退
 ├── tool_context.py            工具执行审计上下文
 ├── transcription.py           音频转写 provider（httpx，需逐次同意）
 ├── user_files.py              用户文件落盘 + content-type/大小限制
@@ -803,9 +809,10 @@ docs/                    全生命周期文档（见 docs/README.md）
 | `ZHIPU_API_KEY` | 占位 | 智谱 **Coding Plan** Key（与标准 Key 可能不通用） |
 | `ZHIPU_MODEL` | `glm-5.2` | chat 模型 |
 | `ZHIPU_API_BASE` | `.../coding/paas/v4` | Coding Plan 端点 |
-| `MULTI_AGENT_ENABLED` | `true` | true=supervisor 多 agent；false=单 agent |
+| `MULTI_AGENT_ENABLED` | `true` | true=显式多Agent/回滚拓扑；false=单Agent |
 | `LLM_TIMEOUT_SECONDS` | `45` | 网关超时；简历/复盘另设 |
 | `LLM_MAX_RETRIES` | `2` | 网关重试；简历/复盘默认 0 |
+| `LLM_ZERO_CHUNK_STREAM_RESTARTS` | `1` | 仅在流尚未产生任何 chunk 即失败时重启；范围 0–2，部分流禁止重放 |
 | `LLM_MAX_CONCURRENCY` | `8` | 并发槽 |
 | `LLM_INPUT_CHAR_BUDGET` | `60000` | 调用前输入字符预算门控 |
 | `LLM_MAX_OUTPUT_TOKENS` | `2000` | 输出上限 |
@@ -838,7 +845,7 @@ docs/                    全生命周期文档（见 docs/README.md）
 | 变量 | 默认 | 作用 / 提示 |
 |---|---|---|
 | `AUTH_REQUIRED` | `false` | ⚠️ **生产必须 true** |
-| `APP_API_KEY` | 空 | 部署层附加 Bearer 防护（可选，不替代用户授权） |
+| `APP_API_KEY` | 空 | 生产 `/ready` 运维探针的服务端密钥；不得发送到浏览器 |
 | `ACCESS_TOKEN_MINUTES` | `60` | access token 有效期 |
 | `REFRESH_TOKEN_DAYS` | `30` | refresh token 有效期 |
 | `RATE_LIMIT_REQUESTS` / `RATE_LIMIT_WINDOW_SECONDS` | `30` / `60` | 按 client host 共享限流 |
@@ -924,7 +931,7 @@ docs/                    全生命周期文档（见 docs/README.md）
 
 ## 附录 C 关键数据表速查
 
-> 19 张表都在 `app/database.py`（SQLAlchemy Core `Table`，**非 ORM**）。下表是一句话职责
+> 25 张表都在 `app/database.py`（SQLAlchemy Core `Table`，**非 ORM**）。下表是一句话职责
 > 速查，**字段级以 `app/database.py` 和 [数据字典](generated/data-dictionary.md) 为准**。
 
 | 表 | 职责一句话 |
@@ -939,6 +946,12 @@ docs/                    全生命周期文档（见 docs/README.md）
 | `interview_turns` | 面试回合（题目、用户答案、四维评分、参考答案） |
 | `interview_answer_attempts` | 面试答题幂等记录（Idempotency-Key 去重） |
 | `learning_tasks` | 学习任务 + 间隔复习状态 |
+| `agent_action_confirmations` | 外发/变更预览、所有者/内容绑定确认、过期和结果重放 |
+| `agent_runs` | 应用拥有的持久Agent工作流状态、幂等和安全结果 |
+| `agent_steps` | Agent步骤领取、尝试、错误、命令效果和结果重放 |
+| `assistant_feedback` | 已完成助手回合的点赞/点踩、原因和生成/证据版本 |
+| `evaluation_candidates` | 隐私评审前内容最小化的负反馈评估候选 |
+| `coaching_memories` | proposed/confirmed/rejected训练记忆、来源与版本 |
 | `resume_documents` | 简历文件资源记录（owner-fenced） |
 | `resume_analyses` | 简历评估结果（claim_token、revision、prompt_version、model_version） |
 | `interview_reviews` | 真实面试复盘（external_processing_consent、transcript_revision、confirmed_revision） |
@@ -990,9 +1003,11 @@ pytest -q tests/test_migrations.py
    （用作 metric 维度，如 `knowledge`/`evaluator`/`my_new_feature`）；
 2. 网关自动提供：输入预算门控 + 并发槽 + timeout/retry + metric + token 计费 + 安全错误
    映射（不泄露 provider 细节）；
-3. Prompt 和结构化输出要**版本化**（DB 表里有 `prompt_version`/`model_version` 列）；
-4. 复杂输出用正则提取 JSON + Pydantic 校验，**不要**直接信任自由文本 JSON；
-5. 如果是新的外发数据流（搜索/转写类），加工具审计（`_run_audited`）并评估数据分级。
+3. Prompt、Schema和模型要**版本化**并随生成产物持久化；
+4. 复杂输出使用 `app/agent_contracts.py` 的版本化Pydantic边界；优先原生结构化输出，
+   不支持时只允许一次有界修复，禁止贪婪/正则抽取自由文本JSON；
+5. 如果是新的外发数据流（搜索/转写类），接入确定性DLP、内容最小化工具审计和必要的
+   所有者/内容绑定预览确认。
 
 ### D.4 我要加一个前端页面
 

@@ -50,6 +50,7 @@
       "docs/architecture/STREAMING-PROTOCOL.md",
       "docs/design-docs/README.md",
       "docs/design-docs/chat-context-budget.md",
+      "docs/design-docs/chat-use-case-boundary.md",
       "docs/design-docs/durable-chat-turn-lifecycle.md",
       "docs/design-docs/durable-redis-jobs.md",
       "docs/design-docs/frontend-toolchain-audit.md",
@@ -58,6 +59,7 @@
       "docs/design-docs/modular-api-composition.md",
       "docs/design-docs/qdrant-versioned-publication.md",
       "docs/design-docs/reproducible-builds.md",
+      "docs/design-docs/repository-boundary-evolution.md",
       "docs/design-docs/user-sensitive-file-processing.md",
       "docs/design-docs/resume-interview-review-loop.md",
       "docs/design-docs/synchronous-persistence-boundary.md",
@@ -66,6 +68,8 @@
     "delivery": [
       "docs/development.md",
       "docs/ENGINEERING-HANDOVER-MANUAL.md",
+      "docs/ONBOARDING-GUIDE.md",
+      "docs/enterprise-agent-engineering-course.md",
       "docs/sdlc/README.md",
       "docs/sdlc/DEVELOPMENT-LIFECYCLE.md",
       "docs/sdlc/DEFINITION-OF-READY.md",
@@ -83,6 +87,7 @@
     "quality": [
       "docs/testing.md",
       "docs/quality/README.md",
+      "docs/quality/dynamic-audit.json",
       "docs/quality/TEST-STRATEGY.md",
       "docs/quality/ACCEPTANCE-TESTS.md",
       "docs/quality/QUALITY-GATES.md",

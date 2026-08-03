@@ -11,7 +11,6 @@
 | `ZHIPU_API_KEY` | `str` | `''` |
 | `ZHIPU_API_BASE` | `str` | `'https://open.bigmodel.cn/api/coding/paas/v4'` |
 | `ZHIPU_MODEL` | `str` | `'glm-5.2'` |
-| `LLM_MODEL_SUPERVISOR` | `str` | `''` |
 | `LLM_MODEL_KNOWLEDGE` | `str` | `''` |
 | `LLM_MODEL_INTERVIEWER` | `str` | `''` |
 | `LLM_MODEL_EVALUATOR` | `str` | `''` |
@@ -27,6 +26,7 @@
 | `LLM_OUTPUT_USD_PER_MILLION` | `float` | `0.0` |
 | `LLM_TIMEOUT_SECONDS` | `float` | `45.0` |
 | `LLM_MAX_RETRIES` | `int` | `2` |
+| `LLM_ZERO_CHUNK_STREAM_RESTARTS` | `int` | `1` |
 | `LLM_MAX_CONCURRENCY` | `int` | `8` |
 | `LLM_INPUT_CHAR_BUDGET` | `int` | `60000` |
 | `LLM_MAX_OUTPUT_TOKENS` | `int` | `2000` |
@@ -35,16 +35,13 @@
 | `CHAT_AGENT_TIMEOUT_SECONDS` | `float` | `90.0` |
 | `AGENT_RECURSION_LIMIT` | `int` | `40` |
 | `MULTI_AGENT_ENABLED` | `bool` | `True` |
-| `AGENT_DIRECT_ROUTE_ENABLED` | `bool` | `False` |
-| `AGENT_ROUTING_ROLLOUT_STAGE` | `str` | `'off'` |
-| `AGENT_ROUTING_CANARY_PERCENT` | `int` | `0` |
-| `AGENT_DIRECT_ROUTE_MIN_CONFIDENCE` | `float` | `0.9` |
 | `AGENT_MAX_MODEL_CALLS` | `int` | `5` |
 | `AGENT_MAX_TOTAL_TOKENS` | `int` | `16000` |
 | `AGENT_MAX_COST_USD` | `float` | `1.0` |
 | `AGENT_CHAT_MAX_MODEL_CALLS` | `int` | `5` |
 | `AGENT_CHAT_MAX_TOTAL_TOKENS` | `int` | `16000` |
 | `AGENT_CHAT_MAX_COST_USD` | `float` | `1.0` |
+| `AGENT_WORKFLOW_V2_MAX_MODEL_CALLS_PER_ROUTE` | `int` | `5` |
 | `AGENT_EVALUATION_MAX_MODEL_CALLS` | `int` | `2` |
 | `AGENT_EVALUATION_MAX_TOTAL_TOKENS` | `int` | `8000` |
 | `AGENT_EVALUATION_MAX_COST_USD` | `float` | `0.5` |
@@ -52,6 +49,7 @@
 | `ZHIPU_EMBEDDING_API_BASE` | `str` | `'https://open.bigmodel.cn/api/paas/v4'` |
 | `ZHIPU_EMBEDDING_MODEL` | `str` | `'embedding-2'` |
 | `SPARSE_EMBEDDING_MODEL` | `str` | `'Qdrant/bm25'` |
+| `SPARSE_EMBEDDING_CACHE_DIR` | `Path` | `Path('data/fastembed-cache')` |
 | `QDRANT_URL` | `str` | `'http://localhost:6333'` |
 | `QDRANT_COLLECTION` | `str` | `'interview_knowledge'` |
 | `QDRANT_COLLECTION_ALIAS` | `str` | `'interview_knowledge_current'` |
@@ -122,6 +120,7 @@
 | `RESOURCE_GATEWAY_HEALTH_URL` | `str` | `''` |
 | `RESOURCE_PROMETHEUS_HEALTH_URL` | `str` | `''` |
 | `RESOURCE_GRAFANA_HEALTH_URL` | `str` | `''` |
+| `ADMIN_PROMETHEUS_URL` | `str` | `''` |
 | `ADMIN_GRAFANA_URL` | `str` | `''` |
 | `ZHIPU_API_KEY_FILE` | `str` | `''` |
 | `ZHIPU_EMBEDDING_API_KEY_FILE` | `str` | `''` |

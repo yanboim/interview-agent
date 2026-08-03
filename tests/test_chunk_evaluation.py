@@ -1,3 +1,5 @@
+"""知识分块检索评测脚本的测试。"""
+
 import json
 
 from scripts.evaluate_chunks import load_cases

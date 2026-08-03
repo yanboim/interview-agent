@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 学习面板：学习任务、间隔复习回顾与训练方案工作流。
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";

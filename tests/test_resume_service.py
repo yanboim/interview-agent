@@ -1,3 +1,5 @@
+"""简历应用服务（上传/评估/草稿/导出）的测试。"""
+
 import io
 from pathlib import Path
 

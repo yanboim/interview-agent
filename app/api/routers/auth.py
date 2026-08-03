@@ -22,11 +22,13 @@ router = APIRouter()
 
 @router.get("/api/agent/topology")
 async def get_agent_topology() -> dict[str, object]:
+    """返回当前启用的 Agent 拓扑（直接路由/多 Agent 灰度等）供前端展示。"""
     return agent_topology()
 
 
 @router.get("/api/config")
 async def public_config() -> dict[str, object]:
+    """返回前端需要的非敏感公开配置（鉴权开关、功能开关、转写提供方等）。"""
     settings = get_runtime().settings
     return {
         "auth_required": settings.auth_required,
@@ -39,6 +41,11 @@ async def public_config() -> dict[str, object]:
 
 @router.post("/api/auth/register")
 async def register(credentials: AuthCredentials) -> dict[str, object]:
+    """注册新账号并返回登录令牌对（含首次生成的恢复码）。
+
+    异常:
+        HTTPException 409: 用户名已存在或密码不符合策略。
+    """
     runtime = get_runtime()
     await run_sync(runtime.conversation_store.initialize)
     try:
@@ -54,6 +61,12 @@ async def register(credentials: AuthCredentials) -> dict[str, object]:
 
 @router.post("/api/auth/login")
 async def login(credentials: AuthCredentials) -> dict[str, object]:
+    """产品用户登录并签发访问/刷新令牌。
+
+    异常:
+        HTTPException 401: 用户名或密码错误。
+        HTTPException 403: 账号被禁用。
+    """
     runtime = get_runtime()
     await run_sync(runtime.conversation_store.initialize)
     try:
@@ -91,6 +104,11 @@ async def admin_login(credentials: AuthCredentials) -> dict[str, object]:
 async def refresh_access_token(
     payload: RefreshTokenRequest,
 ) -> dict[str, object]:
+    """用刷新令牌换取新的访问/刷新令牌对。
+
+    异常:
+        HTTPException 401: 刷新令牌无效或已过期。
+    """
     runtime = get_runtime()
     await run_sync(runtime.conversation_store.initialize)
     try:
@@ -105,6 +123,7 @@ async def refresh_access_token(
 
 @router.post("/api/auth/logout")
 async def logout(request: Request, payload: LogoutRequest) -> dict[str, bool]:
+    """撤销当前访问令牌与可选的刷新令牌，登出当前会话。"""
     authorization = request.headers.get("authorization", "")
     access_token = (
         authorization.removeprefix("Bearer ").strip()
@@ -124,6 +143,12 @@ async def change_password(
     payload: ChangePasswordRequest,
     request: Request,
 ) -> dict[str, bool]:
+    """已登录用户修改密码，成功后吊销其他会话。
+
+    异常:
+        HTTPException 422: 新密码与当前密码相同。
+        HTTPException 400: 当前密码错误或新密码不符合策略。
+    """
     current = require_role(request, {"user", "admin"})
     if payload.current_password == payload.new_password:
         raise HTTPException(status_code=422, detail="新密码不能与当前密码相同")
@@ -141,6 +166,11 @@ async def change_password(
 
 @router.post("/api/auth/reset-password")
 async def reset_password(payload: ResetPasswordRequest) -> dict[str, object]:
+    """用恢复码重置密码并生成新的恢复码。
+
+    异常:
+        HTTPException 400: 恢复码无效或新密码不符合策略。
+    """
     try:
         replacement_code = await run_sync(
             get_runtime().auth_service.reset_password,
@@ -159,6 +189,7 @@ async def reset_password(payload: ResetPasswordRequest) -> dict[str, object]:
 
 @router.post("/api/auth/recovery-code")
 async def regenerate_recovery_code(request: Request) -> dict[str, str]:
+    """重新生成当前用户的恢复码（旧恢复码失效）。"""
     current = require_role(request, {"user", "admin"})
     recovery_code = await run_sync(
         get_runtime().auth_service.generate_recovery_code,
@@ -169,6 +200,11 @@ async def regenerate_recovery_code(request: Request) -> dict[str, str]:
 
 @router.get("/api/auth/me")
 async def current_user(request: Request) -> dict[str, str]:
+    """返回当前登录用户的基本信息（ID、用户名、角色）。
+
+    异常:
+        HTTPException 401: 未登录或令牌无效。
+    """
     runtime = get_runtime()
     if runtime.settings.auth_required:
         user: AuthenticatedUser = request.state.current_user

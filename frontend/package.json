@@ -9,10 +9,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
+    "build:ci": "vite build --logLevel warn",
     "check:bundle": "node scripts/check-bundle.mjs",
     "check:toolchain": "node scripts/check-toolchain.mjs",
     "preview": "vite preview",
     "test": "vitest run --exclude 'e2e/**'",
+    "test:ci": "vitest run --exclude 'e2e/**' --reporter=dot",
     "test:component": "vitest run src/components",
     "test:e2e": "playwright test",
     "audit:dependencies": "npm audit --audit-level=moderate",
@@ -24,6 +26,7 @@
     "dompurify": "^3.2.6",
     "highlight.js": "^11.10.0",
     "marked": "^14.1.4",
+    "markstream-vue": "^1.0.8",
     "pinia": "^2.2.6",
     "vue": "^3.5.13",
     "vue-router": "^4.4.5"

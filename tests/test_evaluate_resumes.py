@@ -1,3 +1,5 @@
+"""简历评估评测脚本的测试。"""
+
 import json
 from pathlib import Path
 

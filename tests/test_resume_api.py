@@ -1,3 +1,5 @@
+"""简历 API 的集成测试。"""
+
 import asyncio
 
 import httpx

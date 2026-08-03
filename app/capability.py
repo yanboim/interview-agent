@@ -76,7 +76,14 @@ def _recency_weights(rows: list[dict[str, object]]) -> list[float]:
 
 
 def score_calibration_report(examples: list[dict[str, object]]) -> dict[str, object]:
-    """Compare persisted model scores with privacy-reviewed human labels."""
+    """把持久化的模型评分与经隐私评审的人工标注对比，输出校准报告。
+
+    参数:
+        examples: 各样本含 ``model_version``、``model_score``、``human_score``。
+
+    返回:
+        校准报告（含样本数、置信度、平均偏差、MAE、RMSE 及各模型分群偏差）。
+    """
     rows = [
         (
             str(item.get("model_version") or "unknown"),
@@ -119,6 +126,19 @@ def build_capability_profile(
     *,
     topic: str | None = None,
 ) -> dict[str, Any]:
+    """跨面试聚合能力画像：维度评分、趋势、薄弱点、高频题与校准信息。
+
+    全部由持久评分确定性计算，不依赖外部服务。维度评分可按模型版本做
+    偏移校准并按近邻加权，缓解旧评分与不同模型版本带来的偏差。
+
+    参数:
+        rows: 用户的面试回合评分行。
+        topic: 可选主题过滤；为空时聚合全部。
+
+    返回:
+        能力画像字典，含 summary/dimension_scores/calibrated_dimension_scores/
+        trend/topic_breakdown/weaknesses/frequent_questions 等。
+    """
     available_topics = sorted(
         {str(row["topic"]).strip() for row in rows if str(row["topic"]).strip()},
         key=str.casefold,

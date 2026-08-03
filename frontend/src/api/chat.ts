@@ -1,3 +1,4 @@
+// 聊天 API：会话历史、回合反馈与 NDJSON 流式读取。
 import type { ConversationMeta, HistoryMessage, StreamEvent } from "@/types";
 import { ApiError, apiFetch, expectOk, parseApiError } from "@/api/core";
 

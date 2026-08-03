@@ -2,6 +2,10 @@
 .git
 .venv
 .pytest_cache
+.var
+.idea
+backups
+test-results
 __pycache__
 data
 qdrant_data

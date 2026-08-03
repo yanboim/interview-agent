@@ -1,4 +1,4 @@
-"""Initial conversation and interview schema.
+"""初始化会话与模拟面试的初始 schema。
 
 Revision ID: 20260724_0001
 Revises:

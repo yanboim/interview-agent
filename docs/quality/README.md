@@ -12,3 +12,5 @@
 具体命令和外部依赖见[测试与验证指南](../testing.md)。AI专项数据和报告位于
 `eval/`，机器可读产品状态位于
 [`feature-contract.json`](../product-specs/feature-contract.json)。
+项目级故障注入与恢复场景位于[`dynamic-audit.json`](dynamic-audit.json)，只能在
+明确的非生产测试环境中通过 `agent-fault-injection-tester` 执行。

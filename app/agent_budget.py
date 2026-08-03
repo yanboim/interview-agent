@@ -60,6 +60,7 @@ class AgentBudgetState:
         return {
             "request_class": self.request_class,
             "price_version": self.price_version,
+            "max_calls": self.max_calls,
             "call_count": self.calls,
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
@@ -77,10 +78,19 @@ def current_agent_budget() -> AgentBudgetState | None:
 
 
 @contextmanager
-def agent_execution_budget(settings: object, request_class: str = "chat") -> Iterator[AgentBudgetState]:
-    calls = getattr(
-        settings, f"agent_{request_class}_max_model_calls",
-        getattr(settings, "agent_max_model_calls"),
+def agent_execution_budget(
+    settings: object,
+    request_class: str = "chat",
+    *,
+    max_calls: int | None = None,
+) -> Iterator[AgentBudgetState]:
+    calls = (
+        max_calls
+        if max_calls is not None
+        else getattr(
+            settings, f"agent_{request_class}_max_model_calls",
+            getattr(settings, "agent_max_model_calls"),
+        )
     )
     tokens = getattr(
         settings, f"agent_{request_class}_max_total_tokens",

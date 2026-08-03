@@ -1,3 +1,5 @@
+"""FastAPI 组合根（路由注册、中间件、健康探针）的测试。"""
+
 import asyncio
 from types import SimpleNamespace
 

@@ -1,3 +1,4 @@
+// 管理端资源中心状态：用户/审计/交互/知识/发版等只读观察数据。
 import { defineStore } from "pinia";
 import type {
   AdminAudit,

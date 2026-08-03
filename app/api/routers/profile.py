@@ -27,6 +27,7 @@ async def coaching_memories(
     request: Request,
     user_id: str,
 ) -> list[dict[str, object]]:
+    """列出当前用户的长期训练记忆（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     return await run_sync(
         get_runtime().conversation_store.list_coaching_memories,
@@ -39,6 +40,7 @@ async def propose_coaching_memory(
     payload: CoachingMemoryCreateRequest,
     request: Request,
 ) -> dict[str, object]:
+    """提议一条长期训练记忆（初始为 proposed，需用户确认后生效）。"""
     user_id = resolve_user_id(request, payload.user_id)
     return await run_sync(
         get_runtime().conversation_store.create_coaching_memory,
@@ -54,6 +56,11 @@ async def update_coaching_memory(
     payload: CoachingMemoryUpdateRequest,
     request: Request,
 ) -> dict[str, object]:
+    """确认/纠正/拒绝一条记忆（所有者范围）。
+
+    规则:
+        纠正会把记忆退回 ``proposed``，需所有者再次确认才会进入生效上下文。
+    """
     user_id = resolve_user_id(request, payload.user_id)
     try:
         memory = await run_sync(
@@ -76,6 +83,7 @@ async def delete_coaching_memory(
     request: Request,
     user_id: str,
 ) -> None:
+    """删除一条长期训练记忆（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     deleted = await run_sync(
         get_runtime().conversation_store.delete_coaching_memory,
@@ -88,6 +96,7 @@ async def delete_coaching_memory(
 
 @router.get("/api/profile")
 async def user_profile(request: Request, user_id: str) -> dict[str, object]:
+    """返回当前用户的档案，无档案时返回默认值（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     profile = await run_sync(
         get_runtime().conversation_store.get_user_profile,
@@ -111,6 +120,7 @@ async def update_user_profile(
     payload: UserProfileRequest,
     request: Request,
 ) -> dict[str, object]:
+    """更新或创建用户档案（目标岗位、经验、方向、面试日期、JD）。"""
     user_id = resolve_user_id(request, payload.user_id)
     return await run_sync(
         get_runtime().conversation_store.upsert_user_profile,
@@ -128,6 +138,7 @@ async def update_profile_avatar(
     payload: ProfileAvatarRequest,
     request: Request,
 ) -> dict[str, object]:
+    """更新当前用户的头像（data URL，所有者范围）。"""
     user_id = resolve_user_id(request, payload.user_id)
     profile = await run_sync(
         get_runtime().conversation_store.update_profile_avatar,
@@ -142,6 +153,7 @@ async def reminder_preferences(
     request: Request,
     user_id: str,
 ) -> dict[str, object]:
+    """返回当前用户的提醒偏好（启用、时间、时区，所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     profile = await run_sync(
         get_runtime().conversation_store.get_user_profile,
@@ -159,6 +171,7 @@ async def update_reminder_preferences(
     payload: ReminderPreferencesRequest,
     request: Request,
 ) -> dict[str, object]:
+    """更新提醒偏好（启用、时间、时区），校验 IANA 时区合法性。"""
     user_id = resolve_user_id(request, payload.user_id)
     try:
         ZoneInfo(payload.timezone)
@@ -180,6 +193,7 @@ async def update_reminder_preferences(
 
 @router.get("/api/reminders/due")
 async def due_reminders(request: Request, user_id: str) -> dict[str, object]:
+    """按用户本地时间计算当前到期的复习提醒（所有者范围）。"""
     user_id = resolve_user_id(request, user_id)
     store = get_runtime().conversation_store
     profile, tasks = await asyncio.gather(
@@ -212,6 +226,7 @@ async def due_reminders(request: Request, user_id: str) -> dict[str, object]:
 
 @router.get("/api/today-plan")
 async def today_plan(request: Request, user_id: str) -> dict[str, object]:
+    """生成今日训练建议（优先继续面试，其次到期复习，最后新训练）。"""
     user_id = resolve_user_id(request, user_id)
     store = get_runtime().conversation_store
     profile, tasks, interview_rows, interviews_list = await asyncio.gather(
@@ -280,6 +295,7 @@ async def record_product_event(
     payload: ProductEventRequest,
     request: Request,
 ) -> dict[str, bool]:
+    """记录产品埋点事件（所有者范围，属性上限 8KB）。"""
     user_id = resolve_user_id(request, payload.user_id)
     if len(json.dumps(payload.properties, ensure_ascii=False, default=str)) > 8192:
         raise HTTPException(status_code=422, detail="事件属性不能超过 8KB")

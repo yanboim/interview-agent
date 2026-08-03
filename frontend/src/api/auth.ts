@@ -1,3 +1,4 @@
+// 认证 API：注册、登录、刷新、登出、改密、恢复码与当前用户信息。
 import type { AuthPayload } from "@/types";
 import { apiFetch, expectOk } from "@/api/core";
 

@@ -30,6 +30,7 @@ API层拥有HTTP校验、状态码和序列化，不拥有业务事务、Prompt�
 - `interview_service.py`：面试答案幂等领取、评分、下一题和条件完成；
 - `resume_service.py`：文件解析、分析任务、事实约束稿、乐观编辑和DOCX导出；
 - `interview_review_service.py`：转写、逐字稿版本确认、问答配对和复盘提交；
+- `agent_run_service.py`：个性化训练计划、运行/步骤领取、确认、重放、恢复和取消；
 - 应用服务协调外部调用与短数据库事务，但不持有跨模型调用的数据库事务。
 
 ## 领域与策略
@@ -38,7 +39,11 @@ API层拥有HTTP校验、状态码和序列化，不拥有业务事务、Prompt�
 - `capability.py`：能力聚合；
 - `chunks.py`、`chunking.py`：稳定分块身份和标题上下文；
 - `evaluation.py`：检索和回答质量指标；
-- `chat_context.py`：上下文预算、摘要和窗口计划。
+- `chat_context.py`：上下文预算、摘要和窗口计划；
+- `agent_context.py`、`agent_context_service.py`：不可变预算快照、确认记忆过滤和版本化
+  委派信封；
+- `agent_contracts.py`：委派、专业结果、评分、训练预览和声明引用的版本化Schema；
+- `agent_budget.py`、`model_routing.py`：请求级调用/Token/成本预算和按用途路由/回退。
 - `resume_engine.py`、`resume_interview.py`：确定性解析结果校验、事实约束和简历出题
   上下文；
 - `interview_review_engine.py`：逐字稿片段、问答配对和结构化复盘校验。
@@ -54,6 +59,8 @@ API层拥有HTTP校验、状态码和序列化，不拥有业务事务、Prompt�
 - `knowledge_publication.py`：版本解析、别名切换和发布锁；
 - `user_files.py`、`transcription.py`：服务端文件键和可配置转写适配器；
 - `request_audit.py`、`system_resources.py`：安全请求审计与管理员运行状态读取模型；
+- `tools.py`、`agent_safety.py`：内容最小化工具审计、公开搜索DLP、不可信证据包装和
+  所有者绑定确认；
 - `telemetry.py`、`logging_config.py`：观测。
 
 架构约束由 `tests/test_architecture.py` 执行验证。

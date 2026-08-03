@@ -1,12 +1,13 @@
-from app.multi_agent import evaluator_agent
-from scripts.evaluate_multi_agent import selected_tool, summarize
+"""Workflow V2 路由评测脚本的测试。"""
+
+from scripts.evaluate_multi_agent import selected_routes, summarize
 
 
-def test_selected_tool_reads_first_supervisor_delegation():
-    class Response:
-        tool_calls = [{"name": evaluator_agent.name, "args": {}}]
-
-    assert selected_tool(Response()) == "evaluator_agent"
+def test_selected_routes_use_explicit_bounded_workflow():
+    assert selected_routes("请评价我的回答并继续追问") == [
+        "evaluator_agent",
+        "interviewer_agent",
+    ]
 
 
 def test_routing_summary_reports_accuracy_by_agent():

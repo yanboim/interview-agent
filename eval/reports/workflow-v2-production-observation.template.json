@@ -1,0 +1,49 @@
+{
+  "schema_version": "workflow-v2-rollout-observation-v2",
+  "workflow_version": "chat-workflow-v2",
+  "environment": "production",
+  "evidence_type": "production-observability",
+  "release_id": "REPLACE_WITH_PRODUCTION_RELEASE_ID",
+  "release_version": "REPLACE_WITH_PRODUCTION_RELEASE_VERSION",
+  "baseline_workflow_version": "chat-supervisor-v1",
+  "baseline_observation_window": {
+    "started_at": "1970-01-01T00:00:00Z",
+    "ended_at": "1970-01-01T00:00:00Z",
+    "completed_requests": 0
+  },
+  "observation_window": {
+    "started_at": "1970-01-01T00:00:00Z",
+    "ended_at": "1970-01-01T00:00:00Z",
+    "completed_requests": 0
+  },
+  "zero_tolerance_failures": -1,
+  "rollback": {
+    "stage": "off",
+    "verified": false,
+    "exercise_release_id": ""
+  },
+  "baseline": {
+    "quality_pass_rate": 0,
+    "completion_rate": 0,
+    "p95_latency_ms": 0,
+    "cost_per_completed_training_action_usd": 0
+  },
+  "observed": {
+    "quality_pass_rate": 0,
+    "completion_rate": 0,
+    "p95_latency_ms": 0,
+    "cost_per_completed_training_action_usd": 0
+  },
+  "evidence": {
+    "metrics_source": "",
+    "query_ids": [],
+    "quality_report_sha256": "",
+    "contains_user_content": false
+  },
+  "approval": {
+    "status": "pending",
+    "approved_by": "",
+    "approved_at": "",
+    "ticket": ""
+  }
+}

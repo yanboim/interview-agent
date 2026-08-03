@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "product": "interview-agent",
-  "updated_at": "2026-07-31",
+  "updated_at": "2026-08-03",
   "status_values": [
     "passing",
     "planned"
@@ -105,16 +105,25 @@
     {
       "id": "agent-routing-contract",
       "category": "ai-quality",
-      "description": "The supervisor exposes the specialist tools and the routing evaluation reports per-agent accuracy.",
+      "description": "When multi-agent mode is enabled, chat routing always uses the bounded explicit Workflow V2 specialist graph; disabling multi-agent mode selects the independent single-agent path, never a nested supervisor.",
       "status": "passing",
       "steps": [
-        "Build the configured supervisor.",
-        "Verify knowledge, interviewer, evaluator, and planner tools are available.",
-        "Evaluate recorded routing cases and report per-agent accuracy."
+        "Build the explicit Workflow V2 executor and a separate single-agent mode without a nested specialist-as-tool topology.",
+        "Route one or more deterministic intents through only the bounded knowledge, interviewer, evaluator, and planner stages.",
+        "Execute independent multi-intent specialist routes concurrently, cancel unfinished siblings when one route fails, and preserve deterministic composition order.",
+        "For streaming chat, await each explicit specialist's validated final graph state and emit its structured answer in deterministic route order even when the provider message stream contains only tool evidence.",
+        "Verify, compose, and persist the result without a planning-model call or nested supervisor.",
+        "Ignore retired rollout flags and recover by redeploying the recorded immutable pre-retirement app and worker artifacts rather than switching topology inside the current image.",
+        "Evaluate recorded routing cases and report per-agent accuracy, completion, latency, cost, and zero-tolerance safety outcomes."
       ],
       "verification": [
         "tests/test_multi_agent.py",
-        "tests/test_multi_agent_evaluation.py"
+        "tests/test_multi_agent_evaluation.py",
+        "tests/test_chat_execution.py",
+        "tests/test_chat_workflow.py",
+        "tests/test_model_routing_policy.py",
+        "tests/test_workflow_prerelease_gate.py",
+        "eval/reports/workflow-v2-prerelease-acceptance.json"
       ]
     },
     {
@@ -192,11 +201,13 @@
         "Create a product account through registration and an administrator through the operator script.",
         "Verify each credential is rejected by the other login surface.",
         "Verify the product shell exposes neither backend navigation nor service API-key settings.",
+        "Keep APP_API_KEY server-only on the readiness probe; verify product and administrator browser login and authenticated APIs never require or expose the shared deployment key.",
         "Verify admin endpoints continue to require the administrator role."
       ],
       "verification": [
         "tests/test_auth.py",
         "tests/test_authorization.py",
+        "tests/test_api_key_scope.py",
         "frontend/e2e/product.spec.ts"
       ]
     },
@@ -312,20 +323,25 @@
     {
       "id": "model-policy-gateway",
       "category": "reliability",
-      "description": "All external chat and embedding model calls use one timeout, retry, concurrency, budget, metric, token, and safe-error policy.",
+      "description": "All external chat and embedding model calls use one timeout, retry, concurrency, budget, metric, token, and safe-error policy; chat streams may restart only after a zero-chunk provider failure.",
       "status": "passing",
       "steps": [
         "Construct every external model through the gateway.",
         "Reject inputs and outputs beyond configured budgets.",
         "Bound sync and async provider concurrency.",
-        "Record latency, errors, and provider token usage."
+        "Restart a failed chat stream only when it yielded zero chunks, claim each restart against the request model-call budget, and never replay a partial stream or switch it to fallback.",
+        "Record latency, errors, and provider token usage through local Prometheus compatibility metrics and the aggregatable OTLP metrics signal.",
+        "Inject secret-shaped provider and dependency failures and verify public HTTP responses omit the exception text."
       ],
       "verification": [
         "tests/test_model_gateway.py",
         "tests/test_architecture.py",
         "tests/test_interview_engine.py",
         "tests/test_llm_reranker.py",
-        "tests/test_rag.py"
+        "tests/test_rag.py",
+        "tests/test_operations.py",
+        "tests/test_telemetry.py",
+        "tests/test_error_redaction.py"
       ]
     },
     {
@@ -381,6 +397,24 @@
       ]
     },
     {
+      "id": "tiered-verification-gates",
+      "category": "operations",
+      "description": "Developers receive concise fast feedback while main and release candidates retain complete browser, dependency, and image verification.",
+      "status": "passing",
+      "steps": [
+        "Run compile, architecture, and frontend static checks during local iteration without starting services or browsers.",
+        "Run deterministic repository, backend, frontend, build, and fresh-database migration checks for pull requests.",
+        "Cancel superseded branch or pull-request runs and keep heavyweight browser, dependency, and image work out of the fast workflow.",
+        "Run the complete Harness, dependency audits, and image scan on main, nightly, manual, and release verification paths."
+      ],
+      "verification": [
+        "tests/test_harness_contract.py",
+        ".github/workflows/ci.yml",
+        ".github/workflows/deep-verification.yml",
+        ".github/workflows/release.yml"
+      ]
+    },
+    {
       "id": "admin-system-resource-center",
       "category": "operations",
       "description": "Administrators can inspect a sanitized inventory and bounded live health summary for application, data, job, gateway, and observability resources without exposing infrastructure credentials or management ports.",
@@ -398,7 +432,8 @@
         "tests/test_worker.py",
         "tests/test_architecture.py",
         "frontend/src/lib/adminResources.test.ts",
-        "frontend/src/components/admin/AdminResourcesSection.vue"
+        "frontend/src/components/admin/AdminResourcesSection.vue",
+        "frontend/e2e/admin-monitoring-links.spec.ts"
       ]
     },
     {
@@ -415,7 +450,7 @@
       "verification": [
         "frontend/scripts/check-toolchain.mjs",
         "frontend/package-lock.json",
-        ".github/workflows/ci.yml",
+        ".github/workflows/deep-verification.yml",
         "frontend/e2e/product.spec.ts"
       ]
     },
@@ -429,10 +464,12 @@
         "Open the administrator audit center and filter recent activity by user, action text, outcome, target, or request ID.",
         "Inspect canonical chat and interview records and verify exact persisted user input and system output are displayed.",
         "Open an interaction timeline and correlate agent or assessment execution and tool calls by interaction and request ID.",
-        "Verify administrator content reads are audited and audit/trace details redact credentials and content-shaped fields."
+        "Verify administrator content reads are audited and audit/trace details redact credentials and content-shaped fields.",
+        "Force dependency health checks to fail with secret-shaped exception text and verify the administrator summary exposes only a stable health state."
       ],
       "verification": [
         "tests/test_admin_observability.py",
+        "tests/test_error_redaction.py",
         "tests/test_migrations.py",
         "tests/test_architecture.py",
         "frontend/src/components/admin/AdminAuditsSection.vue"
@@ -445,6 +482,7 @@
       "status": "passing",
       "steps": [
         "Record a stable release ID when deployment starts and reuse it when the deployment reaches a terminal outcome.",
+        "Stop before build, migration, or restart when the sanitized production preflight detects unsafe credentials, file permissions, authentication, schema creation, or Workflow V2 rollout configuration.",
         "Attach sanitized change, image, migration, recovery-point, and verification summaries after deployment checks.",
         "Authenticate through the administrator surface and open the release timeline.",
         "Filter releases and inspect the accessible detail drawer on desktop and mobile.",
@@ -454,7 +492,9 @@
         "tests/test_deployment_releases.py",
         "tests/test_migrations.py",
         "frontend/e2e/admin-releases.spec.ts",
-        "scripts/record_release.py"
+        "scripts/record_release.py",
+        "tests/test_production_preflight.py",
+        "scripts/check_production_preflight.py"
       ]
     },
     {
@@ -557,7 +597,8 @@
         "Reject truncated or multi-object model output, allow at most one bounded repair when native structured output is unavailable, and fail safely after that repair.",
         "Use the strict structured boundary for interview scoring, resume analysis, and interview review without changing their public response shapes.",
         "Expose stable private chunk and public URL evidence identifiers, then map explicit answer claims to supported, unsupported, or conflicting evidence states.",
-        "Persist prompt, schema, and model versions with generated artifacts and execution traces, and replay versioned citation metadata with historical chat messages."
+        "Persist prompt, schema, and model versions with generated artifacts and execution traces, and replay versioned citation metadata with historical chat messages.",
+        "Render persisted and streamed claim citations as sanitized Markdown while preserving their supported, unsupported, or conflicting evidence status."
       ],
       "verification": [
         "tests/test_agent_contracts.py",
@@ -570,7 +611,9 @@
         "tests/test_storage.py",
         "tests/test_multi_agent.py",
         "frontend/src/api/chat.test.ts",
-        "frontend/src/stores/chat.test.ts"
+        "frontend/src/stores/chat.test.ts",
+        "frontend/src/components/app/ChatPanel.test.ts",
+        "frontend/e2e/chat-citations.spec.ts"
       ]
     },
     {
@@ -645,14 +688,18 @@
     {
       "id": "agent-model-cost-resilience-routing",
       "category": "reliability",
-      "description": "Agent model calls use evaluated per-purpose routing, request-scoped call/token/cost budgets, recoverable same-provider fallback policy, and staged rollout with an immediate tested rollback.",
+      "description": "Agent model calls use evaluated per-purpose routing, request-scoped call/token/cost budgets, recoverable same-provider fallback policy, explicit Workflow V2 execution, and immutable-artifact rollback.",
       "status": "passing",
       "steps": [
-        "Resolve independent supervisor, knowledge, interviewer, evaluator, planner, summarization, and schema-repair model settings while preserving the configured default model for empty overrides.",
-        "Bypass the Supervisor only for a high-confidence deterministic single intent admitted by the internal, canary, or production rollout; route ambiguous and multi-intent requests through the Supervisor and restore it immediately when the stage is off.",
+        "Resolve independent knowledge, interviewer, evaluator, planner, summarization, and schema-repair model settings while preserving the configured default model for empty overrides.",
+        "When multi-agent mode is enabled, execute one or more deterministic intents through the bounded Workflow V2 specialist plan; when disabled, execute only the independent single-agent path.",
         "Record request-class model call count, input/output tokens, wall and first-token time, price version, and estimated cost; reject an additional call before call, token, or cost limits are exceeded.",
         "Use an optional same-provider fallback only for purposes listed in an evaluation-approved configuration; prohibit uncalibrated fallback for evaluator, resume analysis, and interview review and return a recoverable unavailable state.",
-        "Approve canary progression only when grouped Agent gates have no zero-tolerance failures and routed quality, completion, p95 latency, and cost per completed training action do not regress against the retained baseline."
+        "Approve canary progression only when grouped Agent gates have no zero-tolerance failures and routed quality, completion, p95 latency, and cost per completed training action do not regress against the retained baseline.",
+        "Export bounded outcome, duration-histogram, and cost metrics for every successful, failed, or cancelled Workflow V2 execution; retain historical Supervisor query support solely to audit pre-retirement evidence.",
+        "For a future public launch, keep the separate production gate fail-closed: compare a retained-Supervisor window obtained from the recorded immutable rollback artifacts with the Workflow V2 window, each covering at least 24 hours and 100 completed requests, plus external approval, non-regressing metrics, and matching successful/rolled-back release ledgers; this evidence policy does not restore Supervisor to the current runtime.",
+        "Before the first public release, allow the distinct pre-release retirement gate instead: at least 230 passing deterministic application-stack cases, at least six passing isolated live-model cases covering all four specialists with at least two multi-intent cases, zero-tolerance safety success, verified exact test-data cleanup, immutable current and rollback artifacts, a matching successful release and rolled-back exercise ledger, and explicit project-owner approval after live acceptance.",
+        "After that gate passes, remove Supervisor source and rollout configuration; rollback requires digest verification and redeployment of the recorded Supervisor-capable app and worker artifacts."
       ],
       "verification": [
         "tests/test_model_routing_policy.py",
@@ -660,7 +707,16 @@
         "tests/test_multi_agent.py",
         "tests/test_operations.py",
         "tests/test_chat_lifecycle.py",
-        "eval/reports/model-routing-canary-approved.json"
+        "tests/test_workflow_rollout_gate.py",
+        "tests/test_workflow_observation.py",
+        "tests/test_workflow_prerelease_gate.py",
+        "tests/test_operations.py",
+        "scripts/collect_workflow_observation.py",
+        "scripts/check_workflow_prerelease.py",
+        "eval/reports/model-routing-canary-approved.json",
+        "eval/reports/workflow-v2-production-observation.template.json",
+        "eval/reports/workflow-v2-prerelease-acceptance.template.json",
+        "eval/reports/workflow-v2-prerelease-acceptance.json"
       ]
     }
   ]

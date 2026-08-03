@@ -1,3 +1,5 @@
+"""模型/Agent 路由、灰度与回退策略的测试。"""
+
 import json
 from pathlib import Path
 
@@ -10,9 +12,9 @@ from app.model_routing import (
     ModelUnavailable,
     call_with_fallback,
     classify_intent,
+    explicit_workflow_routes,
     fallback_policy,
     model_for_purpose,
-    rollout_allows_direct_route,
 )
 
 
@@ -29,12 +31,10 @@ def _settings(**overrides):
 
 def test_purpose_models_default_and_override_independently():
     settings = _settings(
-        llm_model_supervisor="router-small-v1",
         llm_model_knowledge="knowledge-v2",
         llm_model_schema_repair="repair-v1",
     )
 
-    assert model_for_purpose(settings, "supervisor") == "router-small-v1"
     assert model_for_purpose(settings, "knowledge") == "knowledge-v2"
     assert model_for_purpose(settings, "planner") == "primary-v1"
     model = create_chat_model("knowledge", temperature=0, settings=settings)
@@ -52,19 +52,12 @@ def test_classifier_only_directs_high_confidence_single_intent():
     assert unknown.specialist is None
 
 
-def test_rollout_stages_are_deterministic_and_rollbackable():
-    assert rollout_allows_direct_route(
-        stage="internal", user_id="u", role="admin", canary_percent=0
+def test_explicit_workflow_routes_multi_intent_in_bounded_dependency_order():
+    assert explicit_workflow_routes("先评价回答并指出错误，再追问一道题") == (
+        "evaluator",
+        "interviewer",
     )
-    assert not rollout_allows_direct_route(
-        stage="internal", user_id="u", role="user", canary_percent=100
-    )
-    assert rollout_allows_direct_route(
-        stage="canary", user_id="u", role="user", canary_percent=100
-    )
-    assert not rollout_allows_direct_route(
-        stage="off", user_id="u", role="admin", canary_percent=100
-    )
+    assert explicit_workflow_routes("你好") == ("knowledge",)
 
 
 def test_fallback_requires_approval_and_blocks_uncalibrated_high_impact_models():
@@ -98,18 +91,13 @@ def test_request_budget_stops_before_an_additional_call_and_tracks_cost():
         input_usd_per_million=2.0, output_usd_per_million=4.0,
         started_at=0,
     )
-    budget.claim_call("supervisor")
+    budget.claim_call("knowledge")
     budget.record_usage(20, 10)
 
     assert budget.snapshot()["call_count"] == 1
     assert budget.snapshot()["cost_usd"] == 0.00008
     with pytest.raises(ModelBudgetExceeded, match="before knowledge"):
         budget.claim_call("knowledge")
-
-
-def test_invalid_rollout_configuration_is_rejected():
-    with pytest.raises(ValueError, match="ROLLOUT_STAGE"):
-        _settings(agent_routing_rollout_stage="everyone")
 
 
 def test_approved_canary_report_has_no_quality_privacy_or_completion_regression():

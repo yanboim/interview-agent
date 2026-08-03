@@ -9,6 +9,11 @@ from typing import Literal
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from app.api.execution import run_sync
+from app.api.errors import (
+    dependency_health_failure,
+    internal_http_error,
+    unavailable_http_error,
+)
 from app.api.runtime import get_runtime
 from app.api.schemas import (
     AdminUserRoleRequest,
@@ -22,6 +27,7 @@ from app.knowledge_publication import (
 )
 from app.multi_agent import agent_topology
 from app.operations import JobIdempotencyConflict, request_metrics
+from app.system_resources import operator_console_links
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -29,6 +35,7 @@ router = APIRouter()
 
 @router.get("/api/admin/system-summary")
 async def admin_system_summary(request: Request) -> dict[str, object]:
+    """返回系统级计数摘要（管理员专用）。"""
     admin = require_role(request, {"admin"})
     counts = await run_sync(
         get_runtime().conversation_store.system_counts
@@ -38,6 +45,7 @@ async def admin_system_summary(request: Request) -> dict[str, object]:
 
 @router.get("/api/admin/runtime")
 async def admin_runtime(request: Request) -> dict[str, object]:
+    """返回运行时依赖健康检查、指标快照与功能开关（管理员专用）。"""
     admin = require_role(request, {"admin"})
     runtime = get_runtime()
     dependencies: dict[str, dict[str, str]] = {}
@@ -50,11 +58,13 @@ async def admin_runtime(request: Request) -> dict[str, object]:
         try:
             await run_sync(check)
             dependencies[name] = {"status": "ok", "detail": "已连接"}
-        except Exception as exc:
-            dependencies[name] = {
-                "status": "error",
-                "detail": f"{type(exc).__name__}: {exc}"[:300],
-            }
+        except Exception:
+            logger.warning(
+                "Administrator dependency check failed: %s",
+                name,
+                exc_info=True,
+            )
+            dependencies[name] = dependency_health_failure()
     metrics_snapshot = request_metrics.snapshot()
     settings = runtime.settings
     return {
@@ -76,11 +86,13 @@ async def admin_runtime(request: Request) -> dict[str, object]:
             "reranker_enabled": settings.reranker_enabled,
             "redis_configured": bool(settings.redis_url),
         },
+        "operator_links": operator_console_links(settings),
     }
 
 
 @router.get("/api/admin/resources")
 async def admin_resources(request: Request) -> dict[str, object]:
+    """返回资源中心快照（监控组件存活、Worker 心跳等，管理员专用）。"""
     admin = require_role(request, {"admin"})
     snapshot = await run_sync(
         get_runtime().system_resource_center.snapshot
@@ -92,6 +104,7 @@ async def admin_resources(request: Request) -> dict[str, object]:
 async def admin_users(
     request: Request, limit: int = 200
 ) -> list[dict[str, object]]:
+    """列出用户（管理员专用，含跨用户只读观察）。"""
     require_role(request, {"admin"})
     return await run_sync(
         get_runtime().conversation_store.list_users, limit=limit
@@ -104,6 +117,7 @@ async def admin_update_user_role(
     payload: AdminUserRoleRequest,
     request: Request,
 ) -> dict[str, object]:
+    """修改用户角色（管理员专用；禁止降级当前登录管理员自己）。"""
     admin = require_role(request, {"admin"})
     if admin.user_id == user_id and payload.role != "admin":
         raise HTTPException(status_code=409, detail="不能降级当前登录管理员")
@@ -123,6 +137,7 @@ async def admin_tool_audits(
     user_id: str | None = None,
     limit: int = 100,
 ) -> list[dict[str, object]]:
+    """列出工具调用审计记录（管理员专用，可按用户过滤）。"""
     require_role(request, {"admin"})
     return await run_sync(
         get_runtime().conversation_store.list_tool_audits,
@@ -139,6 +154,7 @@ async def admin_audit_events(
     outcome: Literal["success", "error", "denied"] | None = None,
     limit: int = 100,
 ) -> list[dict[str, object]]:
+    """列出 API 审计事件（管理员专用，可按用户/动作/结果过滤）。"""
     require_role(request, {"admin"})
     return await run_sync(
         get_runtime().conversation_store.list_audit_events,
@@ -156,6 +172,7 @@ async def admin_interactions(
     user_id: str | None = None,
     limit: int = 100,
 ) -> list[dict[str, object]]:
+    """列出跨用户交互记录（管理员专用，本身亦被审计）。"""
     require_role(request, {"admin"})
     return await run_sync(
         get_runtime().conversation_store.list_admin_interactions,
@@ -173,6 +190,7 @@ async def admin_interaction_trace(
     interaction_id: str,
     request: Request,
 ) -> list[dict[str, object]]:
+    """查看单次交互的执行追踪阶段（管理员专用，仅安全元数据）。"""
     require_role(request, {"admin"})
     return await run_sync(
         get_runtime().conversation_store.list_execution_trace,
@@ -187,6 +205,7 @@ async def admin_product_events(
     user_id: str | None = None,
     limit: int = 100,
 ) -> list[dict[str, object]]:
+    """列出产品埋点事件（管理员专用，可按用户过滤）。"""
     require_role(request, {"admin"})
     return await run_sync(
         get_runtime().conversation_store.list_product_events,
@@ -202,6 +221,7 @@ async def admin_releases(
     status: str | None = None,
     limit: int = 50,
 ) -> list[dict[str, object]]:
+    """列出部署发版记录（管理员专用，可按环境/状态过滤）。"""
     require_role(request, {"admin"})
     if environment and environment not in {"canary", "production"}:
         raise HTTPException(status_code=422, detail="不支持的部署环境")
@@ -221,6 +241,7 @@ async def admin_releases(
 
 
 def list_knowledge_files() -> list[dict[str, object]]:
+    """列出 ``knowledge/`` 目录下的知识源文件及其大小与更新时间。"""
     knowledge_dir = Path("knowledge")
     knowledge_dir.mkdir(parents=True, exist_ok=True)
     result = []
@@ -242,6 +263,7 @@ def list_knowledge_files() -> list[dict[str, object]]:
 
 @router.get("/api/admin/knowledge/files")
 async def admin_knowledge_files(request: Request) -> list[dict[str, object]]:
+    """列出知识源文件清单（管理员专用）。"""
     require_role(request, {"admin"})
     return list_knowledge_files()
 
@@ -251,6 +273,7 @@ async def admin_save_knowledge_file(
     payload: KnowledgeFileRequest,
     request: Request,
 ) -> dict[str, object]:
+    """保存（新增/覆盖）知识源文件（管理员专用，文件名受白名单校验）。"""
     admin = require_role(request, {"admin"})
     knowledge_dir = Path("knowledge")
     knowledge_dir.mkdir(parents=True, exist_ok=True)
@@ -268,6 +291,7 @@ async def admin_save_knowledge_file(
 async def admin_delete_knowledge_file(
     filename: str, request: Request
 ) -> dict[str, object]:
+    """删除知识源文件（管理员专用，文件名经白名单校验防越权）。"""
     admin = require_role(request, {"admin"})
     try:
         safe_name = KnowledgeFileRequest(
@@ -288,6 +312,7 @@ async def admin_delete_knowledge_file(
 
 @router.post("/api/admin/knowledge/import")
 async def admin_import_knowledge(request: Request) -> dict[str, object]:
+    """同步触发知识导入（管理员专用；原子切换前需通过验证与回归门禁）。"""
     admin = require_role(request, {"admin"})
     try:
         result = await run_sync(get_runtime().ingest_knowledge)
@@ -295,21 +320,19 @@ async def admin_import_knowledge(request: Request) -> dict[str, object]:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
         logger.exception("管理员触发知识库导入失败")
-        raise HTTPException(
-            status_code=503, detail=f"知识库导入失败：{exc}"
-        ) from exc
+        raise unavailable_http_error(dependency="知识库导入服务") from exc
     return {"operator": admin.username, "status": "completed", **result}
 
 
 @router.get("/api/admin/knowledge/status")
 async def admin_knowledge_status(request: Request) -> dict[str, object]:
+    """返回当前服务知识版本与可回滚历史版本（管理员专用）。"""
     require_role(request, {"admin"})
     try:
         return await run_sync(get_runtime().knowledge_status)
     except Exception as exc:
-        raise HTTPException(
-            status_code=503, detail=f"读取知识库版本失败：{exc}"
-        ) from exc
+        logger.exception("读取知识库版本失败")
+        raise unavailable_http_error(dependency="知识库状态服务") from exc
 
 
 @router.post("/api/admin/knowledge/rollback")
@@ -317,6 +340,7 @@ async def admin_knowledge_rollback(
     payload: KnowledgeRollbackRequest,
     request: Request,
 ) -> dict[str, object]:
+    """把服务别名回滚到历史物理版本（管理员专用，保留的版本才可回滚）。"""
     admin = require_role(request, {"admin"})
     try:
         result = await run_sync(
@@ -327,9 +351,8 @@ async def admin_knowledge_rollback(
     except KnowledgePublicationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(
-            status_code=503, detail=f"知识库回滚失败：{exc}"
-        ) from exc
+        logger.exception("知识库回滚失败")
+        raise internal_http_error(503, operation="知识库回滚") from exc
     return {"operator": admin.username, **result}
 
 
@@ -343,6 +366,7 @@ async def enqueue_knowledge_import(
         pattern=r"^[A-Za-z0-9._:-]+$",
     ),
 ) -> dict[str, str]:
+    """把知识导入任务入队后台执行（管理员专用，幂等）。"""
     admin = require_role(request, {"admin"})
     try:
         job_id = await run_sync(
@@ -355,23 +379,22 @@ async def enqueue_knowledge_import(
     except JobIdempotencyConflict as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except Exception as exc:
-        raise HTTPException(
-            status_code=503, detail=f"后台队列不可用：{exc}"
-        ) from exc
+        logger.exception("知识导入任务入队失败")
+        raise unavailable_http_error(dependency="后台队列") from exc
     return {"job_id": job_id, "status": "queued"}
 
 
 @router.get("/api/admin/jobs/{job_id}")
 async def admin_job_status(job_id: str, request: Request) -> dict[str, str]:
+    """查询后台任务状态（管理员专用）。"""
     require_role(request, {"admin"})
     try:
         result = await run_sync(
             get_runtime().redis_runtime.get_job, job_id
         )
     except Exception as exc:
-        raise HTTPException(
-            status_code=503, detail=f"后台队列不可用：{exc}"
-        ) from exc
+        logger.exception("读取后台任务状态失败")
+        raise unavailable_http_error(dependency="后台队列") from exc
     if not result:
         raise HTTPException(status_code=404, detail="任务不存在或已过期")
     return result

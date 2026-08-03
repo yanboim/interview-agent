@@ -1,0 +1,81 @@
+{
+  "schema_version": "repository-structure-baseline-v1",
+  "baseline_date": "2026-08-01",
+  "scope": "pre-RS-01 repository structure and retained Agent quality",
+  "source_revision": "unavailable-in-sandbox",
+  "source_identity": {
+    "agent_quality_suite_sha256": "fd7c997e930e3c2956e951f7ed1b4b471476d0fe4f8b7ce719d5e30f95d067da",
+    "model_routing_report_sha256": "982075653e61280f51421656304b6bd35316ba100c988756f449252eaab9261d",
+    "chat_router_sha256": "8a9e7442231cdba94d3ea1dd9a1fd8e8014af5dd0bd3ec61379c580ef4690a15",
+    "storage_sha256": "c86c8de926d5beb2a47922181ff26594e905620a116c9cecac89a6257cd4e2f6"
+  },
+  "inventory": {
+    "backend_python_files": 64,
+    "backend_test_files": 65,
+    "alembic_revisions": 21,
+    "frontend_source_files": 72,
+    "frontend_e2e_files": 11,
+    "top_level_eval_datasets": 9
+  },
+  "hotspots": {
+    "app/main.py": 400,
+    "app/storage.py": 4460,
+    "app/operations.py": 782,
+    "app/tools.py": 519,
+    "app/api/routers/chat.py": 737,
+    "scripts/ingest.py": 167,
+    "scripts/worker.py": 242
+  },
+  "boundary_signals": {
+    "app_modules_importing_scripts": ["app/main.py"],
+    "api_modules_invoking_agents": ["app/api/routers/chat.py"]
+  },
+  "agent_quality": {
+    "source_report": "eval/reports/agent-stack-ci.json",
+    "dataset_version": "2026-07-31.1",
+    "provider": "deterministic-mock-v1",
+    "estimated_cost_usd": 0.0,
+    "gate_passed": true,
+    "deterministic_provider_call_count": 50,
+    "citation_coverage": 1.0,
+    "confirmation_workflow_completion_rate": 1.0,
+    "groups": {
+      "routing": {"cases": 100, "pass_rate": 1.0},
+      "grounded_answer": {"cases": 50, "pass_rate": 1.0},
+      "multi_turn_delegation": {"cases": 30, "pass_rate": 1.0},
+      "safety": {"cases": 30, "pass_rate": 1.0},
+      "confirmation_workflow": {"cases": 20, "pass_rate": 1.0}
+    }
+  },
+  "model_routing_canary": {
+    "source_report": "eval/reports/model-routing-canary-approved.json",
+    "report_version": "2026-07-31.1",
+    "approval_status": "approved",
+    "baseline": {
+      "quality_pass_rate": 1.0,
+      "p95_latency_ms": 1200,
+      "completion_rate": 1.0,
+      "cost_per_completed_training_action_usd": 0.02
+    },
+    "routed": {
+      "quality_pass_rate": 1.0,
+      "p95_latency_ms": 850,
+      "completion_rate": 1.0,
+      "cost_per_completed_training_action_usd": 0.014
+    }
+  },
+  "reproduction": {
+    "agent_quality": "python -m scripts.evaluate_agent_stack",
+    "static_gate": "make harness-static",
+    "notes": "Agent report timestamps and durations are intentionally not byte-stable; dataset identity and grouped results are retained instead.",
+    "inventory_commands": [
+      "find app -type f -name '*.py' -not -path '*/__pycache__/*'",
+      "find tests -type f -name 'test_*.py' -not -path '*/__pycache__/*'",
+      "find migrations/versions -type f -name '*.py' -not -path '*/__pycache__/*'",
+      "find frontend/src -type f with .ts/.vue suffixes",
+      "wc -l app/main.py app/storage.py app/operations.py app/tools.py app/api/routers/chat.py scripts/ingest.py scripts/worker.py",
+      "rg '^from scripts\\.|^import scripts\\.' app --glob '*.py'",
+      "rg '\\.(a?invoke)\\(' app/api --glob '*.py'"
+    ]
+  }
+}

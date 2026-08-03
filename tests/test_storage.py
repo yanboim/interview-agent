@@ -1,3 +1,5 @@
+"""SQLAlchemy Core 持久化适配器的测试。"""
+
 import json
 
 from app.storage import ConversationStore

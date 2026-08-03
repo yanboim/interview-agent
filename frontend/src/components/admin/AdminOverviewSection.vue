@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理端概览分区：系统计数、依赖健康与运行时特性概览。
 import { useAdminStore } from "@/stores/admin";
 
 const admin = useAdminStore();

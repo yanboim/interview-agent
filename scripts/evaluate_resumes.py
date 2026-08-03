@@ -1,3 +1,5 @@
+"""评估简历评估结果的覆盖度与事实一致性。"""
+
 import argparse
 import json
 from pathlib import Path

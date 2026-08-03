@@ -1,4 +1,4 @@
-"""Add one-time password recovery codes.
+"""新增一次性密码恢复码。
 
 Revision ID: 20260725_0007
 Revises: 20260725_0006

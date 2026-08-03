@@ -1,4 +1,4 @@
-"""Add administrator audit and execution tracing.
+"""新增管理员审计与执行追踪。
 
 Revision ID: 20260728_0012
 Revises: 20260728_0011

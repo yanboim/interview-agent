@@ -1,4 +1,4 @@
-"""Add durable chat-turn lifecycle and session ordering.
+"""新增可恢复的聊天回合生命周期与会话排序。
 
 Revision ID: 20260726_0009
 Revises: 20260726_0008

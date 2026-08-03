@@ -1,4 +1,4 @@
-"""Add interview archiving and learning tasks.
+"""新增面试归档与学习任务。
 
 Revision ID: 20260724_0003
 Revises: 20260724_0002

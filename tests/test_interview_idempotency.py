@@ -1,3 +1,5 @@
+"""面试答题幂等领取与重放的测试。"""
+
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from unittest.mock import MagicMock
