@@ -4,7 +4,7 @@ NPM_RUN ?= $(NPM) --silent --prefix frontend run
 WORKTREE_ENV ?= .env.worktree
 E2E_PORT ?= $(shell $(PYTHON) -m scripts.worktree_env --root . --value E2E_PORT)
 
-.PHONY: help docs-generate docs-check eval-check production-preflight-check workflow-retirement-check workflow-prerelease-retirement-check dev-check pr-check harness-static backend-fast-check backend-check frontend-fast-check frontend-check migration-check e2e harness-check \
+.PHONY: help docs-generate docs-check eval-check production-preflight-check workflow-retirement-check workflow-prerelease-retirement-check dev-check pr-check harness-static backend-fast-check backend-check frontend-fast-check frontend-build frontend-check migration-check e2e harness-check \
 	worktree-env stack-config stack-up stack-down lock-python
 
 help:
@@ -58,11 +58,11 @@ dev-check:
 	$(NPM_RUN) check:toolchain
 	$(NPM_RUN) type-check
 
-backend-check:
+backend-check: frontend-build
 	$(PYTHON) -m compileall -q app scripts migrations
 	$(PYTHON) -m pytest -q
 
-backend-fast-check:
+backend-fast-check: frontend-build
 	$(PYTHON) -m compileall -q app scripts migrations
 	$(PYTHON) -m pytest -q -m "not integration"
 
@@ -71,9 +71,10 @@ frontend-fast-check:
 	$(NPM_RUN) type-check
 	$(NPM_RUN) test:ci
 
-frontend-check:
-	$(MAKE) frontend-fast-check
+frontend-build:
 	$(NPM_RUN) build:ci
+
+frontend-check: frontend-fast-check frontend-build
 	$(NPM_RUN) check:bundle
 
 migration-check:

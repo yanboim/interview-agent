@@ -236,6 +236,9 @@ def test_pull_request_and_deep_verification_are_tiered() -> None:
     ) in makefile
     assert "$(PYTHON) -m scripts.check_migrations" in makefile
     assert "harness-check: harness-static backend-check frontend-check e2e" in makefile
+    assert "backend-check: frontend-build" in makefile
+    assert "backend-fast-check: frontend-build" in makefile
+    assert "frontend-check: frontend-fast-check frontend-build" in makefile
 
     assert "make pr-check PYTHON=python NPM=npm" in ci
     assert "cancel-in-progress: true" in ci

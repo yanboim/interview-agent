@@ -36,9 +36,9 @@ verification gate.
 
 - [x] Fetch and inventory all remote branches.
 - [x] Identify branches not already reachable from `main`.
-- [ ] Merge the outstanding branches and resolve overlaps conservatively.
-- [ ] Regenerate dependency locks or documentation if required.
-- [ ] Run focused checks and `make harness-check`.
+- [x] Merge the outstanding branches and resolve overlaps conservatively.
+- [x] Regenerate dependency locks or documentation if required.
+- [x] Run focused checks and `make harness-check`.
 - [ ] Record evidence, move this plan to `completed/`, commit, and push `main`.
 - [ ] Confirm the remote GitHub Actions run succeeds.
 
@@ -54,6 +54,22 @@ verification gate.
   timestamp-based status check had misclassified as clean. Preserve that work
   in a dedicated commit before merging branches that overlap its workflow and
   dependency files.
+- The first remote Deep verification exposed a clean-runner ordering defect:
+  backend SPA route tests ran before `frontend/dist` existed. The canonical
+  Make targets now make both backend suites depend on the shared
+  `frontend-build` target, so the requirement holds locally, in PR checks, and
+  on main even under parallel Make execution.
+
+## Verification evidence
+
+- `make pr-check`: passed; 30 static/contract tests, 343 backend tests, 25
+  frontend tests, production build, bundle budget, and fresh SQLite migration.
+- `make harness-check`: passed after the clean-runner ordering fix; 30
+  static/contract tests, 343 backend tests with 2 skips, 25 frontend tests, and
+  30 Playwright tests.
+- Initial remote Deep verification run `30824650944`: image and dependency
+  audit passed; Harness failed only because the frontend build followed the
+  backend suite. This failure supplied the clean-runner regression evidence.
 
 ## Rollback
 
