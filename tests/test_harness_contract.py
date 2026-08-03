@@ -254,7 +254,7 @@ def test_pull_request_and_deep_verification_are_tiered() -> None:
     assert "make harness-check PYTHON=python NPM=npm" in deep
     assert "pip-audit -r requirements.txt" in deep
     assert "npm run audit:dependencies --prefix frontend" in deep
-    assert "docker/build-push-action@v6" in deep
+    assert "docker/build-push-action@v7" in deep
     assert "aquasecurity/trivy-action@v0.36.0" in deep
     assert "if: failure()" in deep
 

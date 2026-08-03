@@ -99,6 +99,6 @@ stack-down: worktree-env
 	docker compose --env-file .env --env-file $(WORKTREE_ENV) down
 
 lock-python:
-	docker run --rm -v $(CURDIR):/src -w /src python:3.12-slim@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464 sh -c 'python -m pip install --disable-pip-version-check pip-tools==7.5.0 && python -m piptools compile --quiet --generate-hashes --resolver=backtracking --strip-extras --output-file=requirements.txt requirements.in'
+	docker run --rm -v $(CURDIR):/src -w /src python:3.12-slim@sha256:cab2dbf575e971934a81e4622f5aba17aa7929719bd7e31033a3a83b97fd0464 sh -c 'python -m pip install --disable-pip-version-check pip-tools==7.6.0 && python -m piptools compile --quiet --generate-hashes --resolver=backtracking --strip-extras --output-file=requirements.txt requirements.in'
 	$(PYTHON) -m scripts.reproducibility stamp
 	$(PYTHON) -m scripts.reproducibility check
