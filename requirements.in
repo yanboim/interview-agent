@@ -1,7 +1,7 @@
 # Direct runtime and test requirements.
 # Regenerate requirements.txt with `make lock-python` under CPython 3.12.
 fastapi>=0.141.1
-uvicorn[standard]>=0.30
+uvicorn[standard]>=0.52.0
 langchain>=1.0
 langgraph>=1.2.10
 langchain-openai>=0.3
