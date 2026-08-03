@@ -70,9 +70,9 @@ docs/
 
 ## 历史材料
 
-- [`DEVELOPMENT_ROADMAP.md`](../../DEVELOPMENT_ROADMAP.md)：2026-07早期基础能力路线图；
-- [`P0_P2_COMPLETION.md`](../../P0_P2_COMPLETION.md)：2026-07-25产品体验验收记录；
-- [`plan.md`](../../plan.md)：项目早期构想和演进背景。
+- [`DEVELOPMENT_ROADMAP.md`](../history/DEVELOPMENT_ROADMAP.md)：2026-07早期基础能力路线图；
+- [`P0_P2_COMPLETION.md`](../history/P0_P2_COMPLETION.md)：2026-07-25产品体验验收记录；
+- [`plan.md`](../history/plan.md)：项目早期构想和演进背景。
 
 历史材料不作为当前行为或架构规范。当前行为以功能契约和测试为准。
 

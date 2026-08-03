@@ -86,3 +86,32 @@ python -m scripts.generate_chinese_docs --check
 
 英文源发生变化而人工中文稿未更新、中文文件缺失或生成参考漂移，都会使Harness静态
 门禁失败。
+
+## 文档网站
+
+生命周期文档还会发布为支持搜索的中英文 MkDocs Material 网站。网站导航由
+`docs/document-manifest.json` 生成，因此始终与生命周期清单同步，不能手工编辑。
+生成的 `mkdocs.yml`、`docs/experience` → `docs/ux` 别名符号链接（用于避免 `ux`
+与国际化插件的双字母语言代码冲突）以及 `site/` 构建输出均为可再生构建产物。
+
+```bash
+make docs-site    # 重新生成 mkdocs.yml 和别名符号链接
+make docs-serve   # 在 http://127.0.0.1:8001 本地预览网站
+```
+
+范围和行为：
+
+- 网站仅覆盖 `docs/`。仓库根入口文档（`README.md`、`ARCHITECTURE.md`、
+  `AGENTS.md`、`CONTRIBUTING.md`、`SECURITY.md`、`CHANGELOG.md`）不在
+  `docs_dir` 中，不由网站渲染；请直接在仓库中阅读。已完成执行计划、`knowledge/`
+  和 `eval/` 同样不进入网站。
+- 英文内容来自 `docs/`；简体中文内容来自 `make docs-generate` 生成的
+  `docs/zh-CN/` 镜像。运行 `make docs-serve` 前先刷新镜像，确保中文内容最新。
+- 文档保留指向根文件、`tests/`、`eval/` 和 `.env.example` 的仓库相对链接。
+  这些目标不在网站内，因此网站允许其缺失（`validation not_found: ignore`），
+  而不重写源文档。
+- 新文档需要加入 `docs/document-manifest.json`；随后运行 `make docs-site` 刷新
+  `mkdocs.yml`。
+
+`.github/workflows/docs.yml` 会重新生成参考文档和中文镜像，校验 `mkdocs.yml`
+与清单一致，以严格模式构建网站，并在 `main` 变更时部署到 GitHub Pages。

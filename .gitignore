@@ -16,3 +16,7 @@ frontend/test-results/
 frontend/*.tsbuildinfo
 /.idea/
 /test-results/
+# Documentation site build output (mkdocs build) and the generated ux/experience alias symlink.
+/site/
+/docs/experience
+.zcode

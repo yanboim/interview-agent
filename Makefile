@@ -3,14 +3,19 @@ NPM ?= npm
 NPM_RUN ?= $(NPM) --silent --prefix frontend run
 WORKTREE_ENV ?= .env.worktree
 E2E_PORT ?= $(shell $(PYTHON) -m scripts.worktree_env --root . --value E2E_PORT)
+# 文档站本地预览端口；绑定 0.0.0.0 以放开本机局域网 IP 访问。
+# 8000/8080 通常被 Compose 占用，默认 8001。临时改端口：make docs-serve DOCS_SERVE_PORT=9000
+DOCS_SERVE_PORT ?= 8001
 
-.PHONY: help docs-generate docs-check eval-check production-preflight-check workflow-retirement-check workflow-prerelease-retirement-check dev-check pr-check harness-static backend-fast-check backend-check frontend-fast-check frontend-build frontend-check migration-check e2e harness-check \
+.PHONY: help docs-generate docs-site docs-serve docs-check eval-check production-preflight-check workflow-retirement-check workflow-prerelease-retirement-check dev-check pr-check harness-static backend-fast-check backend-check frontend-fast-check frontend-build frontend-check migration-check e2e harness-check \
 	worktree-env stack-config stack-up stack-down lock-python
 
 help:
 	@echo "make harness-static  Validate repository contracts and architecture"
-	@echo "make docs-generate   Regenerate English references and Chinese mirror"
-	@echo "make docs-check      Verify generated and Chinese documentation"
+	@echo "make docs-generate   Regenerate English references, Chinese mirror, and mkdocs.yml"
+	@echo "make docs-site       Regenerate the MkDocs site configuration (mkdocs.yml)"
+	@echo "make docs-serve      Preview the documentation site locally at http://127.0.0.1:8001"
+	@echo "make docs-check      Verify generated, Chinese, and site documentation"
 	@echo "make eval-check      Run the frozen deterministic Agent quality gates"
 	@echo "make production-preflight-check  Validate Workflow V2 production release configuration"
 	@echo "make workflow-retirement-check  Require approved Workflow V2 production evidence"
@@ -35,10 +40,20 @@ harness-static: docs-check eval-check
 docs-generate:
 	$(PYTHON) -m scripts.generate_docs
 	$(PYTHON) -m scripts.generate_chinese_docs
+	$(PYTHON) -m scripts.generate_docs_site
+
+docs-site:
+	$(PYTHON) -m scripts.generate_docs_site
+
+docs-serve: docs-site
+	$(PYTHON) -m mkdocs serve --dev-addr 0.0.0.0:$(DOCS_SERVE_PORT)
+	@echo "英文: http://0.0.0.0:$(DOCS_SERVE_PORT)/interview-agent/"
+	@echo "中文: http://0.0.0.0:$(DOCS_SERVE_PORT)/interview-agent/zh-CN/"
 
 docs-check:
 	$(PYTHON) -m scripts.generate_docs --check
 	$(PYTHON) -m scripts.generate_chinese_docs --check
+	$(PYTHON) -m scripts.generate_docs_site --check
 
 eval-check:
 	$(PYTHON) -m scripts.evaluate_agent_stack

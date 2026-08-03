@@ -1,0 +1,11 @@
+# Documentation website toolchain.
+#
+# Used only by `make docs-serve` / `make docs-site` and the docs Pages workflow.
+# Deliberately NOT pinned with hashes and NOT part of the runtime requirements.txt,
+# which is hash-locked for reproducible application builds.
+#
+# Regenerate mkdocs.yml after manifest changes: `make docs-site`.
+
+mkdocs>=1.6,<2
+mkdocs-material>=9.5,<10
+mkdocs-static-i18n>=1.2,<2

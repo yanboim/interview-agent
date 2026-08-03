@@ -72,8 +72,11 @@ traceability, architecture rules, and reproducible build inputs.
 - The root README was reduced to product orientation, quick start, primary
   commands, production requirements, and canonical links. Detailed procedures
   now have one owner under `docs/`.
-- `DEVELOPMENT_ROADMAP.md`, `P0_P2_COMPLETION.md`, and `plan.md` remain in place
-  for link stability but are explicitly classified as historical.
+- `DEVELOPMENT_ROADMAP.md`, `P0_P2_COMPLETION.md`, and `plan.md` were initially
+  kept at the repository root for link stability but explicitly classified as
+  historical. They were later relocated into `docs/history/` (see
+  `2026-08-03-archive-historical-docs.md`); that newer plan supersedes this
+  decision.
 - `ARCHITECTURE.md` still described atomic knowledge publication and durable
   Redis jobs as unresolved; it was corrected to match the implemented and
   tested state.

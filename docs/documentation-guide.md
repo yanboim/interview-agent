@@ -121,3 +121,39 @@ python -m scripts.generate_chinese_docs
 destination, and generation mode for every localized document. Completed
 execution plans, archived reports, and `knowledge/` corpora remain historical
 records or runtime content and are intentionally outside the lifecycle mirror.
+
+## Documentation website
+
+The lifecycle corpus is also published as a searchable, bilingual MkDocs
+Material site. The site navigation is generated from
+`docs/document-manifest.json`, so it stays in sync with the lifecycle manifest
+and never hand-edited. The generated `mkdocs.yml`, the
+`docs/experience` → `docs/ux` alias symlink (needed because `ux` collides with
+the i18n plugin's two-letter locale codes), and the `site/` build output are all
+build artifacts and are regenerated, not edited.
+
+```bash
+make docs-site    # regenerate mkdocs.yml and the alias symlink
+make docs-serve   # preview the site locally at http://127.0.0.1:8001
+```
+
+Scope and behavior:
+
+- The site covers `docs/` only. Repository-root entry documents
+  (`README.md`, `ARCHITECTURE.md`, `AGENTS.md`, `CONTRIBUTING.md`,
+  `SECURITY.md`, `CHANGELOG.md`) live outside `docs_dir` and are not rendered by
+  the site; read them in the repository. Completed execution plans,
+  `knowledge/`, and `eval/` are likewise excluded.
+- English content is served from `docs/`; Simplified Chinese is served from the
+  `docs/zh-CN/` mirror produced by `make docs-generate`. Run the mirror step
+  before `make docs-serve` so the Chinese site is current.
+- Documents keep their existing repository-relative links to root files,
+  `tests/`, `eval/`, and `.env.example`. These targets are outside the site, so
+  the site tolerates them (validation `not_found: ignore`) rather than rewriting
+  source documentation.
+- Adding a document to the site requires adding it to
+  `docs/document-manifest.json`; rerun `make docs-site` to refresh `mkdocs.yml`.
+
+The `.github/workflows/docs.yml` workflow regenerates references and the Chinese
+mirror, verifies `mkdocs.yml` against the manifest, builds the site strictly,
+and deploys to GitHub Pages on changes to `main`.
