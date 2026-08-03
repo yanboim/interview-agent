@@ -3,7 +3,7 @@
 fastapi>=0.141.1
 uvicorn[standard]>=0.30
 langchain>=1.0
-langgraph>=1.0
+langgraph>=1.2.10
 langchain-openai>=0.3
 langchain-qdrant>=0.2
 langchain-text-splitters>=0.3
