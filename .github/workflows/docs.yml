@@ -60,4 +60,6 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        # v5 runs on the Node.js 24 runtime; v4 used node20, which GitHub
+        # deprecated on hosted runners.
+        uses: actions/deploy-pages@v5
