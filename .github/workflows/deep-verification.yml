@@ -39,7 +39,7 @@ jobs:
         run: make harness-check PYTHON=python NPM=npm
       - name: Upload browser failures
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-failures
           path: |

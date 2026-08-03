@@ -55,7 +55,7 @@ jobs:
           exit-code: "1"
       - run: docker save interview-lab:${{ github.ref_name }} -o interview-lab-image.tar
       - run: sha256sum interview-lab-image.tar > interview-lab-image.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: interview-lab-${{ inputs.channel || 'production' }}-${{ github.ref_name }}
           path: |
