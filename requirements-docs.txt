@@ -7,5 +7,5 @@
 # Regenerate mkdocs.yml after manifest changes: `make docs-site`.
 
 mkdocs>=1.6,<2
-mkdocs-material>=9.5,<10
+mkdocs-material>=9.7.7,<10
 mkdocs-static-i18n>=1.2,<2
